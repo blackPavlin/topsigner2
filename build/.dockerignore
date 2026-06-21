@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.github
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+/api
+/build
+/configs
+
+# Documentation
+README.md
+Makefile

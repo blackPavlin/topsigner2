@@ -1,0 +1,63 @@
+services:
+  topsigner:
+    container_name: topsigner
+    restart: unless-stopped
+    build:
+      context: ../
+      dockerfile: build/Dockerfile
+    env_file:
+      - ../configs/.env.local
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy  
+    networks:
+      - default
+  postgres:
+    container_name: postgres
+    restart: unless-stopped
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE_NAME:-topsigner}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres} -d ${DATABASE_NAME:-topsigner}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - default
+  minio:
+    container_name: minio
+    restart: unless-stopped
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./volumes/minio:/data
+    healthcheck:
+      test: [ "CMD", "mc", "ready", "local" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - default    
+
+networks:
+  default:
+    driver: bridge
