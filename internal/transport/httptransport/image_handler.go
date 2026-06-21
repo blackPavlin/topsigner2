@@ -86,10 +86,18 @@ func (h *ImageHandler) UploadImage(
 }
 
 // Delete
-// (DELETE /api/v1/images/{id})
-func (h *ImageHandler) DeleteImageByID(
+// (DELETE /api/v1/images/{name})
+func (h *ImageHandler) DeleteImageByName(
 	ctx context.Context,
-	r openapi.DeleteImageByIDRequestObject,
-) (openapi.DeleteImageByIDResponseObject, error) {
-	return nil, nil
+	r openapi.DeleteImageByNameRequestObject,
+) (openapi.DeleteImageByNameResponseObject, error) {
+	if err := h.imageService.Delete(ctx, r.Name); err != nil {
+		return openapi.DeleteImageByName500JSONResponse{
+			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+				Message: "internal server error",
+			},
+		}, nil
+	}
+
+	return openapi.DeleteImageByName204Response{}, nil
 }

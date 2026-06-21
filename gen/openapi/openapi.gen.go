@@ -69,9 +69,9 @@ type ServerInterface interface {
 	// Upload image file
 	// (POST /api/v1/images)
 	UploadImage(w http.ResponseWriter, r *http.Request)
-	// Delete image by ID
-	// (DELETE /api/v1/images/{id})
-	DeleteImageByID(w http.ResponseWriter, r *http.Request, id string)
+	// Delete image by name
+	// (DELETE /api/v1/images/{name})
+	DeleteImageByName(w http.ResponseWriter, r *http.Request, name string)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -96,9 +96,9 @@ func (_ Unimplemented) UploadImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Delete image by ID
-// (DELETE /api/v1/images/{id})
-func (_ Unimplemented) DeleteImageByID(w http.ResponseWriter, r *http.Request, id string) {
+// Delete image by name
+// (DELETE /api/v1/images/{name})
+func (_ Unimplemented) DeleteImageByName(w http.ResponseWriter, r *http.Request, name string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -153,23 +153,23 @@ func (siw *ServerInterfaceWrapper) UploadImage(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
-// DeleteImageByID operation middleware
-func (siw *ServerInterfaceWrapper) DeleteImageByID(w http.ResponseWriter, r *http.Request) {
+// DeleteImageByName operation middleware
+func (siw *ServerInterfaceWrapper) DeleteImageByName(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
 
-	// ------------- Path parameter "id" -------------
-	var id string
+	// ------------- Path parameter "name" -------------
+	var name string
 
-	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "name", chi.URLParam(r, "name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteImageByID(w, r, id)
+		siw.Handler.DeleteImageByName(w, r, name)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -302,7 +302,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/images", wrapper.UploadImage)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/api/v1/images/{id}", wrapper.DeleteImageByID)
+		r.Delete(options.BaseURL+"/api/v1/images/{name}", wrapper.DeleteImageByName)
 	})
 
 	return r
@@ -568,25 +568,25 @@ func (response UploadImage500JSONResponse) VisitUploadImageResponse(w http.Respo
 	return err
 }
 
-type DeleteImageByIDRequestObject struct {
-	ID string `json:"id"`
+type DeleteImageByNameRequestObject struct {
+	Name string `json:"name"`
 }
 
-type DeleteImageByIDResponseObject interface {
-	VisitDeleteImageByIDResponse(w http.ResponseWriter) error
+type DeleteImageByNameResponseObject interface {
+	VisitDeleteImageByNameResponse(w http.ResponseWriter) error
 }
 
-type DeleteImageByID204Response struct {
+type DeleteImageByName204Response struct {
 }
 
-func (response DeleteImageByID204Response) VisitDeleteImageByIDResponse(w http.ResponseWriter) error {
+func (response DeleteImageByName204Response) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
 	return nil
 }
 
-type DeleteImageByID400JSONResponse struct{ BadRequestJSONResponse }
+type DeleteImageByName400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response DeleteImageByID400JSONResponse) VisitDeleteImageByIDResponse(w http.ResponseWriter) error {
+func (response DeleteImageByName400JSONResponse) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -598,9 +598,9 @@ func (response DeleteImageByID400JSONResponse) VisitDeleteImageByIDResponse(w ht
 	return err
 }
 
-type DeleteImageByID401JSONResponse struct{ UnauthorizedJSONResponse }
+type DeleteImageByName401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response DeleteImageByID401JSONResponse) VisitDeleteImageByIDResponse(w http.ResponseWriter) error {
+func (response DeleteImageByName401JSONResponse) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -612,9 +612,9 @@ func (response DeleteImageByID401JSONResponse) VisitDeleteImageByIDResponse(w ht
 	return err
 }
 
-type DeleteImageByID429JSONResponse struct{ TooManyRequestsJSONResponse }
+type DeleteImageByName429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response DeleteImageByID429JSONResponse) VisitDeleteImageByIDResponse(w http.ResponseWriter) error {
+func (response DeleteImageByName429JSONResponse) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -629,9 +629,9 @@ func (response DeleteImageByID429JSONResponse) VisitDeleteImageByIDResponse(w ht
 	return err
 }
 
-type DeleteImageByID500JSONResponse struct{ InternalErrorJSONResponse }
+type DeleteImageByName500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response DeleteImageByID500JSONResponse) VisitDeleteImageByIDResponse(w http.ResponseWriter) error {
+func (response DeleteImageByName500JSONResponse) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -654,9 +654,9 @@ type StrictServerInterface interface {
 	// Upload image file
 	// (POST /api/v1/images)
 	UploadImage(ctx context.Context, request UploadImageRequestObject) (UploadImageResponseObject, error)
-	// Delete image by ID
-	// (DELETE /api/v1/images/{id})
-	DeleteImageByID(ctx context.Context, request DeleteImageByIDRequestObject) (DeleteImageByIDResponseObject, error)
+	// Delete image by name
+	// (DELETE /api/v1/images/{name})
+	DeleteImageByName(ctx context.Context, request DeleteImageByNameRequestObject) (DeleteImageByNameResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -767,25 +767,25 @@ func (sh *strictHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DeleteImageByID operation middleware
-func (sh *strictHandler) DeleteImageByID(w http.ResponseWriter, r *http.Request, id string) {
-	var request DeleteImageByIDRequestObject
+// DeleteImageByName operation middleware
+func (sh *strictHandler) DeleteImageByName(w http.ResponseWriter, r *http.Request, name string) {
+	var request DeleteImageByNameRequestObject
 
-	request.ID = id
+	request.Name = name
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteImageByID(ctx, request.(DeleteImageByIDRequestObject))
+		return sh.ssi.DeleteImageByName(ctx, request.(DeleteImageByNameRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteImageByID")
+		handler = middleware(handler, "DeleteImageByName")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DeleteImageByIDResponseObject); ok {
-		if err := validResponse.VisitDeleteImageByIDResponse(w); err != nil {
+	} else if validResponse, ok := response.(DeleteImageByNameResponseObject); ok {
+		if err := validResponse.VisitDeleteImageByNameResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

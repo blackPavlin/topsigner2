@@ -69,11 +69,11 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'  
-  /api/v1/images/{id}:
+  /api/v1/images/{name}:
     delete:
-      summary: Delete image by ID
-      description: Returns
-      operationId: deleteImageByID
+      summary: Delete image by name
+      description: Delete image by name
+      operationId: deleteImageByName
       tags:
         - Image
       responses:
@@ -88,10 +88,10 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
     parameters:
-      - name: id
+      - name: name
         in: path
         required: true
-        description: Image ID
+        description: Image name
         schema:
           type: string
   /api/v1/fonts:

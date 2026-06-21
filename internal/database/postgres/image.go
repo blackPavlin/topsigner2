@@ -44,6 +44,17 @@ func (r *ImageRepository) Create(ctx context.Context, image *model.Image) (*mode
 	return image, nil
 }
 
-func (r *ImageRepository) Delete(ctx context.Context, id int64) error {
+func (r *ImageRepository) Delete(ctx context.Context, name string) error {
+	query := `DELETE FROM images WHERE name = $1`
+
+	tag, err := r.pool.Exec(ctx, query, name)
+	if err != nil {
+		return fmt.Errorf("delete image: %w", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return model.ErrImageNotFound
+	}
+
 	return nil
 }

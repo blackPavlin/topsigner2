@@ -19,11 +19,12 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, image *model.Image) (*model.Image, error)
-	Delete(ctx context.Context, id int64) error
+	Delete(ctx context.Context, name string) error
 }
 
 type Storage interface {
 	Upload(ctx context.Context, name string, reader io.Reader, size int64) error
+	Delete(ctx context.Context, name string) error
 }
 
 type Service struct {
@@ -68,9 +69,9 @@ func (s *Service) Create(ctx context.Context, fh *multipart.FileHeader) (*model.
 	filename := fmt.Sprintf("%s%s", uuid.New().String(), filepath.Ext(fh.Filename))
 
 	if err = s.storage.Upload(ctx, filename, file, fh.Size); err != nil {
-		s.logger.Error("upload image error", zap.Error(err))
+		s.logger.Error("upload image to storage error", zap.Error(err))
 
-		return nil, fmt.Errorf("upload image: %w", err)
+		return nil, fmt.Errorf("upload image to storage: %w", err)
 	}
 
 	image := &model.Image{
@@ -84,4 +85,24 @@ func (s *Service) Create(ctx context.Context, fh *multipart.FileHeader) (*model.
 	}
 
 	return image, nil
+}
+
+func (s *Service) Delete(ctx context.Context, name string) error {
+	if err := s.repository.Delete(ctx, name); err != nil {
+		if errors.Is(err, model.ErrImageNotFound) {
+			return nil
+		}
+
+		s.logger.Error("delete image error", zap.Error(err))
+
+		return fmt.Errorf("delete image: %w", err)
+	}
+
+	if err := s.storage.Delete(ctx, name); err != nil {
+		s.logger.Error("delete image from storage error", zap.Error(err))
+
+		return fmt.Errorf("delete image from storage: %w", err)
+	}
+
+	return nil
 }
