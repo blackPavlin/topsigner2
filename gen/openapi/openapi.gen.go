@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -31,6 +32,24 @@ type Image struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// ImageList List of images with cursor pagination
+type ImageList struct {
+	Items      []Image    `json:"items"`
+	Pagination Pagination `json:"pagination"`
+}
+
+// Pagination defines model for Pagination.
+type Pagination struct {
+	NextCursor *string `json:"next_cursor,omitempty"`
+	HasNext    bool    `json:"has_next"`
+}
+
+// Cursor defines model for Cursor.
+type Cursor = string
+
+// Limit defines model for Limit.
+type Limit = int
+
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
@@ -49,6 +68,15 @@ type Unauthorized = Error
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
 
+// GetImagesParams defines parameters for GetImages.
+type GetImagesParams struct {
+	// Cursor Cursor for pagination
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of items to return
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // UploadImageMultipartBody defines parameters for UploadImage.
 type UploadImageMultipartBody struct {
 	// File Image file to upload
@@ -65,7 +93,7 @@ type ServerInterface interface {
 	GetFonts(w http.ResponseWriter, r *http.Request)
 	// Get list of user images
 	// (GET /api/v1/images)
-	GetImages(w http.ResponseWriter, r *http.Request)
+	GetImages(w http.ResponseWriter, r *http.Request, params GetImagesParams)
 	// Upload image file
 	// (POST /api/v1/images)
 	UploadImage(w http.ResponseWriter, r *http.Request)
@@ -86,7 +114,7 @@ func (_ Unimplemented) GetFonts(w http.ResponseWriter, r *http.Request) {
 
 // Get list of user images
 // (GET /api/v1/images)
-func (_ Unimplemented) GetImages(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GetImages(w http.ResponseWriter, r *http.Request, params GetImagesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -128,8 +156,40 @@ func (siw *ServerInterfaceWrapper) GetFonts(w http.ResponseWriter, r *http.Reque
 // GetImages operation middleware
 func (siw *ServerInterfaceWrapper) GetImages(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetImagesParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetImages(w, r)
+		siw.Handler.GetImages(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -400,18 +460,25 @@ func (response GetFonts500JSONResponse) VisitGetFontsResponse(w http.ResponseWri
 }
 
 type GetImagesRequestObject struct {
+	Params GetImagesParams
 }
 
 type GetImagesResponseObject interface {
 	VisitGetImagesResponse(w http.ResponseWriter) error
 }
 
-type GetImages200Response struct {
-}
+type GetImages200JSONResponse ImageList
 
-func (response GetImages200Response) VisitGetImagesResponse(w http.ResponseWriter) error {
+func (response GetImages200JSONResponse) VisitGetImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	return nil
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type GetImages400JSONResponse struct{ BadRequestJSONResponse }
@@ -713,8 +780,10 @@ func (sh *strictHandler) GetFonts(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetImages operation middleware
-func (sh *strictHandler) GetImages(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) GetImages(w http.ResponseWriter, r *http.Request, params GetImagesParams) {
 	var request GetImagesRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetImages(ctx, request.(GetImagesRequestObject))

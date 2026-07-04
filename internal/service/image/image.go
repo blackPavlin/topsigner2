@@ -18,6 +18,7 @@ import (
 )
 
 type Repository interface {
+	List(ctx context.Context, query *model.ImageQuery) ([]*model.Image, error)
 	Create(ctx context.Context, image *model.Image) (*model.Image, error)
 	Delete(ctx context.Context, name string) error
 }
@@ -39,6 +40,41 @@ func New(logger *zap.Logger, repository Repository, storage Storage) *Service {
 		repository: repository,
 		storage:    storage,
 	}
+}
+
+func (s *Service) List(
+	ctx context.Context,
+	query *model.ImageQuery,
+) (*model.List[*model.Image], error) {
+	pagination := model.Pagination{
+		Cursor: query.Pagination.Cursor,
+		Limit:  query.Pagination.Limit + 1,
+	}
+
+	images, err := s.repository.List(ctx, &model.ImageQuery{
+		Filter:     query.Filter,
+		Pagination: pagination,
+	})
+	if err != nil {
+		s.logger.Error("get list of images error", zap.Error(err))
+
+		return nil, fmt.Errorf("get list of images: %w", err)
+	}
+
+	result := &model.List[*model.Image]{
+		Items: images,
+	}
+
+	if len(images) > query.Pagination.Limit {
+		result.HasNext = true
+		result.Items = images[:query.Pagination.Limit]
+
+		lastItem := result.Items[len(result.Items)-1]
+		result.NextCursor = new(model.EncodeCursor(lastItem.ID, lastItem.CreatedAt))
+
+	}
+
+	return result, nil
 }
 
 func (s *Service) Create(ctx context.Context, fh *multipart.FileHeader) (*model.Image, error) {

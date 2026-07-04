@@ -22,9 +22,16 @@ paths:
       operationId: getImages
       tags:
         - Image
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Paginated list of images
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageList'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -120,6 +127,23 @@ components:
       bearerFormat: JWT
       description: JWT access token for authenticated endpoints
 
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      description: Cursor for pagination
+      required: false
+      schema:
+        type: string
+
+    Limit:
+      name: limit
+      in: query
+      description: Maximum number of items to return
+      required: false
+      schema:
+        type: integer
+
   schemas:
     Error:
       type: object
@@ -129,6 +153,19 @@ components:
         message:
           type: string
           description: Human-readable error description
+
+    Pagination:
+      type: object
+      required:
+        - has_next
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+          x-order: 1
+        has_next:
+          type: boolean
+          x-order: 2
 
     Image:
       type: object
@@ -154,6 +191,22 @@ components:
           type: string
           format: date-time
           x-order: 4
+
+    ImageList:
+      type: object
+      description: List of images with cursor pagination
+      required:
+        - items
+        - pagination
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+          x-order: 1  
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+          x-order: 2
 
   responses:
     BadRequest:

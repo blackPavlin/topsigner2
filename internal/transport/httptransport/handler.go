@@ -5,10 +5,12 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"go.uber.org/zap"
 
 	"github.com/bboykiv/topsigner/gen/openapi"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/service/image"
+	mw "github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 )
 
 var _ openapi.StrictServerInterface = (*strictServer)(nil)
@@ -19,6 +21,7 @@ type strictServer struct {
 }
 
 func NewHandler(
+	logger *zap.Logger,
 	config *config.Config,
 	imageService *image.Service,
 ) http.Handler {
@@ -34,9 +37,10 @@ func NewHandler(
 	options := openapi.ChiServerOptions{
 		Middlewares: []openapi.MiddlewareFunc{
 			cors.Handler(corsOptions),
+			mw.RequestLogger(logger),
+			middleware.NoCache,
 			middleware.RequestID,
 			middleware.Recoverer,
-			middleware.NoCache,
 		},
 	}
 

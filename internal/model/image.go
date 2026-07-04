@@ -17,3 +17,12 @@ type Image struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type ImageFilter struct{}
+
+type ImageQuery struct {
+	Filter     ImageFilter
+	Pagination Pagination
+}
+
+

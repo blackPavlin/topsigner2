@@ -23,7 +23,56 @@ func (h *ImageHandler) GetImages(
 	ctx context.Context,
 	r openapi.GetImagesRequestObject,
 ) (openapi.GetImagesResponseObject, error) {
-	return nil, nil
+	query := &model.ImageQuery{}
+
+	if r.Params.Cursor != nil {
+		cursor, err := model.DecodeCursor(*r.Params.Cursor)
+		if err != nil {
+			return openapi.GetImages400JSONResponse{
+				BadRequestJSONResponse: openapi.BadRequestJSONResponse{
+					Message: err.Error(),
+				},
+			}, nil
+		}
+
+		query.Pagination.Cursor = cursor
+	}
+
+	if r.Params.Limit != nil {
+		query.Pagination.Limit = *r.Params.Limit
+
+		if query.Pagination.Limit == 0 || query.Pagination.Limit > model.DefaultPaginationLimit {
+			query.Pagination.Limit = model.DefaultPaginationLimit
+		}
+	}
+
+	list, err := h.imageService.List(ctx, query)
+	if err != nil {
+		return openapi.GetImages500JSONResponse{
+			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+				Message: "internal server error",
+			},
+		}, nil
+	}
+
+	images := make([]openapi.Image, 0, len(list.Items))
+
+	for _, item := range list.Items {
+		images = append(images, openapi.Image{
+			ID:        item.ID,
+			Name:      item.Name,
+			CreatedAt: item.CreatedAt,
+			UpdatedAt: item.UpdatedAt,
+		})
+	}
+
+	return openapi.GetImages200JSONResponse{
+		Items: images,
+		Pagination: openapi.Pagination{
+			NextCursor: list.NextCursor,
+			HasNext:    list.HasNext,
+		},
+	}, nil
 }
 
 // Upload image file
