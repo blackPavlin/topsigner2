@@ -14,6 +14,8 @@ tags:
     description: Operations with images
   - name: Font
     description: Operations with fonts
+security:
+  - BearerAuth: []    
 paths:
   /api/v1/images:
     get:
@@ -206,7 +208,6 @@ components:
           x-order: 1  
         pagination:
           $ref: '#/components/schemas/Pagination'
-          x-order: 2
 
   responses:
     BadRequest:
@@ -269,4 +270,3 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-

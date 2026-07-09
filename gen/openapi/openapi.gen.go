@@ -18,6 +18,10 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+const (
+	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
+)
+
 // Error defines model for Error.
 type Error struct {
 	// Message Human-readable error description
@@ -142,6 +146,12 @@ type MiddlewareFunc func(http.Handler) http.Handler
 // GetFonts operation middleware
 func (siw *ServerInterfaceWrapper) GetFonts(w http.ResponseWriter, r *http.Request) {
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetFonts(w, r)
 	}))
@@ -158,6 +168,12 @@ func (siw *ServerInterfaceWrapper) GetImages(w http.ResponseWriter, r *http.Requ
 
 	var err error
 	_ = err
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetImagesParams
@@ -202,6 +218,12 @@ func (siw *ServerInterfaceWrapper) GetImages(w http.ResponseWriter, r *http.Requ
 // UploadImage operation middleware
 func (siw *ServerInterfaceWrapper) UploadImage(w http.ResponseWriter, r *http.Request) {
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UploadImage(w, r)
 	}))
@@ -227,6 +249,12 @@ func (siw *ServerInterfaceWrapper) DeleteImageByName(w http.ResponseWriter, r *h
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteImageByName(w, r, name)

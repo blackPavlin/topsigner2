@@ -38,6 +38,7 @@ func NewHandler(
 		Middlewares: []openapi.MiddlewareFunc{
 			cors.Handler(corsOptions),
 			mw.RequestLogger(logger),
+			mw.BearerAuth(),
 			middleware.NoCache,
 			middleware.RequestID,
 			middleware.Recoverer,
