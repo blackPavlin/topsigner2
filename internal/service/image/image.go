@@ -71,7 +71,6 @@ func (s *Service) List(
 
 		lastItem := result.Items[len(result.Items)-1]
 		result.NextCursor = new(model.EncodeCursor(lastItem.ID, lastItem.CreatedAt))
-
 	}
 
 	return result, nil

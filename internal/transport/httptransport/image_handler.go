@@ -23,7 +23,9 @@ func (h *ImageHandler) GetImages(
 	ctx context.Context,
 	r openapi.GetImagesRequestObject,
 ) (openapi.GetImagesResponseObject, error) {
-	query := &model.ImageQuery{}
+	query := &model.ImageQuery{
+		Pagination: model.Pagination{Limit: model.DefaultPaginationLimit},
+	}
 
 	if r.Params.Cursor != nil {
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
