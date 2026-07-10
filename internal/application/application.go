@@ -12,6 +12,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/database/postgres"
 	"github.com/bboykiv/topsigner/internal/s3"
 	"github.com/bboykiv/topsigner/internal/s3/storage"
+	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
 )
@@ -31,6 +32,7 @@ func New() fx.Option {
 			config.New,
 			database.New,
 			s3.New,
+			auth.New,
 			image.New,
 			fx.Annotate(
 				postgres.NewImageRepository,

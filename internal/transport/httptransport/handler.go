@@ -9,6 +9,7 @@ import (
 
 	"github.com/bboykiv/topsigner/gen/openapi"
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	mw "github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 )
@@ -16,6 +17,7 @@ import (
 var _ openapi.StrictServerInterface = (*strictServer)(nil)
 
 type strictServer struct {
+	*AuthHandler
 	*ImageHandler
 	*FontHandler
 }
@@ -23,6 +25,7 @@ type strictServer struct {
 func NewHandler(
 	logger *zap.Logger,
 	config *config.Config,
+	authService *auth.Service,
 	imageService *image.Service,
 ) http.Handler {
 	corsOptions := cors.Options{
@@ -38,7 +41,7 @@ func NewHandler(
 		Middlewares: []openapi.MiddlewareFunc{
 			cors.Handler(corsOptions),
 			mw.RequestLogger(logger),
-			mw.BearerAuth(),
+			mw.BearerAuth(authService),
 			middleware.NoCache,
 			middleware.RequestID,
 			middleware.Recoverer,
@@ -46,6 +49,7 @@ func NewHandler(
 	}
 
 	server := &strictServer{
+		AuthHandler:  NewAuthHandler(authService),
 		ImageHandler: NewImageHandler(imageService),
 		FontHandler:  NewFontHandler(),
 	}
