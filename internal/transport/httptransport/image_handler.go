@@ -23,7 +23,15 @@ func (h *ImageHandler) GetImages(
 	ctx context.Context,
 	r openapi.GetImagesRequestObject,
 ) (openapi.GetImagesResponseObject, error) {
+	user, ok := model.GetUserFromContext(ctx)
+	if !ok {
+		return openapi.GetImages401JSONResponse{
+			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+		}, nil
+	}
+
 	query := &model.ImageQuery{
+		Filter:     model.ImageFilter{UserID: model.IDFilter{Eq: new(user.ID)}},
 		Pagination: model.Pagination{Limit: model.DefaultPaginationLimit},
 	}
 
@@ -31,9 +39,7 @@ func (h *ImageHandler) GetImages(
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
 		if err != nil {
 			return openapi.GetImages400JSONResponse{
-				BadRequestJSONResponse: openapi.BadRequestJSONResponse{
-					Message: err.Error(),
-				},
+				BadRequestJSONResponse: openapi.BadRequestJSONResponse{Message: err.Error()},
 			}, nil
 		}
 
@@ -43,7 +49,7 @@ func (h *ImageHandler) GetImages(
 	if r.Params.Limit != nil {
 		query.Pagination.Limit = *r.Params.Limit
 
-		if query.Pagination.Limit == 0 || query.Pagination.Limit > model.DefaultPaginationLimit {
+		if query.Pagination.Limit <= 0 || query.Pagination.Limit > model.DefaultPaginationLimit {
 			query.Pagination.Limit = model.DefaultPaginationLimit
 		}
 	}
@@ -83,6 +89,13 @@ func (h *ImageHandler) UploadImage(
 	ctx context.Context,
 	r openapi.UploadImageRequestObject,
 ) (openapi.UploadImageResponseObject, error) {
+	user, ok := model.GetUserFromContext(ctx)
+	if !ok {
+		return openapi.UploadImage401JSONResponse{
+			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+		}, nil
+	}
+
 	// todo: добавить проверку максимального размера файла (files[0].Size)
 
 	form, err := r.Body.ReadForm(32 << 20)
@@ -98,26 +111,20 @@ func (h *ImageHandler) UploadImage(
 	files, ok := form.File["file"]
 	if !ok || len(files) == 0 {
 		return openapi.UploadImage400JSONResponse{
-			BadRequestJSONResponse: openapi.BadRequestJSONResponse{
-				Message: "file is required",
-			},
+			BadRequestJSONResponse: openapi.BadRequestJSONResponse{Message: "file is required"},
 		}, nil
 	}
 
-	image, err := h.imageService.Create(ctx, files[0])
+	image, err := h.imageService.Create(ctx, user.ID, files[0])
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrUnsupportedImageFormat):
 			return openapi.UploadImage400JSONResponse{
-				BadRequestJSONResponse: openapi.BadRequestJSONResponse{
-					Message: err.Error(),
-				},
+				BadRequestJSONResponse: openapi.BadRequestJSONResponse{Message: err.Error()},
 			}, nil
 		case errors.Is(err, model.ErrImageAlreadyExists):
 			return openapi.UploadImage400JSONResponse{
-				BadRequestJSONResponse: openapi.BadRequestJSONResponse{
-					Message: err.Error(),
-				},
+				BadRequestJSONResponse: openapi.BadRequestJSONResponse{Message: err.Error()},
 			}, nil
 		default:
 			return openapi.UploadImage500JSONResponse{
@@ -142,7 +149,14 @@ func (h *ImageHandler) DeleteImageByName(
 	ctx context.Context,
 	r openapi.DeleteImageByNameRequestObject,
 ) (openapi.DeleteImageByNameResponseObject, error) {
-	if err := h.imageService.Delete(ctx, r.Name); err != nil {
+	user, ok := model.GetUserFromContext(ctx)
+	if !ok {
+		return openapi.DeleteImageByName401JSONResponse{
+			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+		}, nil
+	}
+
+	if err := h.imageService.Delete(ctx, user.ID, r.Name); err != nil {
 		return openapi.DeleteImageByName500JSONResponse{
 			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
 				Message: "internal server error",

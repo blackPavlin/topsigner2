@@ -2,17 +2,23 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
-type UserRepository interface{}
+// todo: решить вопрос с сидированием и добавить создание первого пользователя
+
+type UserRepository interface {
+	Get(ctx context.Context, filter *model.UserFilter) (*model.User, error)
+}
 
 type SessionRepository interface{}
 
@@ -23,31 +29,52 @@ type Service struct {
 	sessionRepository SessionRepository
 }
 
-func New(logger *zap.Logger, config *config.Config) *Service {
+func New(logger *zap.Logger, config *config.Config, userRepository UserRepository) *Service {
 	return &Service{
-		logger: logger,
-		config: config,
+		logger:         logger,
+		config:         config,
+		userRepository: userRepository,
 	}
 }
 
 func (s *Service) Login(ctx context.Context) (*model.AuthToken, error) {
-	accessToken, err := s.SignToken(777)
+	user, err := s.userRepository.Get(ctx, &model.UserFilter{})
 	if err != nil {
+		if errors.Is(err, model.ErrUserNotFound) {
+			return nil, fmt.Errorf("get user: %w", err)
+		}
+
+		s.logger.Error("get user error", zap.Error(err))
+
+		return nil, fmt.Errorf("get user: %w", err)
+	}
+
+	accessToken, err := s.SignToken(user)
+	if err != nil {
+		s.logger.Error("sign access token error", zap.Error(err))
+
 		return nil, fmt.Errorf("sign access token: %w", err)
+	}
+
+	refreshToken, err := uuid.NewRandom()
+	if err != nil {
+		s.logger.Error("generate refresh token error", zap.Error(err))
+
+		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
 	return &model.AuthToken{
 		AccessToken:  accessToken,
-		RefreshToken: "",
+		RefreshToken: refreshToken.String(),
 	}, nil
 }
 
-func (s *Service) Logout(ctx context.Context) error {
+func (s *Service) Logout(ctx context.Context, userID int64) error {
 	return nil
 }
 
-func (s *Service) Refresh(ctx context.Context) error {
-	return nil
+func (s *Service) Refresh(ctx context.Context) (*model.AuthToken, error) {
+	return nil, nil
 }
 
 func (s *Service) Authenticate(
@@ -59,21 +86,34 @@ func (s *Service) Authenticate(
 		return nil, nil, fmt.Errorf("parse and validate auth token: %w", err)
 	}
 
-	return &model.User{ID: claims.UserID}, &model.Session{}, nil
+	// todo: чтобы не грузить БД, имеет смысл добавить key/value хранилище
+	user, err := s.userRepository.Get(ctx, &model.UserFilter{
+		ID: model.IDFilter{Eq: new(claims.UserID)},
+	})
+	if err != nil {
+		if errors.Is(err, model.ErrUserNotFound) {
+			return nil, nil, model.ErrUserNotFound
+		}
+
+		s.logger.Error("get user error", zap.Error(err))
+
+		return nil, nil, fmt.Errorf("get user: %w", err)
+	}
+
+	return user, &model.Session{}, nil
 }
 
-func (s *Service) SignToken(userID int64) (string, error) {
+func (s *Service) SignToken(user *model.User) (string, error) {
 	claims := &model.AuthClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.Auth.ExpiresIn)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 		},
-		UserID: userID,
+		UserID: user.ID,
 	}
 
 	// todo: возможно стоит вынести userID в subject
-	// todo: возможно в методе стоит принимать user *model.User
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(
 		[]byte(s.config.Auth.SigningKey),

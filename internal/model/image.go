@@ -13,16 +13,18 @@ var (
 
 type Image struct {
 	ID        int64
+	UserID    int64
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-type ImageFilter struct{}
+type ImageFilter struct {
+	UserID IDFilter
+	Name   NameFilter
+}
 
 type ImageQuery struct {
 	Filter     ImageFilter
 	Pagination Pagination
 }
-
-

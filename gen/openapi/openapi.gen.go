@@ -98,9 +98,12 @@ type UploadImageMultipartRequestBody UploadImageMultipartBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Authenticate user
+	// Login user
 	// (POST /api/v1/auth/login)
 	AuthLogin(w http.ResponseWriter, r *http.Request)
+	// Logout user
+	// (POST /api/v1/auth/logout)
+	AuthLogout(w http.ResponseWriter, r *http.Request)
 	// Get list of fonts
 	// (GET /api/v1/fonts)
 	GetFonts(w http.ResponseWriter, r *http.Request)
@@ -119,9 +122,15 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
-// Authenticate user
+// Login user
 // (POST /api/v1/auth/login)
 func (_ Unimplemented) AuthLogin(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Logout user
+// (POST /api/v1/auth/logout)
+func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -163,6 +172,26 @@ func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AuthLogin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthLogout operation middleware
+func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthLogout(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -413,6 +442,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/auth/login", wrapper.AuthLogin)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/auth/logout", wrapper.AuthLogout)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/fonts", wrapper.GetFonts)
 	})
 	r.Group(func(r chi.Router) {
@@ -514,6 +546,80 @@ func (response AuthLogin429JSONResponse) VisitAuthLoginResponse(w http.ResponseW
 type AuthLogin500JSONResponse struct{ InternalErrorJSONResponse }
 
 func (response AuthLogin500JSONResponse) VisitAuthLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthLogoutRequestObject struct {
+}
+
+type AuthLogoutResponseObject interface {
+	VisitAuthLogoutResponse(w http.ResponseWriter) error
+}
+
+type AuthLogout204Response struct {
+}
+
+func (response AuthLogout204Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type AuthLogout400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AuthLogout400JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthLogout401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AuthLogout401JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthLogout429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response AuthLogout429JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthLogout500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AuthLogout500JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -852,9 +958,12 @@ func (response DeleteImageByName500JSONResponse) VisitDeleteImageByNameResponse(
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Authenticate user
+	// Login user
 	// (POST /api/v1/auth/login)
 	AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error)
+	// Logout user
+	// (POST /api/v1/auth/logout)
+	AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error)
 	// Get list of fonts
 	// (GET /api/v1/fonts)
 	GetFonts(ctx context.Context, request GetFontsRequestObject) (GetFontsResponseObject, error)
@@ -915,6 +1024,30 @@ func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(AuthLoginResponseObject); ok {
 		if err := validResponse.VisitAuthLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthLogout operation middleware
+func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
+	var request AuthLogoutRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthLogout(ctx, request.(AuthLogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthLogout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthLogoutResponseObject); ok {
+		if err := validResponse.VisitAuthLogoutResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

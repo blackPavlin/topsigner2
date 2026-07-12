@@ -42,6 +42,10 @@ func New() fx.Option {
 				storage.NewImageStorage,
 				fx.As(new(image.Storage)),
 			),
+			fx.Annotate(
+				postgres.NewUserRepository,
+				fx.As(new(auth.UserRepository)),
+			),
 			NewHttpServer,
 			httptransport.NewHandler,
 		),

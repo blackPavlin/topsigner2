@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,25 +25,26 @@ func (r *ImageRepository) List(
 	ctx context.Context,
 	query *model.ImageQuery,
 ) ([]*model.Image, error) {
-	const q = `
-		SELECT id, name, created_at, updated_at
-		FROM images
-		WHERE ($1::bigint IS NULL AND $2::timestamptz IS NULL)
-		   OR (id, created_at) < ($1, $2) 
-		ORDER BY created_at DESC, id ASC
-		LIMIT $3`
+	builder := psql.Select("id", "name", "created_at", "updated_at").
+		From(imageTableName).
+		OrderBy("created_at DESC", "id DESC").
+		Limit(uint64(query.Pagination.Limit))
 
-	var (
-		cursorID        *int64
-		cursorCreatedAt *time.Time
-	)
+	builder = applyFilter(builder, "user_id", query.Filter.UserID)
+	builder = applyFilter(builder, "name", query.Filter.Name)
 
-	if query.Pagination.Cursor != nil {
-		cursorID = &query.Pagination.Cursor.ID
-		cursorCreatedAt = &query.Pagination.Cursor.CreatedAt
+	if cursor := query.Pagination.Cursor; cursor != nil {
+		builder = builder.Where(
+			squirrel.Expr("(id, created_at) < (?, ?)", cursor.ID, cursor.CreatedAt),
+		)
 	}
 
-	rows, err := r.pool.Query(ctx, q, cursorID, cursorCreatedAt, query.Pagination.Limit)
+	sql, args, err := builder.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build sql query: %w", err)
+	}
+
+	rows, err := r.pool.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query images: %w", err)
 	}
@@ -54,7 +55,8 @@ func (r *ImageRepository) List(
 	for rows.Next() {
 		image := &model.Image{}
 
-		if err := rows.Scan(&image.ID, &image.Name, &image.CreatedAt, &image.UpdatedAt); err != nil {
+		err := rows.Scan(&image.ID, &image.Name, &image.CreatedAt, &image.UpdatedAt)
+		if err != nil {
 			return nil, fmt.Errorf("scan image: %w", err)
 		}
 
@@ -69,20 +71,27 @@ func (r *ImageRepository) List(
 }
 
 func (r *ImageRepository) Create(ctx context.Context, image *model.Image) (*model.Image, error) {
-	const query = `
-		INSERT INTO images (name)
-		VALUES ($1)
-		RETURNING id, created_at, updated_at`
+	sql, args, err := psql.Insert(imageTableName).
+		Columns("user_id", "name").
+		Values(image.UserID, image.Name).
+		Suffix("RETURNING id, created_at, updated_at").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build sql query: %w", err)
+	}
 
-	err := r.pool.QueryRow(ctx, query, image.Name).Scan(
+	err = r.pool.QueryRow(ctx, sql, args...).Scan(
 		&image.ID,
 		&image.CreatedAt,
 		&image.UpdatedAt,
 	)
 	if err != nil {
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
-			if pgErr.Code == pgerrcode.UniqueViolation {
+			switch pgErr.Code {
+			case pgerrcode.UniqueViolation:
 				return nil, model.ErrImageAlreadyExists
+			case pgerrcode.ForeignKeyViolation:
+				return nil, model.ErrUserNotFound
 			}
 		}
 
@@ -92,10 +101,15 @@ func (r *ImageRepository) Create(ctx context.Context, image *model.Image) (*mode
 	return image, nil
 }
 
-func (r *ImageRepository) Delete(ctx context.Context, name string) error {
-	query := `DELETE FROM images WHERE name = $1`
+func (r *ImageRepository) Delete(ctx context.Context, userID int64, name string) error {
+	sql, args, err := psql.Delete(imageTableName).
+		Where(squirrel.Eq{"user_id": userID, "name": name}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build sql query: %w", err)
+	}
 
-	tag, err := r.pool.Exec(ctx, query, name)
+	tag, err := r.pool.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("delete image: %w", err)
 	}

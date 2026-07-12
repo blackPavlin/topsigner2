@@ -20,7 +20,7 @@ import (
 type Repository interface {
 	List(ctx context.Context, query *model.ImageQuery) ([]*model.Image, error)
 	Create(ctx context.Context, image *model.Image) (*model.Image, error)
-	Delete(ctx context.Context, name string) error
+	Delete(ctx context.Context, userID int64, name string) error
 }
 
 type Storage interface {
@@ -76,7 +76,11 @@ func (s *Service) List(
 	return result, nil
 }
 
-func (s *Service) Create(ctx context.Context, fh *multipart.FileHeader) (*model.Image, error) {
+func (s *Service) Create(
+	ctx context.Context,
+	userID int64,
+	fh *multipart.FileHeader,
+) (*model.Image, error) {
 	file, err := fh.Open()
 	if err != nil {
 		s.logger.Error("open multipart file error", zap.Error(err))
@@ -110,7 +114,8 @@ func (s *Service) Create(ctx context.Context, fh *multipart.FileHeader) (*model.
 	}
 
 	image := &model.Image{
-		Name: filename,
+		Name:   filename,
+		UserID: userID,
 	}
 
 	if image, err = s.repository.Create(ctx, image); err != nil {
@@ -122,8 +127,8 @@ func (s *Service) Create(ctx context.Context, fh *multipart.FileHeader) (*model.
 	return image, nil
 }
 
-func (s *Service) Delete(ctx context.Context, name string) error {
-	if err := s.repository.Delete(ctx, name); err != nil {
+func (s *Service) Delete(ctx context.Context, userID int64, name string) error {
+	if err := s.repository.Delete(ctx, userID, name); err != nil {
 		if errors.Is(err, model.ErrImageNotFound) {
 			return nil
 		}
