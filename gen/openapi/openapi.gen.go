@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"time"
@@ -78,6 +79,16 @@ type Unauthorized = Error
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
 
+// AuthLogoutJSONBody defines parameters for AuthLogout.
+type AuthLogoutJSONBody struct {
+	RefreshToken *string `json:"refreshToken,omitempty"`
+}
+
+// AuthRefreshJSONBody defines parameters for AuthRefresh.
+type AuthRefreshJSONBody struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
 // GetImagesParams defines parameters for GetImages.
 type GetImagesParams struct {
 	// Cursor Cursor for pagination
@@ -93,6 +104,12 @@ type UploadImageMultipartBody struct {
 	File openapi_types.File `json:"file"`
 }
 
+// AuthLogoutJSONRequestBody defines body for AuthLogout for application/json ContentType.
+type AuthLogoutJSONRequestBody AuthLogoutJSONBody
+
+// AuthRefreshJSONRequestBody defines body for AuthRefresh for application/json ContentType.
+type AuthRefreshJSONRequestBody AuthRefreshJSONBody
+
 // UploadImageMultipartRequestBody defines body for UploadImage for multipart/form-data ContentType.
 type UploadImageMultipartRequestBody UploadImageMultipartBody
 
@@ -104,6 +121,9 @@ type ServerInterface interface {
 	// Logout user
 	// (POST /api/v1/auth/logout)
 	AuthLogout(w http.ResponseWriter, r *http.Request)
+	// Refresh auth tokens
+	// (POST /api/v1/auth/refresh)
+	AuthRefresh(w http.ResponseWriter, r *http.Request)
 	// Get list of fonts
 	// (GET /api/v1/fonts)
 	GetFonts(w http.ResponseWriter, r *http.Request)
@@ -131,6 +151,12 @@ func (_ Unimplemented) AuthLogin(w http.ResponseWriter, r *http.Request) {
 // Logout user
 // (POST /api/v1/auth/logout)
 func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Refresh auth tokens
+// (POST /api/v1/auth/refresh)
+func (_ Unimplemented) AuthRefresh(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -192,6 +218,20 @@ func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AuthLogout(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthRefresh operation middleware
+func (siw *ServerInterfaceWrapper) AuthRefresh(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthRefresh(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -445,6 +485,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/auth/logout", wrapper.AuthLogout)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/v1/auth/refresh", wrapper.AuthRefresh)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/fonts", wrapper.GetFonts)
 	})
 	r.Group(func(r chi.Router) {
@@ -558,6 +601,7 @@ func (response AuthLogin500JSONResponse) VisitAuthLoginResponse(w http.ResponseW
 }
 
 type AuthLogoutRequestObject struct {
+	Body *AuthLogoutJSONRequestBody
 }
 
 type AuthLogoutResponseObject interface {
@@ -620,6 +664,87 @@ func (response AuthLogout429JSONResponse) VisitAuthLogoutResponse(w http.Respons
 type AuthLogout500JSONResponse struct{ InternalErrorJSONResponse }
 
 func (response AuthLogout500JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthRefreshRequestObject struct {
+	Body *AuthRefreshJSONRequestBody
+}
+
+type AuthRefreshResponseObject interface {
+	VisitAuthRefreshResponse(w http.ResponseWriter) error
+}
+
+type AuthRefresh200JSONResponse AuthTokens
+
+func (response AuthRefresh200JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthRefresh400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AuthRefresh400JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthRefresh401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AuthRefresh401JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthRefresh429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response AuthRefresh429JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthRefresh500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AuthRefresh500JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -964,6 +1089,9 @@ type StrictServerInterface interface {
 	// Logout user
 	// (POST /api/v1/auth/logout)
 	AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error)
+	// Refresh auth tokens
+	// (POST /api/v1/auth/refresh)
+	AuthRefresh(ctx context.Context, request AuthRefreshRequestObject) (AuthRefreshResponseObject, error)
 	// Get list of fonts
 	// (GET /api/v1/fonts)
 	GetFonts(ctx context.Context, request GetFontsRequestObject) (GetFontsResponseObject, error)
@@ -1035,6 +1163,16 @@ func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
 	var request AuthLogoutRequestObject
 
+	var body AuthLogoutJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.AuthLogout(ctx, request.(AuthLogoutRequestObject))
 	}
@@ -1048,6 +1186,37 @@ func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(AuthLogoutResponseObject); ok {
 		if err := validResponse.VisitAuthLogoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthRefresh operation middleware
+func (sh *strictHandler) AuthRefresh(w http.ResponseWriter, r *http.Request) {
+	var request AuthRefreshRequestObject
+
+	var body AuthRefreshJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthRefresh(ctx, request.(AuthRefreshRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthRefresh")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthRefreshResponseObject); ok {
+		if err := validResponse.VisitAuthRefreshResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -21,7 +21,7 @@ type Image struct {
 
 type ImageFilter struct {
 	UserID IDFilter
-	Name   NameFilter
+	Name   TextFilter
 }
 
 type ImageQuery struct {

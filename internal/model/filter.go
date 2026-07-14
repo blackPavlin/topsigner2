@@ -9,4 +9,4 @@ type Filter[T comparable] struct {
 
 type IDFilter = Filter[int64]
 
-type NameFilter = Filter[string]
+type TextFilter = Filter[string]

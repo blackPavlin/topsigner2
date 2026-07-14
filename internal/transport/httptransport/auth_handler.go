@@ -50,20 +50,65 @@ func (h *AuthHandler) AuthLogout(
 	ctx context.Context,
 	r openapi.AuthLogoutRequestObject,
 ) (openapi.AuthLogoutResponseObject, error) {
-	user, ok := model.GetUserFromContext(ctx)
+	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
 		return openapi.AuthLogout401JSONResponse{
 			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
 		}, nil
 	}
 
-	if err := h.authService.Logout(ctx, user.ID); err != nil {
-		return openapi.AuthLogout500JSONResponse{
-			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
-				Message: "internal server error",
-			},
-		}, nil
+	var refreshToken *string
+
+	if r.Body != nil && r.Body.RefreshToken != nil {
+		refreshToken = r.Body.RefreshToken
+	}
+
+	if err := h.authService.Logout(ctx, user.ID, refreshToken); err != nil {
+		switch {
+		case errors.Is(err, model.ErrSessionNotFound):
+			return openapi.AuthLogout401JSONResponse{
+				UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+			}, nil
+		default:
+			return openapi.AuthLogout500JSONResponse{
+				InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+					Message: "internal server error",
+				},
+			}, nil
+		}
 	}
 
 	return openapi.AuthLogout204Response{}, nil
+}
+
+// Refresh auth tokens
+// (POST /api/v1/auth/refresh)
+func (h *AuthHandler) AuthRefresh(
+	ctx context.Context,
+	r openapi.AuthRefreshRequestObject,
+) (openapi.AuthRefreshResponseObject, error) {
+	token, err := h.authService.Refresh(ctx, r.Body.RefreshToken)
+	if err != nil {
+		switch {
+		case errors.Is(err, model.ErrSessionNotFound):
+			return openapi.AuthRefresh401JSONResponse{
+				UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+			}, nil
+		case errors.Is(err, auth.ErrTokenIsExpired):
+			return openapi.AuthRefresh401JSONResponse{
+				UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+			}, nil
+		default:
+			return openapi.AuthRefresh500JSONResponse{
+				InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+					Message: "internal server error",
+				},
+			}, nil
+		}
+	}
+
+	return openapi.AuthRefresh200JSONResponse{
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+	}, nil
 }

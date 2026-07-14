@@ -46,6 +46,10 @@ func New() fx.Option {
 				postgres.NewUserRepository,
 				fx.As(new(auth.UserRepository)),
 			),
+			fx.Annotate(
+				postgres.NewSessionRepository,
+				fx.As(new(auth.SessionRepository)),
+			),
 			NewHttpServer,
 			httptransport.NewHandler,
 		),

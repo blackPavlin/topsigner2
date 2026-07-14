@@ -6,6 +6,7 @@ import (
 
 	"github.com/bboykiv/topsigner/gen/openapi"
 	"github.com/bboykiv/topsigner/internal/model"
+	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/image"
 )
 
@@ -23,7 +24,7 @@ func (h *ImageHandler) GetImages(
 	ctx context.Context,
 	r openapi.GetImagesRequestObject,
 ) (openapi.GetImagesResponseObject, error) {
-	user, ok := model.GetUserFromContext(ctx)
+	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
 		return openapi.GetImages401JSONResponse{
 			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
@@ -89,7 +90,7 @@ func (h *ImageHandler) UploadImage(
 	ctx context.Context,
 	r openapi.UploadImageRequestObject,
 ) (openapi.UploadImageResponseObject, error) {
-	user, ok := model.GetUserFromContext(ctx)
+	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
 		return openapi.UploadImage401JSONResponse{
 			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
@@ -149,7 +150,7 @@ func (h *ImageHandler) DeleteImageByName(
 	ctx context.Context,
 	r openapi.DeleteImageByNameRequestObject,
 ) (openapi.DeleteImageByNameResponseObject, error) {
-	user, ok := model.GetUserFromContext(ctx)
+	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
 		return openapi.DeleteImageByName401JSONResponse{
 			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},

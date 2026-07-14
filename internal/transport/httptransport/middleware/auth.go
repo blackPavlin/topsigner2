@@ -1,21 +1,16 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/render"
 
 	"github.com/bboykiv/topsigner/gen/openapi"
-	"github.com/bboykiv/topsigner/internal/model"
+	"github.com/bboykiv/topsigner/internal/service/auth"
 )
 
-type AuthService interface {
-	Authenticate(ctx context.Context, token string) (*model.User, *model.Session, error)
-}
-
-func BearerAuth(authService AuthService) func(next http.Handler) http.Handler {
+func BearerAuth(authService *auth.Service) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if scopes := r.Context().Value(openapi.BearerAuthScopes); scopes == nil {
@@ -34,7 +29,7 @@ func BearerAuth(authService AuthService) func(next http.Handler) http.Handler {
 
 			ctx := r.Context()
 
-			user, session, err := authService.Authenticate(ctx, token)
+			user, err := authService.Authenticate(ctx, token)
 			if err != nil {
 				render.Status(r, http.StatusUnauthorized)
 				render.Respond(w, r, openapi.UnauthorizedJSONResponse{Message: "unauthorized"})
@@ -42,8 +37,7 @@ func BearerAuth(authService AuthService) func(next http.Handler) http.Handler {
 				return
 			}
 
-			ctx = model.SetUserToContext(ctx, user)
-			ctx = model.SetSessionToContext(ctx, session)
+			ctx = auth.SetUserToContext(ctx, user)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

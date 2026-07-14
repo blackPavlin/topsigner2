@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	userTableName  = "users"
-	imageTableName = "images"
+	userTableName    = "users"
+	imageTableName   = "images"
+	sessionTableName = "sessions"
 )
 
 var psql = squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
