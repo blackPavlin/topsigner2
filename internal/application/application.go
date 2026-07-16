@@ -9,7 +9,7 @@ import (
 
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/database"
-	"github.com/bboykiv/topsigner/internal/database/postgres"
+	"github.com/bboykiv/topsigner/internal/database/repository"
 	"github.com/bboykiv/topsigner/internal/s3"
 	"github.com/bboykiv/topsigner/internal/s3/storage"
 	"github.com/bboykiv/topsigner/internal/service/auth"
@@ -27,15 +27,15 @@ func New() fx.Option {
 				),
 			}
 		}),
+		database.Module,
+		s3.Module,
 		fx.Provide(
 			NewLogger,
 			config.New,
-			database.New,
-			s3.New,
 			auth.New,
 			image.New,
 			fx.Annotate(
-				postgres.NewImageRepository,
+				repository.NewImageRepository,
 				fx.As(new(image.Repository)),
 			),
 			fx.Annotate(
@@ -43,17 +43,16 @@ func New() fx.Option {
 				fx.As(new(image.Storage)),
 			),
 			fx.Annotate(
-				postgres.NewUserRepository,
+				repository.NewUserRepository,
 				fx.As(new(auth.UserRepository)),
 			),
 			fx.Annotate(
-				postgres.NewSessionRepository,
+				repository.NewSessionRepository,
 				fx.As(new(auth.SessionRepository)),
 			),
 			NewHttpServer,
 			httptransport.NewHandler,
 		),
-		fx.Invoke(database.MakeMigrations),
 		fx.Invoke(func(*http.Server) {}),
 	)
 }
