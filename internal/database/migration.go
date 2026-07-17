@@ -20,7 +20,10 @@ func MakeMigrations(pool *pgxpool.Pool, config *config.Config) error {
 		return fmt.Errorf("create iofs source: %w", err)
 	}
 
-	instance, err := postgres.WithInstance(stdlib.OpenDBFromPool(pool), &postgres.Config{})
+	instance, err := postgres.WithInstance(stdlib.OpenDBFromPool(pool), &postgres.Config{
+		DatabaseName: config.Postgres.Database,
+		SchemaName:   config.Postgres.Schema,
+	})
 	if err != nil {
 		return fmt.Errorf("create postgres instance: %w", err)
 	}
@@ -29,6 +32,7 @@ func MakeMigrations(pool *pgxpool.Pool, config *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("create migration with instance: %w", err)
 	}
+	defer migration.Close()
 
 	if err = migration.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("migratorion up: %w", err)
