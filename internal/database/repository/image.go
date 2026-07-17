@@ -25,7 +25,7 @@ func (r *ImageRepository) List(
 	ctx context.Context,
 	query *model.ImageQuery,
 ) ([]*model.Image, error) {
-	builder := psql.Select("id", "name", "created_at", "updated_at").
+	builder := psql.Select("id", "user_id", "name", "created_at", "updated_at").
 		From(imageTableName).
 		OrderBy("created_at DESC", "id DESC").
 		Limit(uint64(query.Pagination.Limit))
@@ -55,7 +55,7 @@ func (r *ImageRepository) List(
 	for rows.Next() {
 		image := &model.Image{}
 
-		err := rows.Scan(&image.ID, &image.Name, &image.CreatedAt, &image.UpdatedAt)
+		err := rows.Scan(&image.ID, &image.UserID, &image.Name, &image.CreatedAt, &image.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("scan image: %w", err)
 		}

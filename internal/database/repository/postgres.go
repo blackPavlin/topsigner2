@@ -8,6 +8,7 @@ import (
 
 const (
 	userTableName    = "users"
+	fontsTableName   = "fonts"
 	imageTableName   = "images"
 	sessionTableName = "sessions"
 )

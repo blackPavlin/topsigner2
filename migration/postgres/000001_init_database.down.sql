@@ -1,4 +1,5 @@
 BEGIN;
+DROP TABLE fonts;
 DROP TABLE images;
 DROP INDEX sessions_user_id_idx;
 DROP TABLE sessions;

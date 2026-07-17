@@ -13,6 +13,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/s3"
 	"github.com/bboykiv/topsigner/internal/s3/storage"
 	"github.com/bboykiv/topsigner/internal/service/auth"
+	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
 )
@@ -33,7 +34,12 @@ func New() fx.Option {
 			NewLogger,
 			config.New,
 			auth.New,
+			font.New,
 			image.New,
+			fx.Annotate(
+				repository.NewFontRepository,
+				fx.As(new(font.Repository)),
+			),
 			fx.Annotate(
 				repository.NewImageRepository,
 				fx.As(new(image.Repository)),

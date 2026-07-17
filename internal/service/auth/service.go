@@ -100,10 +100,10 @@ func (s *Service) Logout(ctx context.Context, userID int64, refreshToken *string
 
 	if err := s.sessionRepository.Delete(ctx, filter); err != nil {
 		if errors.Is(err, model.ErrSessionNotFound) {
-			return fmt.Errorf("delete session: %w", err)
+			return nil
 		}
 
-		s.logger.Error("delete logger error", zap.Error(err))
+		s.logger.Error("delete session error", zap.Error(err))
 
 		return fmt.Errorf("delete session: %w", err)
 	}

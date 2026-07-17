@@ -31,7 +31,7 @@ func New(params Params) (Result, error) {
 
 	params.Lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			if err := CreateBukets(ctx, client, params.Config); err != nil {
+			if err := CreateBuckets(ctx, client, params.Config); err != nil {
 				return fmt.Errorf("create buckets: %w", err)
 			}
 

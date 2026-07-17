@@ -25,6 +25,16 @@ CREATE TABLE sessions (
 
 CREATE INDEX sessions_user_id_idx ON sessions (user_id);
 
+CREATE TABLE fonts (
+    id 		   BIGINT 	   GENERATED ALWAYS AS IDENTITY,
+    name       TEXT        NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    PRIMARY KEY (id),
+    CONSTRAINT fonts_name_unique UNIQUE (name)
+);
+
 CREATE TABLE images (
     id 		   BIGINT 	   GENERATED ALWAYS AS IDENTITY,
     user_id    BIGINT      NOT NULL,

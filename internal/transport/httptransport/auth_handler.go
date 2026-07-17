@@ -64,18 +64,11 @@ func (h *AuthHandler) AuthLogout(
 	}
 
 	if err := h.authService.Logout(ctx, user.ID, refreshToken); err != nil {
-		switch {
-		case errors.Is(err, model.ErrSessionNotFound):
-			return openapi.AuthLogout401JSONResponse{
-				UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
-			}, nil
-		default:
-			return openapi.AuthLogout500JSONResponse{
-				InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
-					Message: "internal server error",
-				},
-			}, nil
-		}
+		return openapi.AuthLogout500JSONResponse{
+			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+				Message: "internal server error",
+			},
+		}, nil
 	}
 
 	return openapi.AuthLogout204Response{}, nil
