@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bboykiv/topsigner/gen/openapi"
+	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/image"
@@ -22,12 +22,12 @@ func NewImageHandler(imageService *image.Service) *ImageHandler {
 // (GET /api/v1/images)
 func (h *ImageHandler) GetImages(
 	ctx context.Context,
-	r openapi.GetImagesRequestObject,
-) (openapi.GetImagesResponseObject, error) {
+	r httpserver.GetImagesRequestObject,
+) (httpserver.GetImagesResponseObject, error) {
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
-		return openapi.GetImages401JSONResponse{
-			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+		return httpserver.GetImages401JSONResponse{
+			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
 		}, nil
 	}
 
@@ -39,8 +39,8 @@ func (h *ImageHandler) GetImages(
 	if r.Params.Cursor != nil {
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
 		if err != nil {
-			return openapi.GetImages400JSONResponse{
-				BadRequestJSONResponse: openapi.BadRequestJSONResponse{Message: err.Error()},
+			return httpserver.GetImages400JSONResponse{
+				BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: err.Error()},
 			}, nil
 		}
 
@@ -57,17 +57,17 @@ func (h *ImageHandler) GetImages(
 
 	list, err := h.imageService.List(ctx, query)
 	if err != nil {
-		return openapi.GetImages500JSONResponse{
-			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+		return httpserver.GetImages500JSONResponse{
+			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
 				Message: "internal server error",
 			},
 		}, nil
 	}
 
-	images := make([]openapi.Image, 0, len(list.Items))
+	images := make([]httpserver.Image, 0, len(list.Items))
 
 	for _, item := range list.Items {
-		images = append(images, openapi.Image{
+		images = append(images, httpserver.Image{
 			ID:        item.ID,
 			Name:      item.Name,
 			CreatedAt: item.CreatedAt,
@@ -75,9 +75,9 @@ func (h *ImageHandler) GetImages(
 		})
 	}
 
-	return openapi.GetImages200JSONResponse{
+	return httpserver.GetImages200JSONResponse{
 		Items: images,
-		Pagination: openapi.Pagination{
+		Pagination: httpserver.Pagination{
 			NextCursor: list.NextCursor,
 			HasNext:    list.HasNext,
 		},
@@ -88,12 +88,12 @@ func (h *ImageHandler) GetImages(
 // (POST /api/v1/images)
 func (h *ImageHandler) UploadImage(
 	ctx context.Context,
-	r openapi.UploadImageRequestObject,
-) (openapi.UploadImageResponseObject, error) {
+	r httpserver.UploadImageRequestObject,
+) (httpserver.UploadImageResponseObject, error) {
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
-		return openapi.UploadImage401JSONResponse{
-			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+		return httpserver.UploadImage401JSONResponse{
+			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
 		}, nil
 	}
 
@@ -101,8 +101,8 @@ func (h *ImageHandler) UploadImage(
 
 	form, err := r.Body.ReadForm(32 << 20)
 	if err != nil {
-		return openapi.UploadImage400JSONResponse{
-			BadRequestJSONResponse: openapi.BadRequestJSONResponse{
+		return httpserver.UploadImage400JSONResponse{
+			BadRequestJSONResponse: httpserver.BadRequestJSONResponse{
 				Message: "invalid multipart form",
 			},
 		}, nil
@@ -111,8 +111,8 @@ func (h *ImageHandler) UploadImage(
 
 	files, ok := form.File["file"]
 	if !ok || len(files) == 0 {
-		return openapi.UploadImage400JSONResponse{
-			BadRequestJSONResponse: openapi.BadRequestJSONResponse{Message: "file is required"},
+		return httpserver.UploadImage400JSONResponse{
+			BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: "file is required"},
 		}, nil
 	}
 
@@ -120,23 +120,23 @@ func (h *ImageHandler) UploadImage(
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrUnsupportedImageFormat):
-			return openapi.UploadImage400JSONResponse{
-				BadRequestJSONResponse: openapi.BadRequestJSONResponse{Message: err.Error()},
+			return httpserver.UploadImage400JSONResponse{
+				BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: err.Error()},
 			}, nil
 		case errors.Is(err, model.ErrImageAlreadyExists):
-			return openapi.UploadImage400JSONResponse{
-				BadRequestJSONResponse: openapi.BadRequestJSONResponse{Message: err.Error()},
+			return httpserver.UploadImage400JSONResponse{
+				BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: err.Error()},
 			}, nil
 		default:
-			return openapi.UploadImage500JSONResponse{
-				InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+			return httpserver.UploadImage500JSONResponse{
+				InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
 					Message: "internal server error",
 				},
 			}, nil
 		}
 	}
 
-	return openapi.UploadImage201JSONResponse{
+	return httpserver.UploadImage201JSONResponse{
 		ID:        image.ID,
 		Name:      image.Name,
 		CreatedAt: image.CreatedAt,
@@ -148,22 +148,22 @@ func (h *ImageHandler) UploadImage(
 // (DELETE /api/v1/images/{name})
 func (h *ImageHandler) DeleteImageByName(
 	ctx context.Context,
-	r openapi.DeleteImageByNameRequestObject,
-) (openapi.DeleteImageByNameResponseObject, error) {
+	r httpserver.DeleteImageByNameRequestObject,
+) (httpserver.DeleteImageByNameResponseObject, error) {
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
-		return openapi.DeleteImageByName401JSONResponse{
-			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+		return httpserver.DeleteImageByName401JSONResponse{
+			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
 		}, nil
 	}
 
 	if err := h.imageService.Delete(ctx, user.ID, r.Name); err != nil {
-		return openapi.DeleteImageByName500JSONResponse{
-			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+		return httpserver.DeleteImageByName500JSONResponse{
+			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
 				Message: "internal server error",
 			},
 		}, nil
 	}
 
-	return openapi.DeleteImageByName204Response{}, nil
+	return httpserver.DeleteImageByName204Response{}, nil
 }
