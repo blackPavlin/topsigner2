@@ -20,6 +20,7 @@ import (
 
 // todo: решить вопрос с сидированием и добавить создание первого пользователя
 // todo: чтобы не грузить БД, имеет смысл добавить key/value хранилище
+// todo: возвращать в TokenPair ExpiresAt
 
 type Service struct {
 	logger            *zap.Logger
@@ -42,8 +43,10 @@ func New(
 	}
 }
 
-func (s *Service) Login(ctx context.Context) (*TokenPair, error) {
-	user, err := s.userRepository.Get(ctx, &model.UserFilter{})
+func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, error) {
+	user, err := s.userRepository.Get(ctx, &model.UserFilter{
+		Email: model.TextFilter{Eq: new(input.Email)},
+	})
 	if err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {
 			return nil, fmt.Errorf("get user: %w", err)
@@ -63,6 +66,7 @@ func (s *Service) Login(ctx context.Context) (*TokenPair, error) {
 
 	session := &model.Session{
 		UserID:           user.ID,
+		IP:               input.IP,
 		RefreshTokenHash: s.HashRefreshToken(refreshToken),
 		ExpiresAt:        time.Now().Add(s.config.Auth.RefreshTokenTTL),
 	}
@@ -176,7 +180,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	}, nil
 }
 
-func (s *Service) Authenticate(ctx context.Context, token string) (*model.User, error) {
+func (s *Service) Authorize(ctx context.Context, token string) (*model.User, error) {
 	claims, err := s.ParseAndValidateAccessToken(token)
 	if err != nil {
 		return nil, fmt.Errorf("parse and validate auth token: %w", err)

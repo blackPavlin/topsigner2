@@ -76,7 +76,11 @@ func (s *Service) Create(
 
 		return nil, fmt.Errorf("open multipart file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			s.logger.Error("close multipart file error", zap.Error(err))
+		}
+	}()
 
 	if _, _, err := image.DecodeConfig(file); err != nil {
 		if errors.Is(err, image.ErrFormat) {

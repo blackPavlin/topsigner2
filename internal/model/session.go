@@ -10,6 +10,7 @@ var ErrSessionNotFound = errors.New("session not found")
 type Session struct {
 	ID               string
 	UserID           int64
+	IP               string
 	RefreshTokenHash string
 	ExpiresAt        time.Time
 	CreatedAt        time.Time
@@ -17,7 +18,8 @@ type Session struct {
 }
 
 type SessionFilter struct {
-	ID               IDFilter
+	ID               TextFilter
 	UserID           IDFilter
+	IP               TextFilter
 	RefreshTokenHash TextFilter
 }

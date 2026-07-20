@@ -6,14 +6,14 @@ import (
 
 	"github.com/go-chi/render"
 
-	"github.com/bboykiv/topsigner/gen/openapi"
+	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 )
 
 func BearerAuth(authService *auth.Service) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if scopes := r.Context().Value(openapi.BearerAuthScopes); scopes == nil {
+			if scopes := r.Context().Value(httpserver.BearerAuthScopes); scopes == nil {
 				next.ServeHTTP(w, r)
 
 				return
@@ -22,17 +22,17 @@ func BearerAuth(authService *auth.Service) func(next http.Handler) http.Handler 
 			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if token == "" {
 				render.Status(r, http.StatusUnauthorized)
-				render.Respond(w, r, openapi.UnauthorizedJSONResponse{Message: "unauthorized"})
+				render.Respond(w, r, httpserver.UnauthorizedJSONResponse{Message: "unauthorized"})
 
 				return
 			}
 
 			ctx := r.Context()
 
-			user, err := authService.Authenticate(ctx, token)
+			user, err := authService.Authorize(ctx, token)
 			if err != nil {
 				render.Status(r, http.StatusUnauthorized)
-				render.Respond(w, r, openapi.UnauthorizedJSONResponse{Message: "unauthorized"})
+				render.Respond(w, r, httpserver.UnauthorizedJSONResponse{Message: "unauthorized"})
 
 				return
 			}

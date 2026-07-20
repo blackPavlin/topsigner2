@@ -23,3 +23,10 @@ type TokenPair struct {
 	AccessToken  string
 	RefreshToken string
 }
+
+type LoginInput struct {
+	Email string
+	IP    string
+}
+
+type LogoutInput struct {}

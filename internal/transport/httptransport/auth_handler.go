@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bboykiv/topsigner/gen/openapi"
+	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 )
@@ -21,24 +23,26 @@ func NewAuthHandler(authService *auth.Service) *AuthHandler {
 // (POST /api/v1/auth/login)
 func (h *AuthHandler) AuthLogin(
 	ctx context.Context,
-	r openapi.AuthLoginRequestObject,
-) (openapi.AuthLoginResponseObject, error) {
-	token, err := h.authService.Login(ctx)
+	r httpserver.AuthLoginRequestObject,
+) (httpserver.AuthLoginResponseObject, error) {
+	token, err := h.authService.Login(ctx, &auth.LoginInput{
+		IP: middleware.GetClientIP(ctx),
+	})
 	if err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {
-			return openapi.AuthLogin401JSONResponse{
-				UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+			return httpserver.AuthLogin401JSONResponse{
+				UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
 			}, nil
 		}
 
-		return openapi.AuthLogin500JSONResponse{
-			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+		return httpserver.AuthLogin500JSONResponse{
+			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
 				Message: "internal server error",
 			},
 		}, nil
 	}
 
-	return openapi.AuthLogin200JSONResponse{
+	return httpserver.AuthLogin200JSONResponse{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 	}, nil
@@ -48,12 +52,12 @@ func (h *AuthHandler) AuthLogin(
 // (POST /api/v1/auth/logout)
 func (h *AuthHandler) AuthLogout(
 	ctx context.Context,
-	r openapi.AuthLogoutRequestObject,
-) (openapi.AuthLogoutResponseObject, error) {
+	r httpserver.AuthLogoutRequestObject,
+) (httpserver.AuthLogoutResponseObject, error) {
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
-		return openapi.AuthLogout401JSONResponse{
-			UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+		return httpserver.AuthLogout401JSONResponse{
+			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
 		}, nil
 	}
 
@@ -64,43 +68,43 @@ func (h *AuthHandler) AuthLogout(
 	}
 
 	if err := h.authService.Logout(ctx, user.ID, refreshToken); err != nil {
-		return openapi.AuthLogout500JSONResponse{
-			InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+		return httpserver.AuthLogout500JSONResponse{
+			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
 				Message: "internal server error",
 			},
 		}, nil
 	}
 
-	return openapi.AuthLogout204Response{}, nil
+	return httpserver.AuthLogout204Response{}, nil
 }
 
 // Refresh auth tokens
 // (POST /api/v1/auth/refresh)
 func (h *AuthHandler) AuthRefresh(
 	ctx context.Context,
-	r openapi.AuthRefreshRequestObject,
-) (openapi.AuthRefreshResponseObject, error) {
+	r httpserver.AuthRefreshRequestObject,
+) (httpserver.AuthRefreshResponseObject, error) {
 	token, err := h.authService.Refresh(ctx, r.Body.RefreshToken)
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrSessionNotFound):
-			return openapi.AuthRefresh401JSONResponse{
-				UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+			return httpserver.AuthRefresh401JSONResponse{
+				UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
 			}, nil
 		case errors.Is(err, auth.ErrTokenIsExpired):
-			return openapi.AuthRefresh401JSONResponse{
-				UnauthorizedJSONResponse: openapi.UnauthorizedJSONResponse{Message: "unauthorized"},
+			return httpserver.AuthRefresh401JSONResponse{
+				UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
 			}, nil
 		default:
-			return openapi.AuthRefresh500JSONResponse{
-				InternalErrorJSONResponse: openapi.InternalErrorJSONResponse{
+			return httpserver.AuthRefresh500JSONResponse{
+				InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
 					Message: "internal server error",
 				},
 			}, nil
 		}
 	}
 
-	return openapi.AuthRefresh200JSONResponse{
+	return httpserver.AuthRefresh200JSONResponse{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 	}, nil

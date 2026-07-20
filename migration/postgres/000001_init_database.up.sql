@@ -3,6 +3,7 @@ CREATE TYPE user_role AS ENUM ('USER', 'ADMIN');
 
 CREATE TABLE users (
     id 		   BIGINT 	   GENERATED ALWAYS AS IDENTITY,
+    email      TEXT        NOT NULL,
     role       user_role   NOT NULL DEFAULT 'USER',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -13,6 +14,7 @@ CREATE TABLE users (
 CREATE TABLE sessions (
     id                 UUID        NOT NULL DEFAULT uuidv7(),
     user_id            BIGINT      NOT NULL,
+    ip                 TEXT        NOT NULL,
     refresh_token_hash TEXT        NOT NULL,
     expires_at         TIMESTAMPTZ NOT NULL,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),

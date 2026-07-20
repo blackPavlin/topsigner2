@@ -20,10 +20,11 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 }
 
 func (r *UserRepository) Get(ctx context.Context, filter *model.UserFilter) (*model.User, error) {
-	builder := psql.Select("id", "role", "created_at", "updated_at").
+	builder := psql.Select("id", "email", "role", "created_at", "updated_at").
 		From(userTableName)
 
 	builder = applyFilter(builder, "id", filter.ID)
+	builder = applyFilter(builder, "email", filter.Email)
 
 	sql, args, err := builder.ToSql()
 	if err != nil {
@@ -34,6 +35,7 @@ func (r *UserRepository) Get(ctx context.Context, filter *model.UserFilter) (*mo
 
 	err = r.pool.QueryRow(ctx, sql, args...).Scan(
 		&user.ID,
+		&user.Email,
 		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -51,8 +53,8 @@ func (r *UserRepository) Get(ctx context.Context, filter *model.UserFilter) (*mo
 
 func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.User, error) {
 	sql, args, err := psql.Insert(userTableName).
-		Columns("role").
-		Values(user.Role).
+		Columns("email", "role").
+		Values(user.Email, user.Role).
 		Suffix("RETURNING id, created_at, updated_at").
 		ToSql()
 	if err != nil {

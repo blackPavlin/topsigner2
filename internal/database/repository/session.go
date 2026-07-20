@@ -30,6 +30,7 @@ func (r *SessionRepository) Get(
 		Select(
 			"id::text",
 			"user_id",
+			"ip",
 			"refresh_token_hash",
 			"expires_at",
 			"created_at",
@@ -39,6 +40,7 @@ func (r *SessionRepository) Get(
 
 	builder = applyFilter(builder, "id", filter.ID)
 	builder = applyFilter(builder, "user_id", filter.UserID)
+	builder = applyFilter(builder, "ip", filter.IP)
 	builder = applyFilter(builder, "refresh_token_hash", filter.RefreshTokenHash)
 
 	sql, args, err := builder.ToSql()
@@ -51,6 +53,7 @@ func (r *SessionRepository) Get(
 	err = r.pool.QueryRow(ctx, sql, args...).Scan(
 		&session.ID,
 		&session.UserID,
+		&session.IP,
 		&session.RefreshTokenHash,
 		&session.ExpiresAt,
 		&session.CreatedAt,
@@ -74,11 +77,13 @@ func (r *SessionRepository) Create(
 	sql, args, err := psql.Insert(sessionTableName).
 		Columns(
 			"user_id",
+			"ip",
 			"refresh_token_hash",
 			"expires_at",
 		).
 		Values(
 			session.UserID,
+			session.IP,
 			session.RefreshTokenHash,
 			session.ExpiresAt,
 		).

@@ -16,11 +16,13 @@ const (
 
 type User struct {
 	ID        int64
+	Email     string
 	Role      Role
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 type UserFilter struct {
-	ID IDFilter
+	ID    IDFilter
+	Email TextFilter
 }

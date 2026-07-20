@@ -7,14 +7,15 @@ import (
 	"github.com/go-chi/cors"
 	"go.uber.org/zap"
 
-	"github.com/bboykiv/topsigner/gen/openapi"
+	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/service/auth"
+	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	mw "github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 )
 
-var _ openapi.StrictServerInterface = (*strictServer)(nil)
+var _ httpserver.StrictServerInterface = (*strictServer)(nil)
 
 type strictServer struct {
 	*AuthHandler
@@ -27,6 +28,7 @@ func NewHandler(
 	config *config.Config,
 	authService *auth.Service,
 	imageService *image.Service,
+	fontService *font.Service,
 ) http.Handler {
 	corsOptions := cors.Options{
 		AllowedOrigins:   config.Cors.AllowedOrigins,
@@ -37,22 +39,24 @@ func NewHandler(
 		MaxAge:           config.Cors.MaxAge,
 	}
 
-	options := openapi.ChiServerOptions{
-		Middlewares: []openapi.MiddlewareFunc{
-			cors.Handler(corsOptions),
-			mw.RequestLogger(logger),
-			mw.BearerAuth(authService),
+	options := httpserver.ChiServerOptions{
+		Middlewares: []httpserver.MiddlewareFunc{
 			middleware.NoCache,
 			middleware.RequestID,
 			middleware.Recoverer,
+			// todo: ClientIPFromRemoteAddr не будет корректно работать если сервер стоит за reverse proxy
+			middleware.ClientIPFromRemoteAddr,
+			cors.Handler(corsOptions),
+			mw.RequestLogger(logger),
+			mw.BearerAuth(authService),
 		},
 	}
 
 	server := &strictServer{
 		AuthHandler:  NewAuthHandler(authService),
 		ImageHandler: NewImageHandler(imageService),
-		FontHandler:  NewFontHandler(),
+		FontHandler:  NewFontHandler(fontService),
 	}
 
-	return openapi.HandlerWithOptions(openapi.NewStrictHandler(server, nil), options)
+	return httpserver.HandlerWithOptions(httpserver.NewStrictHandler(server, nil), options)
 }
