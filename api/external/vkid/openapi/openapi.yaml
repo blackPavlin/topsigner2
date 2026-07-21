@@ -1,0 +1,211 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Vkontakte ID
+  description: |
+    Service authorization in vk ecosystem (VK ID)
+servers:
+  - url: 'https://id.vk.ru'
+    description: Production environment
+  - url: 'https://id.vk.com'
+    description: Production environment
+tags:
+  - name: Auth
+    description: Operations with authorization
+paths:
+  /oauth2/auth:
+    post:
+      summary: Exchange authorization code
+      description: Exchange authorization code for tokens / refresh access_token
+      operationId: exchangeToken
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Token exchange/refresh succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /oauth2/logout:
+    post:
+      summary: Revoke token
+      description: Invalidates token / end session
+      operationId: logout
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - access_token
+                - client_id
+              properties:
+                access_token:
+                  type: string
+                client_id:
+                  type: string
+      responses:
+        '200':
+          description: Token successfully revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    enum:
+                      - 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /oauth2/user_info:
+    post:
+      summary: Get user information
+      description: Returns profile data
+      operationId: getUserInfo
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - access_token
+                - client_id
+              properties:
+                access_token:
+                  type: string
+                client_id:
+                  type: string
+      responses:
+        '200':
+          description: User data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        error_description:
+          type: string
+    TokenRequest:
+      type: object
+      required:
+        - grant_type
+        - client_id
+        - device_id
+      properties:
+        grant_type:
+          type: string
+          enum:
+            - authorization_code
+            - refresh_token
+        code:
+          type: string
+        code_verifier:
+          type: string
+        redirect_uri:
+          type: string
+          format: uri
+        refresh_token:
+          type: string
+        client_id:
+          type: string
+        device_id:
+          type: string
+        service_token:
+          type: string
+        state:
+          type: string
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        id_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+        user_id:
+          type: integer
+        state:
+          type: string
+        scope:
+          type: string
+    UserInfoResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        avatar:
+          type: string
+          format: uri
+        sex:
+          type: integer
+        verified:
+          type: boolean
+        birthday:
+          type: string
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
