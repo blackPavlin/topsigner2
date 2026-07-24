@@ -22,6 +22,21 @@ const (
 	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
 )
 
+// Defines values for Provider.
+const (
+	Vkontakte Provider = "vkontakte"
+)
+
+// Valid indicates whether the value is a known member of the Provider enum.
+func (e Provider) Valid() bool {
+	switch e {
+	case Vkontakte:
+		return true
+	default:
+		return false
+	}
+}
+
 // AuthTokens Pair of auth tokens
 type AuthTokens struct {
 	AccessToken  string `json:"access_token"`
@@ -73,6 +88,9 @@ type Cursor = string
 
 // Limit defines model for Limit.
 type Limit = int
+
+// Provider defines model for Provider.
+type Provider string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
@@ -154,6 +172,9 @@ type ServerInterface interface {
 	// Refresh auth tokens
 	// (POST /api/v1/auth/refresh)
 	AuthRefresh(w http.ResponseWriter, r *http.Request)
+	// Get OAuth authorization URL
+	// (GET /api/v1/auth/{provider})
+	AuthOAuthRedirect(w http.ResponseWriter, r *http.Request, provider Provider)
 	// Get list of fonts
 	// (GET /api/v1/fonts)
 	GetFonts(w http.ResponseWriter, r *http.Request, params GetFontsParams)
@@ -187,6 +208,12 @@ func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request) {
 // Refresh auth tokens
 // (POST /api/v1/auth/refresh)
 func (_ Unimplemented) AuthRefresh(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get OAuth authorization URL
+// (GET /api/v1/auth/{provider})
+func (_ Unimplemented) AuthOAuthRedirect(w http.ResponseWriter, r *http.Request, provider Provider) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -262,6 +289,32 @@ func (siw *ServerInterfaceWrapper) AuthRefresh(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AuthRefresh(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthOAuthRedirect operation middleware
+func (siw *ServerInterfaceWrapper) AuthOAuthRedirect(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "provider" -------------
+	var provider Provider
+
+	err = runtime.BindStyledParameterWithOptions("simple", "provider", chi.URLParam(r, "provider"), &provider, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "provider", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthOAuthRedirect(w, r, provider)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -550,6 +603,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/auth/refresh", wrapper.AuthRefresh)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/auth/{provider}", wrapper.AuthOAuthRedirect)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/fonts", wrapper.GetFonts)
 	})
 	r.Group(func(r chi.Router) {
@@ -808,6 +864,67 @@ func (response AuthRefresh429JSONResponse) VisitAuthRefreshResponse(w http.Respo
 type AuthRefresh500JSONResponse struct{ InternalErrorJSONResponse }
 
 func (response AuthRefresh500JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthRedirectRequestObject struct {
+	Provider Provider `json:"provider"`
+}
+
+type AuthOAuthRedirectResponseObject interface {
+	VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error
+}
+
+type AuthOAuthRedirect200Response struct {
+}
+
+func (response AuthOAuthRedirect200Response) VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
+	return nil
+}
+
+type AuthOAuthRedirect400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AuthOAuthRedirect400JSONResponse) VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthRedirect429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response AuthOAuthRedirect429JSONResponse) VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthRedirect500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AuthOAuthRedirect500JSONResponse) VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1162,6 +1279,9 @@ type StrictServerInterface interface {
 	// Refresh auth tokens
 	// (POST /api/v1/auth/refresh)
 	AuthRefresh(ctx context.Context, request AuthRefreshRequestObject) (AuthRefreshResponseObject, error)
+	// Get OAuth authorization URL
+	// (GET /api/v1/auth/{provider})
+	AuthOAuthRedirect(ctx context.Context, request AuthOAuthRedirectRequestObject) (AuthOAuthRedirectResponseObject, error)
 	// Get list of fonts
 	// (GET /api/v1/fonts)
 	GetFonts(ctx context.Context, request GetFontsRequestObject) (GetFontsResponseObject, error)
@@ -1291,6 +1411,32 @@ func (sh *strictHandler) AuthRefresh(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(AuthRefreshResponseObject); ok {
 		if err := validResponse.VisitAuthRefreshResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthOAuthRedirect operation middleware
+func (sh *strictHandler) AuthOAuthRedirect(w http.ResponseWriter, r *http.Request, provider Provider) {
+	var request AuthOAuthRedirectRequestObject
+
+	request.Provider = provider
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthOAuthRedirect(ctx, request.(AuthOAuthRedirectRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthOAuthRedirect")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthOAuthRedirectResponseObject); ok {
+		if err := validResponse.VisitAuthOAuthRedirectResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

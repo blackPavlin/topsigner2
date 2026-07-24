@@ -2,13 +2,8 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -25,6 +20,7 @@ import (
 type Service struct {
 	logger            *zap.Logger
 	config            *config.Config
+	vkidClient        VKIDClient
 	userRepository    UserRepository
 	sessionRepository SessionRepository
 }
@@ -32,12 +28,14 @@ type Service struct {
 func New(
 	logger *zap.Logger,
 	config *config.Config,
+	vkidClient VKIDClient,
 	userRepository UserRepository,
 	sessionRepository SessionRepository,
 ) *Service {
 	return &Service{
 		logger:            logger,
 		config:            config,
+		vkidClient:        vkidClient,
 		userRepository:    userRepository,
 		sessionRepository: sessionRepository,
 	}
@@ -57,7 +55,7 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
-	refreshToken, err := s.GenerateRefreshToken()
+	refreshToken, err := generateRefreshToken()
 	if err != nil {
 		s.logger.Error("generate refresh token error", zap.Error(err))
 
@@ -67,7 +65,7 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 	session := &model.Session{
 		UserID:           user.ID,
 		IP:               input.IP,
-		RefreshTokenHash: s.HashRefreshToken(refreshToken),
+		RefreshTokenHash: hashRefreshToken(refreshToken),
 		ExpiresAt:        time.Now().Add(s.config.Auth.RefreshTokenTTL),
 	}
 
@@ -98,7 +96,7 @@ func (s *Service) Logout(ctx context.Context, userID int64, refreshToken *string
 
 	if refreshToken != nil {
 		filter.RefreshTokenHash = model.TextFilter{
-			Eq: new(s.HashRefreshToken(*refreshToken)),
+			Eq: new(hashRefreshToken(*refreshToken)),
 		}
 	}
 
@@ -118,7 +116,7 @@ func (s *Service) Logout(ctx context.Context, userID int64, refreshToken *string
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	session, err := s.sessionRepository.Get(ctx, &model.SessionFilter{
 		RefreshTokenHash: model.TextFilter{
-			Eq: new(s.HashRefreshToken(refreshToken)),
+			Eq: new(hashRefreshToken(refreshToken)),
 		},
 	})
 	if err != nil {
@@ -149,19 +147,18 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		return nil, ErrTokenIsExpired
 	}
 
-	refreshToken, err = s.GenerateRefreshToken()
+	refreshToken, err = generateRefreshToken()
 	if err != nil {
 		s.logger.Error("generate refresh token error", zap.Error(err))
 
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
-	session.RefreshTokenHash = s.HashRefreshToken(refreshToken)
+	session.RefreshTokenHash = hashRefreshToken(refreshToken)
 	session.ExpiresAt = time.Now().Add(s.config.Auth.RefreshTokenTTL)
 
 	session, err = s.sessionRepository.Update(ctx, session)
 	if err != nil {
-		log.Println(err)
 		s.logger.Error("update session error", zap.Error(err))
 
 		return nil, fmt.Errorf("update session: %w", err)
@@ -241,18 +238,22 @@ func (s *Service) ParseAndValidateAccessToken(token string) (*AccessTokenClaims,
 	return nil, ErrInvalidAuthToken
 }
 
-func (s *Service) GenerateRefreshToken() (string, error) {
-	buffer := make([]byte, refreshTokenBytes)
+func (s *Service) GenerateVKIDAuthorizationURL() (string, error) {
+	codeVerifier, err := generateRandomString(codeVerifierBytes)
+	if err != nil {
+		s.logger.Error("generate code verifier error", zap.Error(err))
 
-	if _, err := rand.Read(buffer); err != nil {
-		return "", fmt.Errorf("generate refresh token: %w", err)
+		return "", fmt.Errorf("generate code verifier: %w", err)
 	}
 
-	return base64.RawURLEncoding.EncodeToString(buffer), nil
-}
+	state, err := generateRandomString(stateBytes)
+	if err != nil {
+		s.logger.Error("generate state error", zap.Error(err))
 
-func (s *Service) HashRefreshToken(token string) string {
-	sum := sha256.Sum256([]byte(token))
+		return "", fmt.Errorf("generate state: %w", err)
+	}
 
-	return hex.EncodeToString(sum[:])
+	// todo: после добавления key/value хранилища, записывать codeVerifier в него
+
+	return s.vkidClient.GenerateAuthorizationURL(codeChallengeS256(codeVerifier), state), nil
 }

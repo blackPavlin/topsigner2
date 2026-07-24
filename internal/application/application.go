@@ -16,6 +16,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
+	"github.com/bboykiv/topsigner/internal/vkid"
 )
 
 func New() fx.Option {
@@ -30,6 +31,7 @@ func New() fx.Option {
 		}),
 		database.Module,
 		s3.Module,
+		vkid.Module,
 		fx.Provide(
 			NewLogger,
 			config.New,

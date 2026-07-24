@@ -162,7 +162,7 @@ func run(m *testing.M) int {
 		imageRepository   = repository.NewImageRepository(pool)
 		fontRepository    = repository.NewFontRepository(pool)
 		imageStorage      = storage.NewImageStorage(cfg, minioClient)
-		authService       = auth.New(logger, cfg, userRepository, sessionRepository)
+		authService       = auth.New(logger, cfg, nil, userRepository, sessionRepository)
 		imageService      = image.New(logger, imageRepository, imageStorage)
 		fontService       = font.New(logger, fontRepository)
 	)

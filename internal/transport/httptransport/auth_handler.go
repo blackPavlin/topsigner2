@@ -109,3 +109,33 @@ func (h *AuthHandler) AuthRefresh(
 		RefreshToken: token.RefreshToken,
 	}, nil
 }
+
+// Get OAuth authorization URL
+// (GET /api/v1/auth/{provider})
+func (h *AuthHandler) AuthOAuthRedirect(
+	ctx context.Context,
+	r httpserver.AuthOAuthRedirectRequestObject,
+) (httpserver.AuthOAuthRedirectResponseObject, error) {
+	var (
+		authorizationURL string
+		err              error
+	)
+
+	switch r.Provider {
+	case httpserver.Vkontakte:
+		authorizationURL, err = h.authService.GenerateVKIDAuthorizationURL()
+		if err != nil {
+			return httpserver.AuthOAuthRedirect500JSONResponse{
+				InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
+					Message: "internal server error",
+				},
+			}, nil
+		}
+	default:
+		return httpserver.AuthOAuthRedirect400JSONResponse{
+			BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: "invalid provider"},
+		}, nil
+	}
+
+	return httpserver.AuthOAuthRedirect200Response{}, nil
+}

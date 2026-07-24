@@ -16,3 +16,7 @@ type SessionRepository interface {
 	Update(ctx context.Context, session *model.Session) (*model.Session, error)
 	Delete(ctx context.Context, filter *model.SessionFilter) error
 }
+
+type VKIDClient interface {
+	GenerateAuthorizationURL(challenge, state string) string
+}

@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	Auth     AuthConfig     `envconfig:"AUTH"`
+	VKID     VKIDConfig     `envconfig:"VKID"`
 	Http     HttpConfig     `envconfig:"HTTP"`
 	Cors     CorsConfig     `envconfig:"CORS"`
 	S3       S3Config       `envconfig:"S3"`

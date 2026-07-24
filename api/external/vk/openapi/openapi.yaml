@@ -1,0 +1,21 @@
+openapi: 3.0.0
+info:
+  version: '1.0.0'
+  title: Vkontakte
+  description: |
+    Methods for working with VK ecosystem
+servers:
+  - url: https://api.vk.ru
+    description: Production environment
+  - url: https://api.vk.com
+    description: Production environment
+tags:
+security:
+  - BearerAuth: [ ]
+paths:
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
