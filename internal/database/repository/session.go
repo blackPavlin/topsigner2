@@ -31,6 +31,7 @@ func (r *SessionRepository) Get(
 			"id::text",
 			"user_id",
 			"ip",
+			"user_agent",
 			"refresh_token_hash",
 			"expires_at",
 			"created_at",
@@ -54,6 +55,7 @@ func (r *SessionRepository) Get(
 		&session.ID,
 		&session.UserID,
 		&session.IP,
+		&session.UserAgent,
 		&session.RefreshTokenHash,
 		&session.ExpiresAt,
 		&session.CreatedAt,
@@ -78,12 +80,14 @@ func (r *SessionRepository) Create(
 		Columns(
 			"user_id",
 			"ip",
+			"user_agent",
 			"refresh_token_hash",
 			"expires_at",
 		).
 		Values(
 			session.UserID,
 			session.IP,
+			session.UserAgent,
 			session.RefreshTokenHash,
 			session.ExpiresAt,
 		).

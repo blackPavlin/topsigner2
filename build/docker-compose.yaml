@@ -36,6 +36,25 @@ services:
       start_period: 10s
     networks:
       - default
+  redis:
+    container_name: redis
+    restart: unless-stopped
+    image: redis:8.10-alpine
+    environment:
+      REDIS_USER: ${REDIS_USER:-redis}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis}
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./volumes/redis:/data
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-redis} ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - default
   minio:
     container_name: minio
     restart: unless-stopped

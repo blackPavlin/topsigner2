@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/model"
@@ -55,6 +56,11 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
+	if err != nil {
+		return nil, ErrInvalidPassword
+	}
+
 	refreshToken, err := generateRefreshToken()
 	if err != nil {
 		s.logger.Error("generate refresh token error", zap.Error(err))
@@ -65,9 +71,12 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 	session := &model.Session{
 		UserID:           user.ID,
 		IP:               input.IP,
+		UserAgent:        input.UserAgent,
 		RefreshTokenHash: hashRefreshToken(refreshToken),
 		ExpiresAt:        time.Now().Add(s.config.Auth.RefreshTokenTTL),
 	}
+
+	// todo: не создавать новую сессию на каждый запрос авторизации, если user_id, ip и user_agent совпадают
 
 	session, err = s.sessionRepository.Create(ctx, session)
 	if err != nil {
@@ -156,6 +165,8 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 
 	session.RefreshTokenHash = hashRefreshToken(refreshToken)
 	session.ExpiresAt = time.Now().Add(s.config.Auth.RefreshTokenTTL)
+
+	// todo: решить нужно ли обновлять user_agent и ip
 
 	session, err = s.sessionRepository.Update(ctx, session)
 	if err != nil {

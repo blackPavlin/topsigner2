@@ -26,7 +26,8 @@ func (h *AuthHandler) AuthLogin(
 	r httpserver.AuthLoginRequestObject,
 ) (httpserver.AuthLoginResponseObject, error) {
 	token, err := h.authService.Login(ctx, &auth.LoginInput{
-		IP: middleware.GetClientIP(ctx),
+		IP:        middleware.GetClientIP(ctx),
+		UserAgent: "",
 	})
 	if err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {

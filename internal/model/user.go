@@ -15,11 +15,12 @@ const (
 )
 
 type User struct {
-	ID        int64
-	Email     string
-	Role      Role
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID           int64
+	Email        string
+	PasswordHash string
+	Role         Role
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type UserFilter struct {

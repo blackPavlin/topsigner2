@@ -11,6 +11,7 @@ type Session struct {
 	ID               string
 	UserID           int64
 	IP               string
+	UserAgent        string
 	RefreshTokenHash string
 	ExpiresAt        time.Time
 	CreatedAt        time.Time
