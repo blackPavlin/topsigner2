@@ -3,6 +3,7 @@
 package: httpserver
 generate:
   models: true
+  client: true
   chi-server: true
   strict-server: true
 output: ./gen/httpserver/httpserver.gen.go

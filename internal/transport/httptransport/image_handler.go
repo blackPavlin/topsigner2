@@ -27,7 +27,7 @@ func (h *ImageHandler) GetImages(
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.GetImages401JSONResponse{
-			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
+			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
@@ -40,7 +40,7 @@ func (h *ImageHandler) GetImages(
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
 		if err != nil {
 			return httpserver.GetImages400JSONResponse{
-				BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: err.Error()},
+				BadRequestJSONResponse: NewBadRequestError(err.Error()),
 			}, nil
 		}
 
@@ -58,9 +58,7 @@ func (h *ImageHandler) GetImages(
 	list, err := h.imageService.List(ctx, query)
 	if err != nil {
 		return httpserver.GetImages500JSONResponse{
-			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
-				Message: "internal server error",
-			},
+			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 
@@ -93,7 +91,7 @@ func (h *ImageHandler) UploadImage(
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.UploadImage401JSONResponse{
-			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
+			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
@@ -102,9 +100,7 @@ func (h *ImageHandler) UploadImage(
 	form, err := r.Body.ReadForm(32 << 20)
 	if err != nil {
 		return httpserver.UploadImage400JSONResponse{
-			BadRequestJSONResponse: httpserver.BadRequestJSONResponse{
-				Message: "invalid multipart form",
-			},
+			BadRequestJSONResponse: NewBadRequestError("invalid multipart form"),
 		}, nil
 	}
 	defer form.RemoveAll()
@@ -112,7 +108,7 @@ func (h *ImageHandler) UploadImage(
 	files, ok := form.File["file"]
 	if !ok || len(files) == 0 {
 		return httpserver.UploadImage400JSONResponse{
-			BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: "file is required"},
+			BadRequestJSONResponse: NewBadRequestError("file is required"),
 		}, nil
 	}
 
@@ -121,17 +117,15 @@ func (h *ImageHandler) UploadImage(
 		switch {
 		case errors.Is(err, model.ErrUnsupportedImageFormat):
 			return httpserver.UploadImage400JSONResponse{
-				BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: err.Error()},
+				BadRequestJSONResponse: NewBadRequestError(err.Error()),
 			}, nil
 		case errors.Is(err, model.ErrImageAlreadyExists):
 			return httpserver.UploadImage400JSONResponse{
-				BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: err.Error()},
+				BadRequestJSONResponse: NewBadRequestError(err.Error()),
 			}, nil
 		default:
 			return httpserver.UploadImage500JSONResponse{
-				InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
-					Message: "internal server error",
-				},
+				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
 	}
@@ -153,15 +147,13 @@ func (h *ImageHandler) DeleteImageByName(
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.DeleteImageByName401JSONResponse{
-			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
+			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
 	if err := h.imageService.Delete(ctx, user.ID, r.Name); err != nil {
 		return httpserver.DeleteImageByName500JSONResponse{
-			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
-				Message: "internal server error",
-			},
+			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 

@@ -27,7 +27,7 @@ func (h *FontHandler) GetFonts(
 ) (httpserver.GetFontsResponseObject, error) {
 	if _, ok := auth.GetUserFromContext(ctx); !ok {
 		return httpserver.GetFonts401JSONResponse{
-			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
+			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
@@ -39,7 +39,7 @@ func (h *FontHandler) GetFonts(
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
 		if err != nil {
 			return httpserver.GetFonts400JSONResponse{
-				BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: err.Error()},
+				BadRequestJSONResponse: NewBadRequestError(err.Error()),
 			}, nil
 		}
 
@@ -57,9 +57,7 @@ func (h *FontHandler) GetFonts(
 	list, err := h.fontService.List(ctx, query)
 	if err != nil {
 		return httpserver.GetFonts500JSONResponse{
-			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
-				Message: "internal server error",
-			},
+			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 

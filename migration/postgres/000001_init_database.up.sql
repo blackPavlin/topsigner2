@@ -4,7 +4,7 @@ CREATE TYPE user_role AS ENUM ('USER', 'ADMIN');
 CREATE TABLE users (
     id 		        BIGINT 	    GENERATED ALWAYS AS IDENTITY,
     email           TEXT        NOT NULL,
-    password_hast   TEXT        NOT NULL,
+    password_hash   TEXT        NOT NULL,
     role            user_role   NOT NULL DEFAULT 'USER',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),

@@ -26,20 +26,20 @@ func (h *AuthHandler) AuthLogin(
 	r httpserver.AuthLoginRequestObject,
 ) (httpserver.AuthLoginResponseObject, error) {
 	token, err := h.authService.Login(ctx, &auth.LoginInput{
+		Email:     string(r.Body.Email),
+		Password:  r.Body.Password,
 		IP:        middleware.GetClientIP(ctx),
 		UserAgent: "",
 	})
 	if err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {
 			return httpserver.AuthLogin401JSONResponse{
-				UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
 		}
 
 		return httpserver.AuthLogin500JSONResponse{
-			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
-				Message: "internal server error",
-			},
+			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 
@@ -58,7 +58,7 @@ func (h *AuthHandler) AuthLogout(
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.AuthLogout401JSONResponse{
-			UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
+			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
@@ -70,9 +70,7 @@ func (h *AuthHandler) AuthLogout(
 
 	if err := h.authService.Logout(ctx, user.ID, refreshToken); err != nil {
 		return httpserver.AuthLogout500JSONResponse{
-			InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
-				Message: "internal server error",
-			},
+			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 
@@ -90,17 +88,15 @@ func (h *AuthHandler) AuthRefresh(
 		switch {
 		case errors.Is(err, model.ErrSessionNotFound):
 			return httpserver.AuthRefresh401JSONResponse{
-				UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
 		case errors.Is(err, auth.ErrTokenIsExpired):
 			return httpserver.AuthRefresh401JSONResponse{
-				UnauthorizedJSONResponse: httpserver.UnauthorizedJSONResponse{Message: "unauthorized"},
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
 		default:
 			return httpserver.AuthRefresh500JSONResponse{
-				InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
-					Message: "internal server error",
-				},
+				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
 	}
@@ -127,16 +123,24 @@ func (h *AuthHandler) AuthOAuthRedirect(
 		authorizationURL, err = h.authService.GenerateVKIDAuthorizationURL()
 		if err != nil {
 			return httpserver.AuthOAuthRedirect500JSONResponse{
-				InternalErrorJSONResponse: httpserver.InternalErrorJSONResponse{
-					Message: "internal server error",
-				},
+				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
 	default:
 		return httpserver.AuthOAuthRedirect400JSONResponse{
-			BadRequestJSONResponse: httpserver.BadRequestJSONResponse{Message: "invalid provider"},
+			BadRequestJSONResponse: NewBadRequestError("invalid provider"),
 		}, nil
 	}
 
-	return httpserver.AuthOAuthRedirect200Response{}, nil
+	// https://topsigner.ru/api/v1/auth/vkontakte/callback?
+	// 	code=vk2.a.EthCB9hsxZEeCMepeZZBNuoCwS2q2k0xVFhiF4zvxNXjRhicQrpDj834h1bVzbX7LZgsAKKpYLIVTzo_9nR_Iquo3TGHQnWDIQrTn0fqoa6WoZZBVTBc-Gsn8YZXrLR1jppWuuj3WYmvE7sKsAADRuoBiqzugfSzVQ3Wf8IUYxZD5ha_1DlHYLwZFuwSTexGgz--BGIyiy-kc7mYKI0hOw
+	// 	&expires_in=600
+	// 	&device_id=LwSCGhkkaDNsBX68hNcZ0oUFqWhn2yVYCDefK5LQpr5sfrG4fAa7mk5HHbO5OdzoFZN_RGxJHJQydQtHd2QZAA
+	// 	&state=QCX4cW5z0RFo0HC0XUF75guGHcLr029E
+	// 	&ext_id=Z9hH0mnsngWDJp50EkKa9IrsgcsqJ61kiRsKWyqEBC_1_YrdfcQ5ue4hm3p4t_JdWdLa8X86eUEc-ec4E-eUD-iFGnPZSLtdjCBUmXqQ1XlGvUWn0KwreEu2O9jTDHCzZZg6ArbW3w56mSzBS2xIUEyz4VSdIbZn4N5QYhg5YOzT
+	// 	&type=code_v2
+
+	return httpserver.AuthOAuthRedirect200JSONResponse{
+		URL: authorizationURL,
+	}, nil
 }
