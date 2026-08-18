@@ -7,6 +7,8 @@ generate:
   chi-server: true
   strict-server: true
 output: ./gen/httpserver/httpserver.gen.go
+compatibility:
+  enable-auth-scopes-on-context: true
 output-options:
   name-normalizer: ToCamelCaseWithInitialisms
   additional-initialisms:
