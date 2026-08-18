@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
-	tcLog "github.com/testcontainers/testcontainers-go/log"
 	"github.com/testcontainers/testcontainers-go/modules/minio"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -39,8 +38,6 @@ func TestMain(m *testing.M) {
 func run(m *testing.M) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-
-	tcLog.SetDefault(tcLog.NewNoopLogger())
 
 	cfg := &config.Config{
 		Auth: config.AuthConfig{

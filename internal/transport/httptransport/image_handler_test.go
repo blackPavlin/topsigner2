@@ -1,33 +1,23 @@
 package httptransport_test
 
 import (
+	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/bboykiv/topsigner/gen/httpserver"
 )
 
-func TestImageHandlerGetImages(t *testing.T) {
+func TestImageHandler_GetImages_Unauthorized(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct{ name string }{}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-		})
+	message := &httpserver.Unauthorized{
+		Message: "unauthorized",
 	}
-}
 
-func TestImageHandlerUploadImage(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct{ name string }{}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-		})
-	}
-}
-
-func TestImageHandlerDeleteImageByID(t *testing.T) {
-	t.Parallel()
+	resp, err := client.GetImagesWithResponse(t.Context(), &httpserver.GetImagesParams{})
+	require.NoError(t, err)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode())
+	require.Equal(t, message, resp.JSON401)
 }

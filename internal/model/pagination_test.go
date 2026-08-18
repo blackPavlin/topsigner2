@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bboykiv/topsigner/internal/model"
@@ -31,7 +30,7 @@ func TestEncodeCursor(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			cursor := model.EncodeCursor(tc.ID, tc.CreatedAt)
 
-			assert.Equal(t, tc.Result, cursor)
+			require.Equal(t, tc.Result, cursor)
 		})
 	}
 }
@@ -84,14 +83,14 @@ func TestDecodeCursor(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			cursor, err := model.DecodeCursor(tc.Cursor)
 			if err != nil {
-				assert.ErrorIs(t, err, tc.Error)
+				require.ErrorIs(t, err, tc.Error)
 
 				return
 			}
 
 			require.NotNil(t, cursor)
-			assert.Equal(t, cursor.ID, tc.Result.ID)
-			assert.Equal(t, cursor.CreatedAt, tc.Result.CreatedAt)
+			require.Equal(t, cursor.ID, tc.Result.ID)
+			require.Equal(t, cursor.CreatedAt, tc.Result.CreatedAt)
 		})
 	}
 }
