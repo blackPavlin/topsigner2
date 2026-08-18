@@ -49,6 +49,7 @@ func NewHandler(
 			cors.Handler(corsOptions),
 			mw.RequestLogger(logger),
 			mw.BearerAuth(authService),
+			mw.UserAgent(),
 		},
 	}
 

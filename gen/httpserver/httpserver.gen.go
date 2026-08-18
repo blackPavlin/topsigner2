@@ -120,8 +120,8 @@ type bearerAuthContextKey string
 
 // AuthLoginJSONBody defines parameters for AuthLogin.
 type AuthLoginJSONBody struct {
-	Email    openapi_types.Email `json:"email"`
-	Password string              `json:"password"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8,max=72"`
 }
 
 // AuthLogoutJSONBody defines parameters for AuthLogout.

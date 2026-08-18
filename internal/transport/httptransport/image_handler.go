@@ -40,7 +40,7 @@ func (h *ImageHandler) GetImages(
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
 		if err != nil {
 			return httpserver.GetImages400JSONResponse{
-				BadRequestJSONResponse: NewBadRequestError(err.Error()),
+				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
 		}
 
@@ -100,7 +100,7 @@ func (h *ImageHandler) UploadImage(
 	form, err := r.Body.ReadForm(32 << 20)
 	if err != nil {
 		return httpserver.UploadImage400JSONResponse{
-			BadRequestJSONResponse: NewBadRequestError("invalid multipart form"),
+			BadRequestJSONResponse: NewBadRequestError(ErrInvalidMultipartForm),
 		}, nil
 	}
 	defer form.RemoveAll()
@@ -108,7 +108,7 @@ func (h *ImageHandler) UploadImage(
 	files, ok := form.File["file"]
 	if !ok || len(files) == 0 {
 		return httpserver.UploadImage400JSONResponse{
-			BadRequestJSONResponse: NewBadRequestError("file is required"),
+			BadRequestJSONResponse: NewBadRequestError(ErrMultipartFileIsRequired),
 		}, nil
 	}
 
@@ -117,11 +117,11 @@ func (h *ImageHandler) UploadImage(
 		switch {
 		case errors.Is(err, model.ErrUnsupportedImageFormat):
 			return httpserver.UploadImage400JSONResponse{
-				BadRequestJSONResponse: NewBadRequestError(err.Error()),
+				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
 		case errors.Is(err, model.ErrImageAlreadyExists):
 			return httpserver.UploadImage400JSONResponse{
-				BadRequestJSONResponse: NewBadRequestError(err.Error()),
+				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
 		default:
 			return httpserver.UploadImage500JSONResponse{

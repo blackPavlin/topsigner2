@@ -39,7 +39,7 @@ func (h *FontHandler) GetFonts(
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
 		if err != nil {
 			return httpserver.GetFonts400JSONResponse{
-				BadRequestJSONResponse: NewBadRequestError(err.Error()),
+				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
 		}
 

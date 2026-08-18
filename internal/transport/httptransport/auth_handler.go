@@ -5,18 +5,25 @@ import (
 	"errors"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/auth"
+	mw "github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
+	"github.com/bboykiv/topsigner/internal/transport/httptransport/validation"
 )
 
 type AuthHandler struct {
 	authService *auth.Service
+	validate    *validator.Validate
 }
 
 func NewAuthHandler(authService *auth.Service) *AuthHandler {
-	return &AuthHandler{authService: authService}
+	return &AuthHandler{
+		authService: authService,
+		validate:    validation.New(),
+	}
 }
 
 // Login user
@@ -25,11 +32,17 @@ func (h *AuthHandler) AuthLogin(
 	ctx context.Context,
 	r httpserver.AuthLoginRequestObject,
 ) (httpserver.AuthLoginResponseObject, error) {
+	if err := h.validate.Struct(r.Body); err != nil {
+		return httpserver.AuthLogin400JSONResponse{
+			BadRequestJSONResponse: NewBadRequestError(err),
+		}, nil
+	}
+
 	token, err := h.authService.Login(ctx, &auth.LoginInput{
-		Email:     string(r.Body.Email),
+		Email:     r.Body.Email,
 		Password:  r.Body.Password,
 		IP:        middleware.GetClientIP(ctx),
-		UserAgent: "",
+		UserAgent: mw.GetUserAgentFromContext(ctx),
 	})
 	if err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {
@@ -128,7 +141,7 @@ func (h *AuthHandler) AuthOAuthRedirect(
 		}
 	default:
 		return httpserver.AuthOAuthRedirect400JSONResponse{
-			BadRequestJSONResponse: NewBadRequestError("invalid provider"),
+			BadRequestJSONResponse: NewBadRequestError(ErrInvalidOAuthProvider),
 		}, nil
 	}
 

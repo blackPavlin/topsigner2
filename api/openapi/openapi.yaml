@@ -38,8 +38,13 @@ paths:
                 email:
                   type: string
                   format: email
+                  x-go-type: string
+                  x-oapi-codegen-extra-tags:
+                    validate: required,email
                 password:
                   type: string
+                  x-oapi-codegen-extra-tags:
+                    validate: required,min=8,max=72
       responses:
         '200':
           description: Login successful

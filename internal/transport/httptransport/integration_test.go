@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
+	tcLog "github.com/testcontainers/testcontainers-go/log"
 	"github.com/testcontainers/testcontainers-go/modules/minio"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 
+	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/database"
 	"github.com/bboykiv/topsigner/internal/database/repository"
@@ -25,7 +27,10 @@ import (
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
 )
 
-var server *httptest.Server
+var (
+	server *httptest.Server
+	client *httpserver.ClientWithResponses
+)
 
 func TestMain(m *testing.M) {
 	os.Exit(run(m))
@@ -34,6 +39,8 @@ func TestMain(m *testing.M) {
 func run(m *testing.M) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
+
+	tcLog.SetDefault(tcLog.NewNoopLogger())
 
 	cfg := &config.Config{
 		Auth: config.AuthConfig{
@@ -177,6 +184,13 @@ func run(m *testing.M) int {
 		),
 	)
 	defer server.Close()
+
+	client, err = httpserver.NewClientWithResponses(server.URL)
+	if err != nil {
+		log.Printf("create client with responses: %v", err)
+
+		return 1
+	}
 
 	return m.Run()
 }
