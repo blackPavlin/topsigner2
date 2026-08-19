@@ -1,5 +1,7 @@
 package font
 
+//go:generate go tool mockgen -source=repository.go -destination=mocks/mock_repository.go -package=mocks -typed
+
 import (
 	"context"
 
