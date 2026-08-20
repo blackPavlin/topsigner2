@@ -10,8 +10,8 @@ import (
 	"io"
 	"mime/multipart"
 	"path/filepath"
+	"uuid"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/bboykiv/topsigner/internal/model"
