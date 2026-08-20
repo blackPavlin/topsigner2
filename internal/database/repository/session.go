@@ -144,7 +144,7 @@ func (r *SessionRepository) Update(
 
 func (r *SessionRepository) Delete(ctx context.Context, filter *model.SessionFilter) error {
 	if filter.UserID.Eq == nil {
-		return model.ErrSessionNotFound
+		return nil
 	}
 
 	builder := psql.Delete(sessionTableName).

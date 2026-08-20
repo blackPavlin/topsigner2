@@ -8,7 +8,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/model"
@@ -48,7 +47,7 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 	})
 	if err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {
-			return nil, fmt.Errorf("get user: %w", err)
+			return nil, model.ErrUserNotFound
 		}
 
 		s.logger.Error("get user error", zap.Error(err))
@@ -56,8 +55,7 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
-	if err != nil {
+	if err = ComparePasswordAndHash(user.PasswordHash, input.Password); err != nil {
 		return nil, ErrInvalidPassword
 	}
 
@@ -130,7 +128,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	})
 	if err != nil {
 		if errors.Is(err, model.ErrSessionNotFound) {
-			return nil, fmt.Errorf("get session: %w", err)
+			return nil, model.ErrSessionNotFound
 		}
 
 		s.logger.Error("get session error", zap.Error(err))
@@ -145,7 +143,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		})
 		if err != nil {
 			if errors.Is(err, model.ErrSessionNotFound) {
-				return nil, fmt.Errorf("delete session: %w", err)
+				return nil, model.ErrSessionNotFound
 			}
 
 			s.logger.Error("delete session error", zap.Error(err))
