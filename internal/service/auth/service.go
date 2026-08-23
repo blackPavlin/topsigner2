@@ -35,7 +35,7 @@ func New(
 	codeVerifierRepository CodeVerifierRepository,
 ) *Service {
 	return &Service{
-		logger:                 logger,
+		logger:                 logger.Named("auth-service"),
 		config:                 config,
 		vkidClient:             vkidClient,
 		userRepository:         userRepository,

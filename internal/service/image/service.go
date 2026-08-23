@@ -25,7 +25,7 @@ type Service struct {
 
 func New(logger *zap.Logger, repository Repository, storage Storage) *Service {
 	return &Service{
-		logger:     logger,
+		logger:     logger.Named("image-service"),
 		repository: repository,
 		storage:    storage,
 	}
