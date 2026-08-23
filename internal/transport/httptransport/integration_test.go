@@ -11,6 +11,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/minio"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/database"
 	"github.com/bboykiv/topsigner/internal/database/repository"
+	"github.com/bboykiv/topsigner/internal/keyvalue"
 	"github.com/bboykiv/topsigner/internal/s3"
 	"github.com/bboykiv/topsigner/internal/s3/storage"
 	"github.com/bboykiv/topsigner/internal/service/auth"
@@ -159,16 +161,37 @@ func run(m *testing.M) int {
 		return 1
 	}
 
+	redisContainer, err := redis.Run(ctx, "redis:8.10-alpine")
+	if err != nil {
+		log.Printf("start redis container: %v", err)
+
+		return 1
+	}
+	defer func() {
+		if err := redisContainer.Terminate(ctx); err != nil {
+			log.Printf("terminate redis container: %v", err)
+		}
+	}()
+
+	cfg.Redis.Addr, err = redisContainer.ConnectionString(ctx)
+	if err != nil {
+		log.Printf("get redis connection string: %v", err)
+
+		return 1
+	}
+
 	var (
-		logger            = zap.NewNop()
-		userRepository    = repository.NewUserRepository(pool)
-		sessionRepository = repository.NewSessionRepository(pool)
-		imageRepository   = repository.NewImageRepository(pool)
-		fontRepository    = repository.NewFontRepository(pool)
-		imageStorage      = storage.NewImageStorage(cfg, minioClient)
-		authService       = auth.New(logger, cfg, nil, userRepository, sessionRepository)
-		imageService      = image.New(logger, imageRepository, imageStorage)
-		fontService       = font.New(logger, fontRepository)
+		logger                 = zap.NewNop()
+		redisClient            = keyvalue.NewClient(cfg)
+		userRepository         = repository.NewUserRepository(pool)
+		sessionRepository      = repository.NewSessionRepository(pool)
+		imageRepository        = repository.NewImageRepository(pool)
+		fontRepository         = repository.NewFontRepository(pool)
+		codeVerifierRepository = keyvalue.NewCodeVerifierRepository(redisClient)
+		imageStorage           = storage.NewImageStorage(cfg, minioClient)
+		authService            = auth.New(logger, cfg, nil, userRepository, sessionRepository, codeVerifierRepository)
+		imageService           = image.New(logger, imageRepository, imageStorage)
+		fontService            = font.New(logger, fontRepository)
 	)
 
 	server = httptest.NewServer(

@@ -11,15 +11,16 @@ import (
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/auth"
-	"github.com/bboykiv/topsigner/internal/service/auth/mocks"
+	"github.com/bboykiv/topsigner/internal/service/auth/mock"
 )
 
 func TestService_Login_Success(t *testing.T) {
 	var (
-		ctrl              = gomock.NewController(t)
-		userRepository    = mocks.NewMockUserRepository(ctrl)
-		sessionRepository = mocks.NewMockSessionRepository(ctrl)
-		vkidClient        = mocks.NewMockVKIDClient(ctrl)
+		ctrl                   = gomock.NewController(t)
+		userRepository         = mock.NewMockUserRepository(ctrl)
+		sessionRepository      = mock.NewMockSessionRepository(ctrl)
+		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
@@ -53,7 +54,14 @@ func TestService_Login_Success(t *testing.T) {
 		Create(t.Context(), gomock.Any()).
 		Return(session, nil)
 
-	svc := auth.New(zap.NewNop(), config, vkidClient, userRepository, sessionRepository)
+	svc := auth.New(
+		zap.NewNop(),
+		config,
+		vkidClient,
+		userRepository,
+		sessionRepository,
+		codeVerifierRepository,
+	)
 
 	tokens, err := svc.Login(t.Context(), &auth.LoginInput{
 		Email:    user.Email,
@@ -70,17 +78,25 @@ func TestService_Login_Success(t *testing.T) {
 
 func TestService_Login_UserNotFound(t *testing.T) {
 	var (
-		ctrl              = gomock.NewController(t)
-		userRepository    = mocks.NewMockUserRepository(ctrl)
-		sessionRepository = mocks.NewMockSessionRepository(ctrl)
-		vkidClient        = mocks.NewMockVKIDClient(ctrl)
+		ctrl                   = gomock.NewController(t)
+		userRepository         = mock.NewMockUserRepository(ctrl)
+		sessionRepository      = mock.NewMockSessionRepository(ctrl)
+		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
 	userRepository.EXPECT().
 		Get(t.Context(), gomock.Any()).
 		Return(nil, model.ErrUserNotFound)
 
-	svc := auth.New(zap.NewNop(), &config.Config{}, vkidClient, userRepository, sessionRepository)
+	svc := auth.New(
+		zap.NewNop(),
+		&config.Config{},
+		vkidClient,
+		userRepository,
+		sessionRepository,
+		codeVerifierRepository,
+	)
 
 	tokens, err := svc.Login(t.Context(), &auth.LoginInput{
 		Email:    "test@email.com",
@@ -92,10 +108,11 @@ func TestService_Login_UserNotFound(t *testing.T) {
 
 func TestService_Login_InvalidPassword(t *testing.T) {
 	var (
-		ctrl              = gomock.NewController(t)
-		userRepository    = mocks.NewMockUserRepository(ctrl)
-		sessionRepository = mocks.NewMockSessionRepository(ctrl)
-		vkidClient        = mocks.NewMockVKIDClient(ctrl)
+		ctrl                   = gomock.NewController(t)
+		userRepository         = mock.NewMockUserRepository(ctrl)
+		sessionRepository      = mock.NewMockSessionRepository(ctrl)
+		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
 	user := &model.User{
@@ -108,7 +125,14 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 		Get(t.Context(), gomock.Any()).
 		Return(user, nil)
 
-	svc := auth.New(zap.NewNop(), &config.Config{}, vkidClient, userRepository, sessionRepository)
+	svc := auth.New(
+		zap.NewNop(),
+		&config.Config{},
+		vkidClient,
+		userRepository,
+		sessionRepository,
+		codeVerifierRepository,
+	)
 
 	tokens, err := svc.Login(t.Context(), &auth.LoginInput{
 		Email:    "test@email.com",

@@ -3,11 +3,15 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-const stateBytes = 24
+const (
+	stateBytes      = 24
+	codeVerifierTTL = 10 * time.Minute
+)
 
 var (
 	ErrInvalidAuthToken = errors.New("invalid auth token")

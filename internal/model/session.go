@@ -5,7 +5,10 @@ import (
 	"time"
 )
 
-var ErrSessionNotFound = errors.New("session not found")
+var (
+	ErrSessionNotFound      = errors.New("session not found")
+	ErrCodeVerifierNotFound = errors.New("code verifier not found")
+)
 
 type Session struct {
 	ID               string

@@ -133,7 +133,7 @@ func (h *AuthHandler) AuthOAuthRedirect(
 
 	switch r.Provider {
 	case httpserver.Vkontakte:
-		authorizationURL, err = h.authService.GenerateVKIDAuthorizationURL()
+		authorizationURL, err = h.authService.GenerateVKIDAuthorizationURL(ctx)
 		if err != nil {
 			return httpserver.AuthOAuthRedirect500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),

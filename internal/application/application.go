@@ -10,6 +10,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/database"
 	"github.com/bboykiv/topsigner/internal/database/repository"
+	"github.com/bboykiv/topsigner/internal/keyvalue"
 	"github.com/bboykiv/topsigner/internal/s3"
 	"github.com/bboykiv/topsigner/internal/s3/storage"
 	"github.com/bboykiv/topsigner/internal/service/auth"
@@ -30,6 +31,7 @@ func New() fx.Option {
 			}
 		}),
 		database.Module,
+		keyvalue.Module,
 		s3.Module,
 		vkid.Module,
 		fx.Provide(
@@ -57,6 +59,10 @@ func New() fx.Option {
 			fx.Annotate(
 				repository.NewSessionRepository,
 				fx.As(new(auth.SessionRepository)),
+			),
+			fx.Annotate(
+				keyvalue.NewCodeVerifierRepository,
+				fx.As(new(auth.CodeVerifierRepository)),
 			),
 			NewHttpServer,
 			httptransport.NewHandler,

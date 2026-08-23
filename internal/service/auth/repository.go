@@ -1,9 +1,10 @@
 package auth
 
-//go:generate go tool mockgen -source=repository.go -destination=mocks/mock_repository.go -package=mocks -typed
+//go:generate go tool mockgen -source=repository.go -destination=mock/mock_repository.go -package=mock -typed
 
 import (
 	"context"
+	"time"
 
 	"github.com/bboykiv/topsigner/internal/model"
 )
@@ -17,6 +18,11 @@ type SessionRepository interface {
 	Create(ctx context.Context, session *model.Session) (*model.Session, error)
 	Update(ctx context.Context, session *model.Session) (*model.Session, error)
 	Delete(ctx context.Context, filter *model.SessionFilter) error
+}
+
+type CodeVerifierRepository interface {
+	Set(ctx context.Context, state, verifier string, ttl time.Duration) error
+	Pop(ctx context.Context, state string) (string, error)
 }
 
 type VKIDClient interface {

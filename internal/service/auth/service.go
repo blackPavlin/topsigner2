@@ -18,11 +18,12 @@ import (
 // todo: возвращать в TokenPair ExpiresAt
 
 type Service struct {
-	logger            *zap.Logger
-	config            *config.Config
-	vkidClient        VKIDClient
-	userRepository    UserRepository
-	sessionRepository SessionRepository
+	logger                 *zap.Logger
+	config                 *config.Config
+	vkidClient             VKIDClient
+	userRepository         UserRepository
+	sessionRepository      SessionRepository
+	codeVerifierRepository CodeVerifierRepository
 }
 
 func New(
@@ -31,13 +32,15 @@ func New(
 	vkidClient VKIDClient,
 	userRepository UserRepository,
 	sessionRepository SessionRepository,
+	codeVerifierRepository CodeVerifierRepository,
 ) *Service {
 	return &Service{
-		logger:            logger,
-		config:            config,
-		vkidClient:        vkidClient,
-		userRepository:    userRepository,
-		sessionRepository: sessionRepository,
+		logger:                 logger,
+		config:                 config,
+		vkidClient:             vkidClient,
+		userRepository:         userRepository,
+		sessionRepository:      sessionRepository,
+		codeVerifierRepository: codeVerifierRepository,
 	}
 }
 
@@ -210,10 +213,8 @@ func (s *Service) Authorize(ctx context.Context, token string) (*model.User, err
 
 func (s *Service) SignAccessToken(userID int64, sessionID string) (string, error) {
 	claims := AccessTokenClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.Auth.AccessTokenTTL)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.Auth.AccessTokenTTL)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		UserID:    userID,
 		SessionID: sessionID,
 	}
@@ -247,22 +248,26 @@ func (s *Service) ParseAndValidateAccessToken(token string) (*AccessTokenClaims,
 	return nil, ErrInvalidAuthToken
 }
 
-func (s *Service) GenerateVKIDAuthorizationURL() (string, error) {
+func (s *Service) GenerateVKIDAuthorizationURL(ctx context.Context) (string, error) {
 	codeVerifier, err := generateRandomString(codeVerifierBytes)
 	if err != nil {
-		s.logger.Error("generate code verifier error", zap.Error(err))
+		s.logger.Error("generate code verifier", zap.Error(err))
 
 		return "", fmt.Errorf("generate code verifier: %w", err)
 	}
 
 	state, err := generateRandomString(stateBytes)
 	if err != nil {
-		s.logger.Error("generate state error", zap.Error(err))
+		s.logger.Error("generate state", zap.Error(err))
 
 		return "", fmt.Errorf("generate state: %w", err)
 	}
 
-	// todo: после добавления key/value хранилища, записывать codeVerifier в него
+	if err = s.codeVerifierRepository.Set(ctx, state, codeVerifier, codeVerifierTTL); err != nil {
+		s.logger.Error("set code verifiet", zap.Error(err))
+
+		return "", fmt.Errorf("code verifier repository set: %w", err)
+	}
 
 	return s.vkidClient.GenerateAuthorizationURL(codeChallengeS256(codeVerifier), state), nil
 }
