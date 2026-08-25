@@ -361,6 +361,145 @@ func (c *MockCodeVerifierRepositorySetCall) DoAndReturn(f func(context.Context, 
 	return c
 }
 
+// MockUserCacheRepository is a mock of UserCacheRepository interface.
+type MockUserCacheRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockUserCacheRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockUserCacheRepositoryMockRecorder is the mock recorder for MockUserCacheRepository.
+type MockUserCacheRepositoryMockRecorder struct {
+	mock *MockUserCacheRepository
+}
+
+// NewMockUserCacheRepository creates a new mock instance.
+func NewMockUserCacheRepository(ctrl *gomock.Controller) *MockUserCacheRepository {
+	mock := &MockUserCacheRepository{ctrl: ctrl}
+	mock.recorder = &MockUserCacheRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockUserCacheRepository) EXPECT() *MockUserCacheRepositoryMockRecorder {
+	return m.recorder
+}
+
+// Delete mocks base method.
+func (m *MockUserCacheRepository) Delete(ctx context.Context, userID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockUserCacheRepositoryMockRecorder) Delete(ctx, userID any) *MockUserCacheRepositoryDeleteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUserCacheRepository)(nil).Delete), ctx, userID)
+	return &MockUserCacheRepositoryDeleteCall{Call: call}
+}
+
+// MockUserCacheRepositoryDeleteCall wrap *gomock.Call
+type MockUserCacheRepositoryDeleteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserCacheRepositoryDeleteCall) Return(arg0 error) *MockUserCacheRepositoryDeleteCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserCacheRepositoryDeleteCall) Do(f func(context.Context, int64) error) *MockUserCacheRepositoryDeleteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserCacheRepositoryDeleteCall) DoAndReturn(f func(context.Context, int64) error) *MockUserCacheRepositoryDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Get mocks base method.
+func (m *MockUserCacheRepository) Get(ctx context.Context, userID int64) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, userID)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockUserCacheRepositoryMockRecorder) Get(ctx, userID any) *MockUserCacheRepositoryGetCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockUserCacheRepository)(nil).Get), ctx, userID)
+	return &MockUserCacheRepositoryGetCall{Call: call}
+}
+
+// MockUserCacheRepositoryGetCall wrap *gomock.Call
+type MockUserCacheRepositoryGetCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserCacheRepositoryGetCall) Return(arg0 *model.User, arg1 error) *MockUserCacheRepositoryGetCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserCacheRepositoryGetCall) Do(f func(context.Context, int64) (*model.User, error)) *MockUserCacheRepositoryGetCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserCacheRepositoryGetCall) DoAndReturn(f func(context.Context, int64) (*model.User, error)) *MockUserCacheRepositoryGetCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Set mocks base method.
+func (m *MockUserCacheRepository) Set(ctx context.Context, user *model.User, ttl time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Set", ctx, user, ttl)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Set indicates an expected call of Set.
+func (mr *MockUserCacheRepositoryMockRecorder) Set(ctx, user, ttl any) *MockUserCacheRepositorySetCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockUserCacheRepository)(nil).Set), ctx, user, ttl)
+	return &MockUserCacheRepositorySetCall{Call: call}
+}
+
+// MockUserCacheRepositorySetCall wrap *gomock.Call
+type MockUserCacheRepositorySetCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserCacheRepositorySetCall) Return(arg0 error) *MockUserCacheRepositorySetCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserCacheRepositorySetCall) Do(f func(context.Context, *model.User, time.Duration) error) *MockUserCacheRepositorySetCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserCacheRepositorySetCall) DoAndReturn(f func(context.Context, *model.User, time.Duration) error) *MockUserCacheRepositorySetCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockVKIDClient is a mock of VKIDClient interface.
 type MockVKIDClient struct {
 	ctrl     *gomock.Controller

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"net/http"
 
 	"go.uber.org/fx"
@@ -16,6 +17,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/image"
+	"github.com/bboykiv/topsigner/internal/service/user"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
 	"github.com/bboykiv/topsigner/internal/vkid"
 )
@@ -38,6 +40,7 @@ func New() fx.Option {
 			NewLogger,
 			config.New,
 			auth.New,
+			user.New,
 			font.New,
 			image.New,
 			fx.Annotate(
@@ -54,11 +57,16 @@ func New() fx.Option {
 			),
 			fx.Annotate(
 				repository.NewUserRepository,
+				fx.As(new(user.Repository)),
 				fx.As(new(auth.UserRepository)),
 			),
 			fx.Annotate(
 				repository.NewSessionRepository,
 				fx.As(new(auth.SessionRepository)),
+			),
+			fx.Annotate(
+				keyvalue.NewUserCacheRepository,
+				fx.As(new(auth.UserCacheRepository)),
 			),
 			fx.Annotate(
 				keyvalue.NewCodeVerifierRepository,
@@ -67,6 +75,9 @@ func New() fx.Option {
 			NewHttpServer,
 			httptransport.NewHandler,
 		),
+		fx.Invoke(func(userService *user.Service) error {
+			return userService.CreateDefault(context.Background())
+		}),
 		fx.Invoke(func(*http.Server) {}),
 	)
 }

@@ -11,6 +11,8 @@ import (
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
+const codeVerifierPrefix = "code_verifier:"
+
 type CodeVerifierRepository struct {
 	client *redis.Client
 }
@@ -24,7 +26,7 @@ func (r *CodeVerifierRepository) Set(
 	state, verifier string,
 	ttl time.Duration,
 ) error {
-	if err := r.client.Set(ctx, state, verifier, ttl).Err(); err != nil {
+	if err := r.client.Set(ctx, getCodeVerifierKey(state), verifier, ttl).Err(); err != nil {
 		return fmt.Errorf("set code verifier: %w", err)
 	}
 
@@ -32,7 +34,7 @@ func (r *CodeVerifierRepository) Set(
 }
 
 func (r *CodeVerifierRepository) Pop(ctx context.Context, state string) (string, error) {
-	result, err := r.client.GetDel(ctx, state).Result()
+	result, err := r.client.GetDel(ctx, getCodeVerifierKey(state)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return "", model.ErrCodeVerifierNotFound
@@ -42,4 +44,8 @@ func (r *CodeVerifierRepository) Pop(ctx context.Context, state string) (string,
 	}
 
 	return result, nil
+}
+
+func getCodeVerifierKey(state string) string {
+	return codeVerifierPrefix + state
 }

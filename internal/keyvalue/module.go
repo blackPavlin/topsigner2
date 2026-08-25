@@ -10,7 +10,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/config"
 )
 
-var Module = fx.Module("redis", fx.Provide(New))
+var Module = fx.Module("keyvalue", fx.Provide(New))
 
 type Params struct {
 	fx.In

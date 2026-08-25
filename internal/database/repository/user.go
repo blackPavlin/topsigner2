@@ -53,6 +53,8 @@ func (r *UserRepository) Get(ctx context.Context, filter *model.UserFilter) (*mo
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.User, error) {
+	// todo: добавить проверку на существование записи и возвращать ErrUserAlreadyExists
+
 	sql, args, err := psql.Insert(userTableName).
 		Columns("email", "password_hash", "role").
 		Values(user.Email, user.PasswordHash, user.Role).

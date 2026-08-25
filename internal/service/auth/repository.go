@@ -25,6 +25,12 @@ type CodeVerifierRepository interface {
 	Pop(ctx context.Context, state string) (string, error)
 }
 
+type UserCacheRepository interface {
+	Get(ctx context.Context, userID int64) (*model.User, error)
+	Set(ctx context.Context, user *model.User, ttl time.Duration) error
+	Delete(ctx context.Context, userID int64) error
+}
+
 type VKIDClient interface {
 	GenerateAuthorizationURL(challenge, state string) string
 }

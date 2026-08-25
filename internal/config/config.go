@@ -8,12 +8,14 @@ import (
 
 type Config struct {
 	Auth     AuthConfig     `envconfig:"AUTH"`
+	User     UserConfig     `envconfig:"USER"`
 	VKID     VKIDConfig     `envconfig:"VKID"`
 	Http     HttpConfig     `envconfig:"HTTP"`
 	Cors     CorsConfig     `envconfig:"CORS"`
 	S3       S3Config       `envconfig:"S3"`
 	Redis    RedisConfig    `envconfig:"REDIS"`
 	Postgres PostgresConfig `envconfig:"POSTGRES"`
+	Metrics  MetricsConfig  `envconfig:"METRICS"`
 	Debug    bool           `envconfig:"DEBUG" default:"false"`
 }
 

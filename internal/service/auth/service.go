@@ -13,8 +13,6 @@ import (
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
-// todo: решить вопрос с сидированием и добавить создание первого пользователя
-// todo: чтобы не грузить БД, имеет смысл добавить key/value хранилище
 // todo: возвращать в TokenPair ExpiresAt
 
 type Service struct {
@@ -23,6 +21,7 @@ type Service struct {
 	vkidClient             VKIDClient
 	userRepository         UserRepository
 	sessionRepository      SessionRepository
+	userCacheRepository    UserCacheRepository
 	codeVerifierRepository CodeVerifierRepository
 }
 
@@ -32,6 +31,7 @@ func New(
 	vkidClient VKIDClient,
 	userRepository UserRepository,
 	sessionRepository SessionRepository,
+	userCacheRepository UserCacheRepository,
 	codeVerifierRepository CodeVerifierRepository,
 ) *Service {
 	return &Service{
@@ -40,6 +40,7 @@ func New(
 		vkidClient:             vkidClient,
 		userRepository:         userRepository,
 		sessionRepository:      sessionRepository,
+		userCacheRepository:    userCacheRepository,
 		codeVerifierRepository: codeVerifierRepository,
 	}
 }
@@ -53,18 +54,18 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 			return nil, model.ErrUserNotFound
 		}
 
-		s.logger.Error("get user error", zap.Error(err))
+		s.logger.Error("get user", zap.Error(err))
 
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
-	if err = ComparePasswordAndHash(user.PasswordHash, input.Password); err != nil {
+	if err = model.ComparePasswordAndHash(user.PasswordHash, input.Password); err != nil {
 		return nil, ErrInvalidPassword
 	}
 
 	refreshToken, err := generateRefreshToken()
 	if err != nil {
-		s.logger.Error("generate refresh token error", zap.Error(err))
+		s.logger.Error("generate refresh token", zap.Error(err))
 
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
@@ -81,16 +82,20 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 
 	session, err = s.sessionRepository.Create(ctx, session)
 	if err != nil {
-		s.logger.Error("create session error", zap.Error(err))
+		s.logger.Error("create session", zap.Error(err))
 
 		return nil, fmt.Errorf("create session: %w", err)
 	}
 
 	accessToken, err := s.SignAccessToken(user.ID, session.ID)
 	if err != nil {
-		s.logger.Error("sign access token error", zap.Error(err))
+		s.logger.Error("sign access token", zap.Error(err))
 
 		return nil, fmt.Errorf("sign access token: %w", err)
+	}
+
+	if err = s.userCacheRepository.Set(ctx, user, s.config.Auth.AccessTokenTTL); err != nil {
+		s.logger.Error("set user to cache", zap.Error(err))
 	}
 
 	return &TokenPair{
@@ -100,6 +105,10 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 }
 
 func (s *Service) Logout(ctx context.Context, userID int64, refreshToken *string) error {
+	if err := s.userCacheRepository.Delete(ctx, userID); err != nil {
+		s.logger.Error("delete user cache", zap.Error(err))
+	}
+
 	filter := &model.SessionFilter{
 		UserID: model.IDFilter{Eq: new(userID)},
 	}
@@ -115,7 +124,7 @@ func (s *Service) Logout(ctx context.Context, userID int64, refreshToken *string
 			return nil
 		}
 
-		s.logger.Error("delete session error", zap.Error(err))
+		s.logger.Error("delete session", zap.Error(err))
 
 		return fmt.Errorf("delete session: %w", err)
 	}
@@ -134,7 +143,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 			return nil, model.ErrSessionNotFound
 		}
 
-		s.logger.Error("get session error", zap.Error(err))
+		s.logger.Error("get session", zap.Error(err))
 
 		return nil, fmt.Errorf("get session: %w", err)
 	}
@@ -149,7 +158,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 				return nil, model.ErrSessionNotFound
 			}
 
-			s.logger.Error("delete session error", zap.Error(err))
+			s.logger.Error("delete session", zap.Error(err))
 
 			return nil, fmt.Errorf("delete session: %w", err)
 		}
@@ -159,7 +168,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 
 	refreshToken, err = generateRefreshToken()
 	if err != nil {
-		s.logger.Error("generate refresh token error", zap.Error(err))
+		s.logger.Error("generate refresh token", zap.Error(err))
 
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
@@ -171,14 +180,14 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 
 	session, err = s.sessionRepository.Update(ctx, session)
 	if err != nil {
-		s.logger.Error("update session error", zap.Error(err))
+		s.logger.Error("update session", zap.Error(err))
 
 		return nil, fmt.Errorf("update session: %w", err)
 	}
 
 	accessToken, err := s.SignAccessToken(session.UserID, session.ID)
 	if err != nil {
-		s.logger.Error("sign access token error", zap.Error(err))
+		s.logger.Error("sign access token", zap.Error(err))
 
 		return nil, fmt.Errorf("sign access token: %w", err)
 	}
@@ -195,7 +204,18 @@ func (s *Service) Authorize(ctx context.Context, token string) (*model.User, err
 		return nil, fmt.Errorf("parse and validate auth token: %w", err)
 	}
 
-	user, err := s.userRepository.Get(ctx, &model.UserFilter{
+	user, err := s.userCacheRepository.Get(ctx, claims.UserID)
+	if err != nil {
+		if !errors.Is(err, model.ErrUserNotFound) {
+			s.logger.Error("get user from cache", zap.Error(err))
+		}
+	}
+
+	if user != nil {
+		return user, nil
+	}
+
+	user, err = s.userRepository.Get(ctx, &model.UserFilter{
 		ID: model.IDFilter{Eq: new(claims.UserID)},
 	})
 	if err != nil {
@@ -206,6 +226,10 @@ func (s *Service) Authorize(ctx context.Context, token string) (*model.User, err
 		s.logger.Error("get user error", zap.Error(err))
 
 		return nil, fmt.Errorf("get user: %w", err)
+	}
+
+	if err = s.userCacheRepository.Set(ctx, user, s.config.Auth.AccessTokenTTL); err != nil {
+		s.logger.Error("set user to cache", zap.Error(err))
 	}
 
 	return user, nil
@@ -238,7 +262,7 @@ func (s *Service) ParseAndValidateAccessToken(token string) (*AccessTokenClaims,
 		return []byte(s.config.Auth.SigningKey), nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("parse auth claims: %w", err)
+		return nil, ErrInvalidAuthToken
 	}
 
 	if claims, ok := t.Claims.(*AccessTokenClaims); ok && t.Valid {
@@ -264,7 +288,7 @@ func (s *Service) GenerateVKIDAuthorizationURL(ctx context.Context) (string, err
 	}
 
 	if err = s.codeVerifierRepository.Set(ctx, state, codeVerifier, codeVerifierTTL); err != nil {
-		s.logger.Error("set code verifiet", zap.Error(err))
+		s.logger.Error("set code verifier", zap.Error(err))
 
 		return "", fmt.Errorf("code verifier repository set: %w", err)
 	}

@@ -20,6 +20,7 @@ func TestService_Login_Success(t *testing.T) {
 		userRepository         = mock.NewMockUserRepository(ctrl)
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
@@ -32,7 +33,7 @@ func TestService_Login_Success(t *testing.T) {
 
 	password := "password123"
 
-	passwordHash, err := auth.GeneratePasswordHash(password)
+	passwordHash, err := model.GeneratePasswordHash(password)
 	require.NoError(t, err)
 
 	user := &model.User{
@@ -54,16 +55,21 @@ func TestService_Login_Success(t *testing.T) {
 		Create(t.Context(), gomock.Any()).
 		Return(session, nil)
 
-	svc := auth.New(
+	userCacheRepository.EXPECT().
+		Set(t.Context(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	service := auth.New(
 		zap.NewNop(),
 		config,
 		vkidClient,
 		userRepository,
 		sessionRepository,
+		userCacheRepository,
 		codeVerifierRepository,
 	)
 
-	tokens, err := svc.Login(t.Context(), &auth.LoginInput{
+	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    user.Email,
 		Password: password,
 	})
@@ -71,7 +77,7 @@ func TestService_Login_Success(t *testing.T) {
 	require.NotEmpty(t, tokens.AccessToken)
 	require.NotEmpty(t, tokens.RefreshToken)
 
-	claims, err := svc.ParseAndValidateAccessToken(tokens.AccessToken)
+	claims, err := service.ParseAndValidateAccessToken(tokens.AccessToken)
 	require.NoError(t, err)
 	require.Equal(t, user.ID, claims.UserID)
 }
@@ -82,6 +88,7 @@ func TestService_Login_UserNotFound(t *testing.T) {
 		userRepository         = mock.NewMockUserRepository(ctrl)
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
@@ -89,16 +96,17 @@ func TestService_Login_UserNotFound(t *testing.T) {
 		Get(t.Context(), gomock.Any()).
 		Return(nil, model.ErrUserNotFound)
 
-	svc := auth.New(
+	service := auth.New(
 		zap.NewNop(),
 		&config.Config{},
 		vkidClient,
 		userRepository,
 		sessionRepository,
+		userCacheRepository,
 		codeVerifierRepository,
 	)
 
-	tokens, err := svc.Login(t.Context(), &auth.LoginInput{
+	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    "test@email.com",
 		Password: "password123",
 	})
@@ -112,6 +120,7 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 		userRepository         = mock.NewMockUserRepository(ctrl)
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
@@ -125,19 +134,205 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 		Get(t.Context(), gomock.Any()).
 		Return(user, nil)
 
-	svc := auth.New(
+	service := auth.New(
 		zap.NewNop(),
 		&config.Config{},
 		vkidClient,
 		userRepository,
 		sessionRepository,
+		userCacheRepository,
 		codeVerifierRepository,
 	)
 
-	tokens, err := svc.Login(t.Context(), &auth.LoginInput{
+	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    "test@email.com",
 		Password: "invalid-password",
 	})
 	require.ErrorIs(t, err, auth.ErrInvalidPassword)
 	require.Nil(t, tokens)
+}
+
+func TestService_Authorize_Success_EmptyCache(t *testing.T) {
+	var (
+		ctrl                   = gomock.NewController(t)
+		userRepository         = mock.NewMockUserRepository(ctrl)
+		sessionRepository      = mock.NewMockSessionRepository(ctrl)
+		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		vkidClient             = mock.NewMockVKIDClient(ctrl)
+	)
+
+	config := &config.Config{
+		Auth: config.AuthConfig{
+			AccessTokenTTL: 15 * time.Minute,
+			SigningKey:     "secret-key",
+		},
+	}
+
+	user := &model.User{
+		ID: 1,
+	}
+
+	session := &model.Session{
+		ID: "session-id",
+	}
+
+	userCacheRepository.EXPECT().
+		Get(t.Context(), user.ID).
+		Return(nil, model.ErrUserNotFound)
+
+	userRepository.EXPECT().
+		Get(t.Context(), gomock.Any()).
+		Return(user, nil)
+
+	userCacheRepository.EXPECT().
+		Set(t.Context(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	service := auth.New(
+		zap.NewNop(),
+		config,
+		vkidClient,
+		userRepository,
+		sessionRepository,
+		userCacheRepository,
+		codeVerifierRepository,
+	)
+
+	token, err := service.SignAccessToken(user.ID, session.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
+
+	authorizedUser, err := service.Authorize(t.Context(), token)
+	require.NoError(t, err)
+	require.Equal(t, user.ID, authorizedUser.ID)
+}
+
+func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
+	var (
+		ctrl                   = gomock.NewController(t)
+		userRepository         = mock.NewMockUserRepository(ctrl)
+		sessionRepository      = mock.NewMockSessionRepository(ctrl)
+		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		vkidClient             = mock.NewMockVKIDClient(ctrl)
+	)
+
+	config := &config.Config{
+		Auth: config.AuthConfig{
+			AccessTokenTTL: 15 * time.Minute,
+			SigningKey:     "secret-key",
+		},
+	}
+
+	user := &model.User{
+		ID: 1,
+	}
+
+	session := &model.Session{
+		ID: "session-id",
+	}
+
+	userCacheRepository.EXPECT().
+		Get(t.Context(), user.ID).
+		Return(user, nil)
+
+	service := auth.New(
+		zap.NewNop(),
+		config,
+		vkidClient,
+		userRepository,
+		sessionRepository,
+		userCacheRepository,
+		codeVerifierRepository,
+	)
+
+	token, err := service.SignAccessToken(user.ID, session.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
+
+	authorizedUser, err := service.Authorize(t.Context(), token)
+	require.NoError(t, err)
+	require.Equal(t, user.ID, authorizedUser.ID)
+}
+
+func TestService_Authorize_InvatidToken(t *testing.T) {
+	var (
+		ctrl                   = gomock.NewController(t)
+		userRepository         = mock.NewMockUserRepository(ctrl)
+		sessionRepository      = mock.NewMockSessionRepository(ctrl)
+		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		vkidClient             = mock.NewMockVKIDClient(ctrl)
+	)
+
+	config := &config.Config{
+		Auth: config.AuthConfig{
+			AccessTokenTTL: 15 * time.Minute,
+			SigningKey:     "secret-key",
+		},
+	}
+
+	service := auth.New(
+		zap.NewNop(),
+		config,
+		vkidClient,
+		userRepository,
+		sessionRepository,
+		userCacheRepository,
+		codeVerifierRepository,
+	)
+
+	user, err := service.Authorize(t.Context(), "invalid token")
+	require.Nil(t, user)
+	require.ErrorIs(t, err, auth.ErrInvalidAuthToken)
+}
+
+func TestService_Authorize_UserNotFound(t *testing.T) {
+	var (
+		ctrl                   = gomock.NewController(t)
+		userRepository         = mock.NewMockUserRepository(ctrl)
+		sessionRepository      = mock.NewMockSessionRepository(ctrl)
+		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
+		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		vkidClient             = mock.NewMockVKIDClient(ctrl)
+	)
+
+	config := &config.Config{
+		Auth: config.AuthConfig{
+			AccessTokenTTL: 15 * time.Minute,
+			SigningKey:     "secret-key",
+		},
+	}
+
+	var (
+		userID    int64 = 1
+		sessionID       = "session-id"
+	)
+
+	userCacheRepository.EXPECT().
+		Get(t.Context(), userID).
+		Return(nil, model.ErrUserNotFound)
+
+	userRepository.EXPECT().
+		Get(t.Context(), gomock.Any()).
+		Return(nil, model.ErrUserNotFound)
+
+	service := auth.New(
+		zap.NewNop(),
+		config,
+		vkidClient,
+		userRepository,
+		sessionRepository,
+		userCacheRepository,
+		codeVerifierRepository,
+	)
+
+	token, err := service.SignAccessToken(userID, sessionID)
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
+
+	user, err := service.Authorize(t.Context(), token)
+	require.ErrorIs(t, err, model.ErrUserNotFound)
+	require.Nil(t, user)
 }
