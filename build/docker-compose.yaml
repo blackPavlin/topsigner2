@@ -13,7 +13,9 @@ services:
       postgres:
         condition: service_healthy
       minio:
-        condition: service_healthy  
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - default
   postgres:
@@ -40,6 +42,7 @@ services:
     container_name: redis
     restart: unless-stopped
     image: redis:8.10-alpine
+    command: redis-server --loglevel warning --requirepass ${REDIS_PASSWORD:-redis}
     environment:
       REDIS_USER: ${REDIS_USER:-redis}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis}
@@ -75,7 +78,72 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - default    
+      - default
+  loki:
+    container_name: loki
+    restart: unless-stopped
+    image: grafana/loki:3.7.0
+    user: "0:0"
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./configs/loki.yaml:/etc/loki/loki.yaml:ro
+      - ./volumes/loki:/loki
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: [ "CMD", "/usr/bin/loki", "-health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - default
+  alloy:
+    container_name: alloy
+    restart: unless-stopped
+    image: grafana/alloy:v1.19.2
+    command: 
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/config.alloy:/etc/alloy/config.alloy:ro
+      - ./volumes/alloy:/var/lib/alloy/data
+    ports:
+      - "12345:12345"
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - default  
+  grafana:
+    container_name: grafana
+    restart: unless-stopped
+    image: grafana/grafana:13.1.4
+    user: "0:0"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_LOG_LEVEL: error
+    volumes:
+      - ./volumes/grafana:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - default
 
 networks:
   default:
