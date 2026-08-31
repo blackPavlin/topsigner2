@@ -3,13 +3,17 @@ CREATE TYPE user_role AS ENUM ('USER', 'ADMIN');
 
 CREATE TABLE users (
     id 		        BIGINT 	    GENERATED ALWAYS AS IDENTITY,
-    email           TEXT        NOT NULL,
-    password_hash   TEXT        NOT NULL,
+    vk_user_id      BIGINT      DEFAULT NULL,
+    email           TEXT        DEFAULT NULL,
+    password_hash   TEXT        DEFAULT NULL,
     role            user_role   NOT NULL DEFAULT 'USER',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT users_email_unique UNIQUE (email),
+    CONSTRAINT users_vk_user_id_unique UNIQUE (vk_user_id),
+    CONSTRAINT users_identity_check CHECK (email IS NOT NULL OR vk_user_id IS NOT NULL)
 );
 
 CREATE TABLE sessions (

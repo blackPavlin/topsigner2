@@ -121,11 +121,11 @@ func (h *AuthHandler) AuthRefresh(
 }
 
 // Get OAuth authorization URL
-// (GET /api/v1/auth/{provider})
-func (h *AuthHandler) AuthOAuthRedirect(
+// (GET /api/v1/auth/oauth/{provider})
+func (h *AuthHandler) AuthOAuthGetURL(
 	ctx context.Context,
-	r httpserver.AuthOAuthRedirectRequestObject,
-) (httpserver.AuthOAuthRedirectResponseObject, error) {
+	r httpserver.AuthOAuthGetURLRequestObject,
+) (httpserver.AuthOAuthGetURLResponseObject, error) {
 	var (
 		authorizationURL string
 		err              error
@@ -133,27 +133,56 @@ func (h *AuthHandler) AuthOAuthRedirect(
 
 	switch r.Provider {
 	case httpserver.Vkontakte:
-		authorizationURL, err = h.authService.GenerateVKIDAuthorizationURL(ctx)
+		authorizationURL, err = h.authService.GenerateVKIDOAuthURL(ctx)
 		if err != nil {
-			return httpserver.AuthOAuthRedirect500JSONResponse{
+			return httpserver.AuthOAuthGetURL500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
 	default:
-		return httpserver.AuthOAuthRedirect400JSONResponse{
+		return httpserver.AuthOAuthGetURL400JSONResponse{
 			BadRequestJSONResponse: NewBadRequestError(ErrInvalidOAuthProvider),
 		}, nil
 	}
 
-	// https://topsigner.ru/api/v1/auth/vkontakte/callback?
-	// 	code=vk2.a.EthCB9hsxZEeCMepeZZBNuoCwS2q2k0xVFhiF4zvxNXjRhicQrpDj834h1bVzbX7LZgsAKKpYLIVTzo_9nR_Iquo3TGHQnWDIQrTn0fqoa6WoZZBVTBc-Gsn8YZXrLR1jppWuuj3WYmvE7sKsAADRuoBiqzugfSzVQ3Wf8IUYxZD5ha_1DlHYLwZFuwSTexGgz--BGIyiy-kc7mYKI0hOw
-	// 	&expires_in=600
-	// 	&device_id=LwSCGhkkaDNsBX68hNcZ0oUFqWhn2yVYCDefK5LQpr5sfrG4fAa7mk5HHbO5OdzoFZN_RGxJHJQydQtHd2QZAA
-	// 	&state=QCX4cW5z0RFo0HC0XUF75guGHcLr029E
-	// 	&ext_id=Z9hH0mnsngWDJp50EkKa9IrsgcsqJ61kiRsKWyqEBC_1_YrdfcQ5ue4hm3p4t_JdWdLa8X86eUEc-ec4E-eUD-iFGnPZSLtdjCBUmXqQ1XlGvUWn0KwreEu2O9jTDHCzZZg6ArbW3w56mSzBS2xIUEyz4VSdIbZn4N5QYhg5YOzT
-	// 	&type=code_v2
-
-	return httpserver.AuthOAuthRedirect200JSONResponse{
+	return httpserver.AuthOAuthGetURL200JSONResponse{
 		URL: authorizationURL,
+	}, nil
+}
+
+// AuthOAuthCallback OAuth callback
+// (GET /api/v1/auth/oauth/{provider}/callback)
+func (h *AuthHandler) AuthOAuthCallback(
+	ctx context.Context,
+	r httpserver.AuthOAuthCallbackRequestObject,
+) (httpserver.AuthOAuthCallbackResponseObject, error) {
+	var (
+		tokenPair *auth.TokenPair
+		err       error
+	)
+
+	switch r.Provider {
+	case httpserver.Vkontakte:
+		tokenPair, err = h.authService.ExchangeVKIDOAuthToken(ctx, &auth.OAuthExchangeTokenParams{
+			Code:      r.Params.Code,
+			DeviceID:  r.Params.DeviceID,
+			State:     r.Params.State,
+			IP:        middleware.GetClientIP(ctx),
+			UserAgent: mw.GetUserAgentFromContext(ctx),
+		})
+		if err != nil {
+			return httpserver.AuthOAuthCallback401JSONResponse{
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
+		}
+	default:
+		return httpserver.AuthOAuthCallback400JSONResponse{
+			BadRequestJSONResponse: NewBadRequestError(ErrInvalidOAuthProvider),
+		}, nil
+	}
+
+	return httpserver.AuthOAuthCallback200JSONResponse{
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
 	}, nil
 }

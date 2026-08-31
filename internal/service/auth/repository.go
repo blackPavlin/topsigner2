@@ -11,6 +11,7 @@ import (
 
 type UserRepository interface {
 	Get(ctx context.Context, filter *model.UserFilter) (*model.User, error)
+	Create(ctx context.Context, user *model.User) (*model.User, error)
 }
 
 type SessionRepository interface {
@@ -32,5 +33,6 @@ type UserCacheRepository interface {
 }
 
 type VKIDClient interface {
-	GenerateAuthorizationURL(challenge, state string) string
+	GenerateOAuthURL(challenge, state string) string
+	ExchangeOAuthToken(ctx context.Context, params *OAuthExchangeTokenParams) (*OAuthToken, error)
 }

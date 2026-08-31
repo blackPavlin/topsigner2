@@ -13,6 +13,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
+// todo: чтобы не дублировать логику, вынести создание access и refresh токенов в отдельную функцию
 // todo: возвращать в TokenPair ExpiresAt
 
 type Service struct {
@@ -59,7 +60,7 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
-	if err = model.ComparePasswordAndHash(user.PasswordHash, input.Password); err != nil {
+	if err = model.ComparePasswordAndHash(*user.PasswordHash, input.Password); err != nil {
 		return nil, ErrInvalidPassword
 	}
 
@@ -272,7 +273,7 @@ func (s *Service) ParseAndValidateAccessToken(token string) (*AccessTokenClaims,
 	return nil, ErrInvalidAuthToken
 }
 
-func (s *Service) GenerateVKIDAuthorizationURL(ctx context.Context) (string, error) {
+func (s *Service) GenerateVKIDOAuthURL(ctx context.Context) (string, error) {
 	codeVerifier, err := generateRandomString(codeVerifierBytes)
 	if err != nil {
 		s.logger.Error("generate code verifier", zap.Error(err))
@@ -293,5 +294,91 @@ func (s *Service) GenerateVKIDAuthorizationURL(ctx context.Context) (string, err
 		return "", fmt.Errorf("code verifier repository set: %w", err)
 	}
 
-	return s.vkidClient.GenerateAuthorizationURL(codeChallengeS256(codeVerifier), state), nil
+	return s.vkidClient.GenerateOAuthURL(codeChallengeS256(codeVerifier), state), nil
+}
+
+func (s *Service) ExchangeVKIDOAuthToken(
+	ctx context.Context,
+	params *OAuthExchangeTokenParams,
+) (*TokenPair, error) {
+	codeVerifier, err := s.codeVerifierRepository.Pop(ctx, params.State)
+	if err != nil {
+		if errors.Is(err, model.ErrCodeVerifierNotFound) {
+			return nil, model.ErrCodeVerifierNotFound
+		}
+
+		s.logger.Error("pop vkid code verifier", zap.Error(err))
+
+		return nil, fmt.Errorf("pop vkid code verifier: %w", err)
+	}
+
+	params.CodeVerifier = codeVerifier
+
+	oAuthToken, err := s.vkidClient.ExchangeOAuthToken(ctx, params)
+	if err != nil {
+		s.logger.Error("exchane oauth token", zap.Error(err))
+
+		return nil, fmt.Errorf("exchane vkid oauth token: %w", err)
+	}
+
+	user, err := s.userRepository.Get(ctx, &model.UserFilter{
+		VKUserID: model.IDFilter{Eq: new(oAuthToken.UserID)},
+	})
+	if err != nil {
+		if !errors.Is(err, model.ErrUserNotFound) {
+			s.logger.Error("get user by vk user id", zap.Error(err))
+
+			return nil, fmt.Errorf("get user by vk user id: %w", err)
+		}
+
+		user, err = s.userRepository.Create(ctx, &model.User{
+			VKUserID: new(oAuthToken.UserID),
+			Role:     model.RoleUser,
+		})
+		if err != nil {
+			s.logger.Error("create user with vk user id", zap.Error(err))
+
+			return nil, fmt.Errorf("create user with vk user id: %w", err)
+		}
+	}
+
+	refreshToken, err := generateRefreshToken()
+	if err != nil {
+		s.logger.Error("generate refresh token", zap.Error(err))
+
+		return nil, fmt.Errorf("generate refresh token: %w", err)
+	}
+
+	session := &model.Session{
+		UserID:           user.ID,
+		IP:               params.IP,
+		UserAgent:        params.UserAgent,
+		RefreshTokenHash: hashRefreshToken(refreshToken),
+		ExpiresAt:        time.Now().Add(s.config.Auth.RefreshTokenTTL),
+	}
+
+	// todo: не создавать новую сессию на каждый запрос авторизации, если user_id, ip и user_agent совпадают
+
+	session, err = s.sessionRepository.Create(ctx, session)
+	if err != nil {
+		s.logger.Error("create session", zap.Error(err))
+
+		return nil, fmt.Errorf("create session: %w", err)
+	}
+
+	accessToken, err := s.SignAccessToken(user.ID, session.ID)
+	if err != nil {
+		s.logger.Error("sign access token", zap.Error(err))
+
+		return nil, fmt.Errorf("sign access token: %w", err)
+	}
+
+	if err = s.userCacheRepository.Set(ctx, user, s.config.Auth.AccessTokenTTL); err != nil {
+		s.logger.Error("set user to cache", zap.Error(err))
+	}
+
+	return &TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }

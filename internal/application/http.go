@@ -20,10 +20,13 @@ func NewHttpServer(
 ) *http.Server {
 	addr := fmt.Sprintf(":%d", config.Http.Port)
 
-	// todo: таймауты на read и write
 	server := &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:              addr,
+		Handler:           handler,
+		ReadTimeout:       config.Http.ReadTimeout,
+		ReadHeaderTimeout: config.Http.ReadHeaderTimeout,
+		WriteTimeout:      config.Http.WriteTimeout,
+		IdleTimeout:       config.Http.IdleTimeout,
 	}
 
 	lc.Append(fx.Hook{

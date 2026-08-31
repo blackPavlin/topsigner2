@@ -1,6 +1,8 @@
 package vkid
 
 import (
+	"fmt"
+
 	"go.uber.org/fx"
 
 	"github.com/bboykiv/topsigner/internal/config"
@@ -17,5 +19,10 @@ type Params struct {
 }
 
 func New(params Params) (*Client, error) {
-	return NewClient(params.Config), nil
+	client, err := NewClient(params.Config)
+	if err != nil {
+		return nil, fmt.Errorf("create vkid client: %w", err)
+	}
+
+	return client, nil
 }

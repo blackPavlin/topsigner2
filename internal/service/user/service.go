@@ -32,8 +32,8 @@ func (s *Service) Create(ctx context.Context, input *CreateUserInput) (*model.Us
 	}
 
 	user := &model.User{
-		Email:        input.Email,
-		PasswordHash: passwordHash,
+		Email:        new(input.Email),
+		PasswordHash: new(passwordHash),
 		Role:         input.Role,
 	}
 
@@ -59,6 +59,8 @@ func (s *Service) CreateDefault(ctx context.Context) error {
 
 	if _, err := s.Create(ctx, input); err != nil {
 		if errors.Is(err, model.ErrUserAlreadyExists) {
+			s.logger.Info("default user already exists")
+
 			return nil
 		}
 
@@ -66,6 +68,8 @@ func (s *Service) CreateDefault(ctx context.Context) error {
 
 		return fmt.Errorf("create default user: %w", err)
 	}
+
+	s.logger.Info("default user successful create")
 
 	return nil
 }

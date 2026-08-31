@@ -1,22 +1,38 @@
 package vkid
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
 	"net/url"
 
+	"github.com/bboykiv/topsigner/gen/external/vkid/httpclient"
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/service/auth"
 )
 
 type Client struct {
 	config *config.Config
+	client *httpclient.ClientWithResponses
 }
 
-func NewClient(config *config.Config) *Client {
+func NewClient(config *config.Config) (*Client, error) {
+	// todo: добавить логгирование
+	// todo: добавить возможность подмены реального http клиента на моковый/тестовый
+
+	client, err := httpclient.NewClientWithResponses(config.VKID.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("create new client with responses: %w", err)
+	}
+
 	return &Client{
 		config: config,
-	}
+		client: client,
+	}, nil
 }
 
-func (c *Client) GenerateAuthorizationURL(challenge, state string) string {
+func (c *Client) GenerateOAuthURL(challenge, state string) string {
 	u := url.URL{Scheme: "https", Host: "id.vk.ru", Path: "/authorize"}
 	q := u.Query()
 
@@ -31,4 +47,46 @@ func (c *Client) GenerateAuthorizationURL(challenge, state string) string {
 	u.RawQuery = q.Encode()
 
 	return u.String()
+}
+
+func (c *Client) ExchangeOAuthToken(
+	ctx context.Context,
+	params *auth.OAuthExchangeTokenParams,
+) (*auth.OAuthToken, error) {
+	body := httpclient.ExchangeTokenFormdataRequestBody{
+		GrantType:    httpclient.AuthorizationCode,
+		CodeVerifier: new(params.CodeVerifier),
+		RedirectURI:  new(c.config.VKID.RedirectURL),
+		Code:         new(params.Code),
+		ClientID:     c.config.VKID.ClientID,
+		DeviceID:     params.DeviceID,
+		State:        params.State,
+	}
+
+	resp, err := c.client.ExchangeTokenWithFormdataBodyWithResponse(ctx, body)
+	if err != nil {
+		return nil, fmt.Errorf("exchane vkid oauth token: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		switch resp.StatusCode() {
+		case http.StatusBadRequest:
+			return nil, errors.New(resp.JSON400.Error)
+		case http.StatusInternalServerError:
+			return nil, errors.New(resp.JSON500.Error)
+		default:
+			// todo: улучшить обработку ошибок
+		}
+	}
+
+	return &auth.OAuthToken{
+		AccessToken:  resp.JSON200.AccessToken,
+		RefreshToken: resp.JSON200.RefreshToken,
+		IDToken:      resp.JSON200.IDToken,
+		TokenType:    resp.JSON200.TokenType,
+		ExpiresIn:    resp.JSON200.ExpiresIn,
+		UserID:       resp.JSON200.UserID,
+		State:        resp.JSON200.State,
+		Scope:        resp.JSON200.Scope,
+	}, nil
 }

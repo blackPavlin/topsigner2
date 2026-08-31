@@ -15,6 +15,7 @@ import (
 	time "time"
 
 	model "github.com/bboykiv/topsigner/internal/model"
+	auth "github.com/bboykiv/topsigner/internal/service/auth"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,6 +41,45 @@ func NewMockUserRepository(ctrl *gomock.Controller) *MockUserRepository {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockUserRepository) EXPECT() *MockUserRepositoryMockRecorder {
 	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockUserRepository) Create(ctx context.Context, user *model.User) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, user)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockUserRepositoryMockRecorder) Create(ctx, user any) *MockUserRepositoryCreateCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUserRepository)(nil).Create), ctx, user)
+	return &MockUserRepositoryCreateCall{Call: call}
+}
+
+// MockUserRepositoryCreateCall wrap *gomock.Call
+type MockUserRepositoryCreateCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserRepositoryCreateCall) Return(arg0 *model.User, arg1 error) *MockUserRepositoryCreateCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserRepositoryCreateCall) Do(f func(context.Context, *model.User) (*model.User, error)) *MockUserRepositoryCreateCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserRepositoryCreateCall) DoAndReturn(f func(context.Context, *model.User) (*model.User, error)) *MockUserRepositoryCreateCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
 }
 
 // Get mocks base method.
@@ -524,40 +564,79 @@ func (m *MockVKIDClient) EXPECT() *MockVKIDClientMockRecorder {
 	return m.recorder
 }
 
-// GenerateAuthorizationURL mocks base method.
-func (m *MockVKIDClient) GenerateAuthorizationURL(challenge, state string) string {
+// ExchangeOAuthToken mocks base method.
+func (m *MockVKIDClient) ExchangeOAuthToken(ctx context.Context, params *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateAuthorizationURL", challenge, state)
-	ret0, _ := ret[0].(string)
-	return ret0
+	ret := m.ctrl.Call(m, "ExchangeOAuthToken", ctx, params)
+	ret0, _ := ret[0].(*auth.OAuthToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// GenerateAuthorizationURL indicates an expected call of GenerateAuthorizationURL.
-func (mr *MockVKIDClientMockRecorder) GenerateAuthorizationURL(challenge, state any) *MockVKIDClientGenerateAuthorizationURLCall {
+// ExchangeOAuthToken indicates an expected call of ExchangeOAuthToken.
+func (mr *MockVKIDClientMockRecorder) ExchangeOAuthToken(ctx, params any) *MockVKIDClientExchangeOAuthTokenCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateAuthorizationURL", reflect.TypeOf((*MockVKIDClient)(nil).GenerateAuthorizationURL), challenge, state)
-	return &MockVKIDClientGenerateAuthorizationURLCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExchangeOAuthToken", reflect.TypeOf((*MockVKIDClient)(nil).ExchangeOAuthToken), ctx, params)
+	return &MockVKIDClientExchangeOAuthTokenCall{Call: call}
 }
 
-// MockVKIDClientGenerateAuthorizationURLCall wrap *gomock.Call
-type MockVKIDClientGenerateAuthorizationURLCall struct {
+// MockVKIDClientExchangeOAuthTokenCall wrap *gomock.Call
+type MockVKIDClientExchangeOAuthTokenCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockVKIDClientGenerateAuthorizationURLCall) Return(arg0 string) *MockVKIDClientGenerateAuthorizationURLCall {
-	c.Call = c.Call.Return(arg0)
+func (c *MockVKIDClientExchangeOAuthTokenCall) Return(arg0 *auth.OAuthToken, arg1 error) *MockVKIDClientExchangeOAuthTokenCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockVKIDClientGenerateAuthorizationURLCall) Do(f func(string, string) string) *MockVKIDClientGenerateAuthorizationURLCall {
+func (c *MockVKIDClientExchangeOAuthTokenCall) Do(f func(context.Context, *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientExchangeOAuthTokenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockVKIDClientGenerateAuthorizationURLCall) DoAndReturn(f func(string, string) string) *MockVKIDClientGenerateAuthorizationURLCall {
+func (c *MockVKIDClientExchangeOAuthTokenCall) DoAndReturn(f func(context.Context, *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientExchangeOAuthTokenCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GenerateOAuthURL mocks base method.
+func (m *MockVKIDClient) GenerateOAuthURL(challenge, state string) string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateOAuthURL", challenge, state)
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GenerateOAuthURL indicates an expected call of GenerateOAuthURL.
+func (mr *MockVKIDClientMockRecorder) GenerateOAuthURL(challenge, state any) *MockVKIDClientGenerateOAuthURLCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateOAuthURL", reflect.TypeOf((*MockVKIDClient)(nil).GenerateOAuthURL), challenge, state)
+	return &MockVKIDClientGenerateOAuthURLCall{Call: call}
+}
+
+// MockVKIDClientGenerateOAuthURLCall wrap *gomock.Call
+type MockVKIDClientGenerateOAuthURLCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockVKIDClientGenerateOAuthURLCall) Return(arg0 string) *MockVKIDClientGenerateOAuthURLCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockVKIDClientGenerateOAuthURLCall) Do(f func(string, string) string) *MockVKIDClientGenerateOAuthURLCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockVKIDClientGenerateOAuthURLCall) DoAndReturn(f func(string, string) string) *MockVKIDClientGenerateOAuthURLCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

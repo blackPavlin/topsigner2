@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -74,7 +75,7 @@ func (r *ImageRepository) Create(ctx context.Context, image *model.Image) (*mode
 	sql, args, err := psql.Insert(imageTableName).
 		Columns("user_id", "name").
 		Values(image.UserID, image.Name).
-		Suffix("RETURNING id, created_at, updated_at").
+		Suffix("ON CONFLICT DO NOTHING RETURNING id, created_at, updated_at").
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("build sql query: %w", err)
@@ -86,10 +87,12 @@ func (r *ImageRepository) Create(ctx context.Context, image *model.Image) (*mode
 		&image.UpdatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrImageAlreadyExists
+		}
+
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 			switch pgErr.Code {
-			case pgerrcode.UniqueViolation:
-				return nil, model.ErrImageAlreadyExists
 			case pgerrcode.ForeignKeyViolation:
 				return nil, model.ErrUserNotFound
 			}

@@ -110,6 +110,9 @@ components:
   schemas:
     Error:
       type: object
+      required:
+        - error
+        - error_description
       properties:
         error:
           type: string
@@ -121,6 +124,7 @@ components:
         - grant_type
         - client_id
         - device_id
+        - state
       properties:
         grant_type:
           type: string
@@ -144,8 +148,19 @@ components:
           type: string
         state:
           type: string
+        scope:
+          type: string  
     TokenResponse:
       type: object
+      required:
+        - access_token
+        - refresh_token
+        - id_token
+        - token_type
+        - expires_in
+        - user_id
+        - state
+        - scope
       properties:
         access_token:
           type: string
@@ -159,6 +174,7 @@ components:
           type: integer
         user_id:
           type: integer
+          format: int64
         state:
           type: string
         scope:

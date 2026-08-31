@@ -38,8 +38,8 @@ func TestService_Login_Success(t *testing.T) {
 
 	user := &model.User{
 		ID:           1,
-		Email:        "test@email.com",
-		PasswordHash: passwordHash,
+		Email:        new("test@email.com"),
+		PasswordHash: new(passwordHash),
 	}
 
 	session := &model.Session{
@@ -70,7 +70,7 @@ func TestService_Login_Success(t *testing.T) {
 	)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
-		Email:    user.Email,
+		Email:    *user.Email,
 		Password: password,
 	})
 	require.NoError(t, err)
@@ -126,8 +126,8 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 
 	user := &model.User{
 		ID:           1,
-		Email:        "test@email.com",
-		PasswordHash: "$2a$12$yyLAM0Pp2tZ/l3B4EK6IL.heTUqfnZnHiVq2lnCSoYMzSudD1cUX6",
+		Email:        new("test@email.com"),
+		PasswordHash: new("$2a$12$yyLAM0Pp2tZ/l3B4EK6IL.heTUqfnZnHiVq2lnCSoYMzSudD1cUX6"),
 	}
 
 	userRepository.EXPECT().

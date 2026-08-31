@@ -30,7 +30,7 @@ func TestService_Create_Success(t *testing.T) {
 		Create(t.Context(), gomock.Any()).
 		Return(&model.User{
 			ID:    1,
-			Email: input.Email,
+			Email: new(input.Email),
 			Role:  input.Role,
 		}, nil)
 
@@ -60,7 +60,7 @@ func TestService_CreateDefault_Success(t *testing.T) {
 		Create(t.Context(), gomock.Any()).
 		Return(&model.User{
 			ID:    1,
-			Email: userConfig.Default.Email,
+			Email: new(userConfig.Default.Email),
 			Role:  userConfig.Default.Role,
 		}, nil)
 

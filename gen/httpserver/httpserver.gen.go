@@ -129,6 +129,18 @@ type AuthLogoutJSONBody struct {
 	RefreshToken *string `json:"refreshToken,omitempty"`
 }
 
+// AuthOAuthCallbackParams defines parameters for AuthOAuthCallback.
+type AuthOAuthCallbackParams struct {
+	// Code Authorization code issued by the provider
+	Code string `form:"code" json:"code"`
+
+	// State Opaque value used to prevent CSRF attacks
+	State string `form:"state" json:"state"`
+
+	// DeviceID Unique device identifier
+	DeviceID string `form:"device_id" json:"device_id"`
+}
+
 // AuthRefreshJSONBody defines parameters for AuthRefresh.
 type AuthRefreshJSONBody struct {
 	RefreshToken string `json:"refreshToken"`
@@ -280,6 +292,20 @@ type ClientInterface interface {
 	// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
 	AuthLogout(ctx context.Context, body AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthOAuthGetURL Get OAuth authorization URL
+	//
+	// Builds and returns authorization URL.
+	//
+	// Corresponds with GET /api/v1/auth/oauth/{provider} (the `AuthOAuthGetURL` operationId).
+	AuthOAuthGetURL(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AuthOAuthCallback OAuth callback
+	//
+	// Exchanges the authorization code for a pair of auth tokens.
+	//
+	// Corresponds with GET /api/v1/auth/oauth/{provider}/callback (the `AuthOAuthCallback` operationId).
+	AuthOAuthCallback(ctx context.Context, provider Provider, params *AuthOAuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AuthRefreshWithBody Refresh auth tokens
 	//
 	// Exchange refresh token.
@@ -297,13 +323,6 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
 	AuthRefresh(ctx context.Context, body AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// AuthOAuthRedirect Get OAuth authorization URL
-	//
-	// Builds and returns authorization URL.
-	//
-	// Corresponds with GET /api/v1/auth/{provider} (the `AuthOAuthRedirect` operationId).
-	AuthOAuthRedirect(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetFonts Get list of fonts
 	//
@@ -410,6 +429,40 @@ func (c *Client) AuthLogout(ctx context.Context, body AuthLogoutJSONRequestBody,
 	return c.Client.Do(req)
 }
 
+// AuthOAuthGetURL Get OAuth authorization URL
+//
+// Builds and returns authorization URL.
+//
+// Corresponds with GET /api/v1/auth/oauth/{provider} (the `AuthOAuthGetURL` operationId).
+func (c *Client) AuthOAuthGetURL(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthOAuthGetURLRequest(c.Server, provider)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AuthOAuthCallback OAuth callback
+//
+// Exchanges the authorization code for a pair of auth tokens.
+//
+// Corresponds with GET /api/v1/auth/oauth/{provider}/callback (the `AuthOAuthCallback` operationId).
+func (c *Client) AuthOAuthCallback(ctx context.Context, provider Provider, params *AuthOAuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthOAuthCallbackRequest(c.Server, provider, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // AuthRefreshWithBody Refresh auth tokens
 //
 // Exchange refresh token.
@@ -438,23 +491,6 @@ func (c *Client) AuthRefreshWithBody(ctx context.Context, contentType string, bo
 // Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
 func (c *Client) AuthRefresh(ctx context.Context, body AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewAuthRefreshRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// AuthOAuthRedirect Get OAuth authorization URL
-//
-// Builds and returns authorization URL.
-//
-// Corresponds with GET /api/v1/auth/{provider} (the `AuthOAuthRedirect` operationId).
-func (c *Client) AuthOAuthRedirect(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthOAuthRedirectRequest(c.Server, provider)
 	if err != nil {
 		return nil, err
 	}
@@ -613,6 +649,113 @@ func NewAuthLogoutRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
+// NewAuthOAuthGetURLRequest constructs an http.Request for the AuthOAuthGetURL method
+func NewAuthOAuthGetURLRequest(server string, provider Provider) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "provider", provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/auth/oauth/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuthOAuthCallbackRequest constructs an http.Request for the AuthOAuthCallback method
+func NewAuthOAuthCallbackRequest(server string, provider Provider, params *AuthOAuthCallbackParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "provider", provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/auth/oauth/%s/callback", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "device_id", params.DeviceID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAuthRefreshRequest calls the generic AuthRefresh builder with application/json body
 func NewAuthRefreshRequest(server string, body AuthRefreshJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -649,40 +792,6 @@ func NewAuthRefreshRequestWithBody(server string, contentType string, body io.Re
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewAuthOAuthRedirectRequest constructs an http.Request for the AuthOAuthRedirect method
-func NewAuthOAuthRedirectRequest(server string, provider Provider) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "provider", provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/auth/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -962,6 +1071,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
 	AuthLogoutWithResponse(ctx context.Context, body AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
 
+	// AuthOAuthGetURLWithResponse Get OAuth authorization URL
+	//
+	// Builds and returns authorization URL.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/auth/oauth/{provider} (the `AuthOAuthGetURL` operationId).
+	AuthOAuthGetURLWithResponse(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*AuthOAuthGetURLResponse, error)
+
+	// AuthOAuthCallbackWithResponse OAuth callback
+	//
+	// Exchanges the authorization code for a pair of auth tokens.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/auth/oauth/{provider}/callback (the `AuthOAuthCallback` operationId).
+	AuthOAuthCallbackWithResponse(ctx context.Context, provider Provider, params *AuthOAuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthOAuthCallbackResponse, error)
+
 	// AuthRefreshWithBodyWithResponse Refresh auth tokens
 	//
 	// Exchange refresh token.
@@ -979,15 +1106,6 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
 	AuthRefreshWithResponse(ctx context.Context, body AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthRefreshResponse, error)
-
-	// AuthOAuthRedirectWithResponse Get OAuth authorization URL
-	//
-	// Builds and returns authorization URL.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with GET /api/v1/auth/{provider} (the `AuthOAuthRedirect` operationId).
-	AuthOAuthRedirectWithResponse(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*AuthOAuthRedirectResponse, error)
 
 	// GetFontsWithResponse Get list of fonts
 	//
@@ -1169,6 +1287,151 @@ func (r AuthLogoutResponse) ContentType() string {
 	return ""
 }
 
+// AuthOAuthGetURLResponse429Headers the declared response headers of an HTTP 429 response for AuthOAuthGetURL
+type AuthOAuthGetURLResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthOAuthGetURLResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *OAuthAuthorizationURL
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *TooManyRequests
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalError
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthOAuthGetURLResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthOAuthGetURLResponse) GetJSON200() *OAuthAuthorizationURL {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AuthOAuthGetURLResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r AuthOAuthGetURLResponse) GetJSON429() *TooManyRequests {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r AuthOAuthGetURLResponse) GetJSON500() *InternalError {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthOAuthGetURLResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthOAuthGetURLResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthOAuthGetURLResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthOAuthGetURLResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthOAuthCallbackResponse429Headers the declared response headers of an HTTP 429 response for AuthOAuthCallback
+type AuthOAuthCallbackResponse429Headers struct {
+	RetryAfter *int
+}
+
+type AuthOAuthCallbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *AuthTokens
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *TooManyRequests
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalError
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthOAuthCallbackResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthOAuthCallbackResponse) GetJSON200() *AuthTokens {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AuthOAuthCallbackResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AuthOAuthCallbackResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r AuthOAuthCallbackResponse) GetJSON429() *TooManyRequests {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r AuthOAuthCallbackResponse) GetJSON500() *InternalError {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthOAuthCallbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthOAuthCallbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthOAuthCallbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthOAuthCallbackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // AuthRefreshResponse429Headers the declared response headers of an HTTP 429 response for AuthRefresh
 type AuthRefreshResponse429Headers struct {
 	RetryAfter *int
@@ -1239,75 +1502,6 @@ func (r AuthRefreshResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r AuthRefreshResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// AuthOAuthRedirectResponse429Headers the declared response headers of an HTTP 429 response for AuthOAuthRedirect
-type AuthOAuthRedirectResponse429Headers struct {
-	RetryAfter *int
-}
-
-type AuthOAuthRedirectResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *OAuthAuthorizationURL
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *BadRequest
-	// JSON429 the response for an HTTP 429 `application/json` response
-	JSON429 *TooManyRequests
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *InternalError
-	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *AuthOAuthRedirectResponse429Headers
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r AuthOAuthRedirectResponse) GetJSON200() *OAuthAuthorizationURL {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r AuthOAuthRedirectResponse) GetJSON400() *BadRequest {
-	return r.JSON400
-}
-
-// GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r AuthOAuthRedirectResponse) GetJSON429() *TooManyRequests {
-	return r.JSON429
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r AuthOAuthRedirectResponse) GetJSON500() *InternalError {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r AuthOAuthRedirectResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r AuthOAuthRedirectResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r AuthOAuthRedirectResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r AuthOAuthRedirectResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -1678,6 +1872,36 @@ func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, body A
 	return ParseAuthLogoutResponse(rsp)
 }
 
+// AuthOAuthGetURLWithResponse Get OAuth authorization URL
+//
+// Builds and returns authorization URL.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/auth/oauth/{provider} (the `AuthOAuthGetURL` operationId).
+func (c *ClientWithResponses) AuthOAuthGetURLWithResponse(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*AuthOAuthGetURLResponse, error) {
+	rsp, err := c.AuthOAuthGetURL(ctx, provider, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthOAuthGetURLResponse(rsp)
+}
+
+// AuthOAuthCallbackWithResponse OAuth callback
+//
+// Exchanges the authorization code for a pair of auth tokens.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/auth/oauth/{provider}/callback (the `AuthOAuthCallback` operationId).
+func (c *ClientWithResponses) AuthOAuthCallbackWithResponse(ctx context.Context, provider Provider, params *AuthOAuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthOAuthCallbackResponse, error) {
+	rsp, err := c.AuthOAuthCallback(ctx, provider, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthOAuthCallbackResponse(rsp)
+}
+
 // AuthRefreshWithBodyWithResponse Refresh auth tokens
 //
 // Exchange refresh token.
@@ -1706,21 +1930,6 @@ func (c *ClientWithResponses) AuthRefreshWithResponse(ctx context.Context, body 
 		return nil, err
 	}
 	return ParseAuthRefreshResponse(rsp)
-}
-
-// AuthOAuthRedirectWithResponse Get OAuth authorization URL
-//
-// Builds and returns authorization URL.
-//
-// Returns a wrapper object for the known response body format(s).
-//
-// Corresponds with GET /api/v1/auth/{provider} (the `AuthOAuthRedirect` operationId).
-func (c *ClientWithResponses) AuthOAuthRedirectWithResponse(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*AuthOAuthRedirectResponse, error) {
-	rsp, err := c.AuthOAuthRedirect(ctx, provider, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseAuthOAuthRedirectResponse(rsp)
 }
 
 // GetFontsWithResponse Get list of fonts
@@ -1911,6 +2120,133 @@ func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
 	return response, nil
 }
 
+// ParseAuthOAuthGetURLResponse parses an HTTP response from a AuthOAuthGetURLWithResponse call
+func ParseAuthOAuthGetURLResponse(rsp *http.Response) (*AuthOAuthGetURLResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthOAuthGetURLResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest OAuthAuthorizationURL
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers AuthOAuthGetURLResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthOAuthCallbackResponse parses an HTTP response from a AuthOAuthCallbackWithResponse call
+func ParseAuthOAuthCallbackResponse(rsp *http.Response) (*AuthOAuthCallbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthOAuthCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AuthTokens
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers AuthOAuthCallbackResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = &value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseAuthRefreshResponse parses an HTTP response from a AuthRefreshWithResponse call
 func ParseAuthRefreshResponse(rsp *http.Response) (*AuthRefreshResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1965,66 +2301,6 @@ func ParseAuthRefreshResponse(rsp *http.Response) (*AuthRefreshResponse, error) 
 	switch {
 	case rsp.StatusCode == 429:
 		var headers AuthRefreshResponse429Headers
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		response.Headers429 = &headers
-	}
-
-	return response, nil
-}
-
-// ParseAuthOAuthRedirectResponse parses an HTTP response from a AuthOAuthRedirectWithResponse call
-func ParseAuthOAuthRedirectResponse(rsp *http.Response) (*AuthOAuthRedirectResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &AuthOAuthRedirectResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest OAuthAuthorizationURL
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest TooManyRequests
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 429:
-		var headers AuthOAuthRedirectResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
@@ -2317,12 +2593,15 @@ type ServerInterface interface {
 	// AuthLogout Logout user
 	// (POST /api/v1/auth/logout)
 	AuthLogout(w http.ResponseWriter, r *http.Request)
+	// AuthOAuthGetURL Get OAuth authorization URL
+	// (GET /api/v1/auth/oauth/{provider})
+	AuthOAuthGetURL(w http.ResponseWriter, r *http.Request, provider Provider)
+	// AuthOAuthCallback OAuth callback
+	// (GET /api/v1/auth/oauth/{provider}/callback)
+	AuthOAuthCallback(w http.ResponseWriter, r *http.Request, provider Provider, params AuthOAuthCallbackParams)
 	// AuthRefresh Refresh auth tokens
 	// (POST /api/v1/auth/refresh)
 	AuthRefresh(w http.ResponseWriter, r *http.Request)
-	// AuthOAuthRedirect Get OAuth authorization URL
-	// (GET /api/v1/auth/{provider})
-	AuthOAuthRedirect(w http.ResponseWriter, r *http.Request, provider Provider)
 	// GetFonts Get list of fonts
 	// (GET /api/v1/fonts)
 	GetFonts(w http.ResponseWriter, r *http.Request, params GetFontsParams)
@@ -2353,15 +2632,21 @@ func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// AuthRefresh Refresh auth tokens
-// (POST /api/v1/auth/refresh)
-func (_ Unimplemented) AuthRefresh(w http.ResponseWriter, r *http.Request) {
+// AuthOAuthGetURL Get OAuth authorization URL
+// (GET /api/v1/auth/oauth/{provider})
+func (_ Unimplemented) AuthOAuthGetURL(w http.ResponseWriter, r *http.Request, provider Provider) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// AuthOAuthRedirect Get OAuth authorization URL
-// (GET /api/v1/auth/{provider})
-func (_ Unimplemented) AuthOAuthRedirect(w http.ResponseWriter, r *http.Request, provider Provider) {
+// AuthOAuthCallback OAuth callback
+// (GET /api/v1/auth/oauth/{provider}/callback)
+func (_ Unimplemented) AuthOAuthCallback(w http.ResponseWriter, r *http.Request, provider Provider, params AuthOAuthCallbackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AuthRefresh Refresh auth tokens
+// (POST /api/v1/auth/refresh)
+func (_ Unimplemented) AuthRefresh(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2432,22 +2717,8 @@ func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
-// AuthRefresh operation middleware
-func (siw *ServerInterfaceWrapper) AuthRefresh(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthRefresh(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// AuthOAuthRedirect operation middleware
-func (siw *ServerInterfaceWrapper) AuthOAuthRedirect(w http.ResponseWriter, r *http.Request) {
+// AuthOAuthGetURL operation middleware
+func (siw *ServerInterfaceWrapper) AuthOAuthGetURL(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
@@ -2462,7 +2733,89 @@ func (siw *ServerInterfaceWrapper) AuthOAuthRedirect(w http.ResponseWriter, r *h
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthOAuthRedirect(w, r, provider)
+		siw.Handler.AuthOAuthGetURL(w, r, provider)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthOAuthCallback operation middleware
+func (siw *ServerInterfaceWrapper) AuthOAuthCallback(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "provider" -------------
+	var provider Provider
+
+	err = runtime.BindStyledParameterWithOptions("simple", "provider", chi.URLParam(r, "provider"), &provider, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "provider", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AuthOAuthCallbackParams
+
+	// ------------- Required query parameter "code" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "code"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "device_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "device_id", r.URL.Query(), &params.DeviceID, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "device_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "device_id", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthOAuthCallback(w, r, provider, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AuthRefresh operation middleware
+func (siw *ServerInterfaceWrapper) AuthRefresh(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthRefresh(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2751,7 +3104,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/api/v1/auth/refresh", wrapper.AuthRefresh)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/auth/{provider}", wrapper.AuthOAuthRedirect)
+		r.Get(options.BaseURL+"/api/v1/auth/oauth/{provider}", wrapper.AuthOAuthGetURL)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/auth/oauth/{provider}/callback", wrapper.AuthOAuthCallback)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/v1/images", wrapper.GetImages)
@@ -2942,6 +3298,155 @@ func (response AuthLogout500JSONResponse) VisitAuthLogoutResponse(w http.Respons
 	return err
 }
 
+type AuthOAuthGetURLRequestObject struct {
+	Provider Provider `json:"provider"`
+}
+
+type AuthOAuthGetURLResponseObject interface {
+	VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error
+}
+
+type AuthOAuthGetURL200JSONResponse OAuthAuthorizationURL
+
+func (response AuthOAuthGetURL200JSONResponse) VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthGetURL400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AuthOAuthGetURL400JSONResponse) VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthGetURL429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response AuthOAuthGetURL429JSONResponse) VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthGetURL500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AuthOAuthGetURL500JSONResponse) VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthCallbackRequestObject struct {
+	Provider Provider `json:"provider"`
+	Params   AuthOAuthCallbackParams
+}
+
+type AuthOAuthCallbackResponseObject interface {
+	VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error
+}
+
+type AuthOAuthCallback200JSONResponse AuthTokens
+
+func (response AuthOAuthCallback200JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthCallback400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AuthOAuthCallback400JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthCallback401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AuthOAuthCallback401JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthCallback429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response AuthOAuthCallback429JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AuthOAuthCallback500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AuthOAuthCallback500JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type AuthRefreshRequestObject struct {
 	Body *AuthRefreshJSONRequestBody
 }
@@ -3012,73 +3517,6 @@ func (response AuthRefresh429JSONResponse) VisitAuthRefreshResponse(w http.Respo
 type AuthRefresh500JSONResponse struct{ InternalErrorJSONResponse }
 
 func (response AuthRefresh500JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthOAuthRedirectRequestObject struct {
-	Provider Provider `json:"provider"`
-}
-
-type AuthOAuthRedirectResponseObject interface {
-	VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error
-}
-
-type AuthOAuthRedirect200JSONResponse OAuthAuthorizationURL
-
-func (response AuthOAuthRedirect200JSONResponse) VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthOAuthRedirect400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response AuthOAuthRedirect400JSONResponse) VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthOAuthRedirect429JSONResponse struct{ TooManyRequestsJSONResponse }
-
-func (response AuthOAuthRedirect429JSONResponse) VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
-	w.WriteHeader(429)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthOAuthRedirect500JSONResponse struct{ InternalErrorJSONResponse }
-
-func (response AuthOAuthRedirect500JSONResponse) VisitAuthOAuthRedirectResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3430,12 +3868,15 @@ type StrictServerInterface interface {
 	// AuthLogout Logout user
 	// (POST /api/v1/auth/logout)
 	AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error)
+	// AuthOAuthGetURL Get OAuth authorization URL
+	// (GET /api/v1/auth/oauth/{provider})
+	AuthOAuthGetURL(ctx context.Context, request AuthOAuthGetURLRequestObject) (AuthOAuthGetURLResponseObject, error)
+	// AuthOAuthCallback OAuth callback
+	// (GET /api/v1/auth/oauth/{provider}/callback)
+	AuthOAuthCallback(ctx context.Context, request AuthOAuthCallbackRequestObject) (AuthOAuthCallbackResponseObject, error)
 	// AuthRefresh Refresh auth tokens
 	// (POST /api/v1/auth/refresh)
 	AuthRefresh(ctx context.Context, request AuthRefreshRequestObject) (AuthRefreshResponseObject, error)
-	// AuthOAuthRedirect Get OAuth authorization URL
-	// (GET /api/v1/auth/{provider})
-	AuthOAuthRedirect(ctx context.Context, request AuthOAuthRedirectRequestObject) (AuthOAuthRedirectResponseObject, error)
 	// GetFonts Get list of fonts
 	// (GET /api/v1/fonts)
 	GetFonts(ctx context.Context, request GetFontsRequestObject) (GetFontsResponseObject, error)
@@ -3551,6 +3992,59 @@ func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// AuthOAuthGetURL operation middleware
+func (sh *strictHandler) AuthOAuthGetURL(w http.ResponseWriter, r *http.Request, provider Provider) {
+	var request AuthOAuthGetURLRequestObject
+
+	request.Provider = provider
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthOAuthGetURL(ctx, request.(AuthOAuthGetURLRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthOAuthGetURL")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthOAuthGetURLResponseObject); ok {
+		if err := validResponse.VisitAuthOAuthGetURLResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AuthOAuthCallback operation middleware
+func (sh *strictHandler) AuthOAuthCallback(w http.ResponseWriter, r *http.Request, provider Provider, params AuthOAuthCallbackParams) {
+	var request AuthOAuthCallbackRequestObject
+
+	request.Provider = provider
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AuthOAuthCallback(ctx, request.(AuthOAuthCallbackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AuthOAuthCallback")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AuthOAuthCallbackResponseObject); ok {
+		if err := validResponse.VisitAuthOAuthCallbackResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // AuthRefresh operation middleware
 func (sh *strictHandler) AuthRefresh(w http.ResponseWriter, r *http.Request) {
 	var request AuthRefreshRequestObject
@@ -3575,32 +4069,6 @@ func (sh *strictHandler) AuthRefresh(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(AuthRefreshResponseObject); ok {
 		if err := validResponse.VisitAuthRefreshResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// AuthOAuthRedirect operation middleware
-func (sh *strictHandler) AuthOAuthRedirect(w http.ResponseWriter, r *http.Request, provider Provider) {
-	var request AuthOAuthRedirectRequestObject
-
-	request.Provider = provider
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthOAuthRedirect(ctx, request.(AuthOAuthRedirectRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthOAuthRedirect")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthOAuthRedirectResponseObject); ok {
-		if err := validResponse.VisitAuthOAuthRedirectResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
