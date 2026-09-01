@@ -9,6 +9,12 @@ type OAuthExchangeTokenParams struct {
 	UserAgent    string
 }
 
+type OAuthRefreshTokenParams struct {
+	RefreshToken string
+	DeviceID     string
+	State        string
+}
+
 type OAuthToken struct {
 	AccessToken  string
 	RefreshToken string
