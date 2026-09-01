@@ -33,6 +33,6 @@ type UserCacheRepository interface {
 }
 
 type VKIDClient interface {
-	GenerateOAuthURL(challenge, state string) string
+	GenerateOAuthURL(challenge, state string) (string, error)
 	ExchangeOAuthToken(ctx context.Context, params *OAuthExchangeTokenParams) (*OAuthToken, error)
 }

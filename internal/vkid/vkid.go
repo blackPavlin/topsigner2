@@ -19,9 +19,12 @@ type Client struct {
 
 func NewClient(config *config.Config) (*Client, error) {
 	// todo: добавить логгирование
-	// todo: добавить возможность подмены реального http клиента на моковый/тестовый
+	// todo: добавить метрики
 
-	client, err := httpclient.NewClientWithResponses(config.VKID.BaseURL)
+	client, err := httpclient.NewClientWithResponses(
+		config.VKID.BaseURL,
+		httpclient.WithBaseURL(config.VKID.BaseURL),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create new client with responses: %w", err)
 	}
@@ -32,8 +35,14 @@ func NewClient(config *config.Config) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) GenerateOAuthURL(challenge, state string) string {
-	u := url.URL{Scheme: "https", Host: "id.vk.ru", Path: "/authorize"}
+func (c *Client) GenerateOAuthURL(challenge, state string) (string, error) {
+	u, err := url.Parse(c.config.VKID.BaseURL)
+	if err != nil {
+		return "", fmt.Errorf("parse vkid base url: %w", err)
+	}
+
+	u = u.JoinPath("authorize")
+
 	q := u.Query()
 
 	q.Set("response_type", "code")
@@ -46,7 +55,7 @@ func (c *Client) GenerateOAuthURL(challenge, state string) string {
 
 	u.RawQuery = q.Encode()
 
-	return u.String()
+	return u.String(), nil
 }
 
 func (c *Client) ExchangeOAuthToken(

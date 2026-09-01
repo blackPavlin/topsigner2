@@ -3,6 +3,7 @@ package httptransport_test
 import (
 	"context"
 	"log"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -26,11 +27,13 @@ import (
 	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
+	"github.com/bboykiv/topsigner/internal/vkid"
 )
 
 var (
-	server *httptest.Server
-	client *httpserver.ClientWithResponses
+	server     *httptest.Server
+	vkidServer *httptest.Server
+	client     *httpserver.ClientWithResponses
 )
 
 func TestMain(m *testing.M) {
@@ -180,6 +183,19 @@ func run(m *testing.M) int {
 		return 1
 	}
 
+	// todo: описать тестовый сервер vkid
+	vkidServer = httptest.NewServer(http.NewServeMux())
+	defer vkidServer.Close()
+
+	cfg.VKID.BaseURL = vkidServer.URL
+
+	vkidClient, err := vkid.NewClient(cfg)
+	if err != nil {
+		log.Fatalf("create vkid cliet: %v", err)
+
+		return 1
+	}
+
 	var (
 		logger                 = zap.NewNop()
 		redisClient            = keyvalue.NewClient(cfg)
@@ -190,7 +206,7 @@ func run(m *testing.M) int {
 		codeVerifierRepository = keyvalue.NewCodeVerifierRepository(redisClient)
 		userCacheRepository    = keyvalue.NewUserCacheRepository(redisClient)
 		imageStorage           = storage.NewImageStorage(cfg, minioClient)
-		authService            = auth.New(logger, cfg, nil, userRepository, sessionRepository, userCacheRepository, codeVerifierRepository)
+		authService            = auth.New(logger, cfg, vkidClient, userRepository, sessionRepository, userCacheRepository, codeVerifierRepository)
 		imageService           = image.New(logger, imageRepository, imageStorage)
 		fontService            = font.New(logger, fontRepository)
 	)

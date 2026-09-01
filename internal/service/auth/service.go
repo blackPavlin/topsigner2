@@ -294,7 +294,14 @@ func (s *Service) GenerateVKIDOAuthURL(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("code verifier repository set: %w", err)
 	}
 
-	return s.vkidClient.GenerateOAuthURL(codeChallengeS256(codeVerifier), state), nil
+	authURL, err := s.vkidClient.GenerateOAuthURL(codeChallengeS256(codeVerifier), state)
+	if err != nil {
+		s.logger.Error("generate oauth url", zap.Error(err))
+
+		return "", fmt.Errorf("generate oauth url: %w", err)
+	}
+
+	return authURL, nil
 }
 
 func (s *Service) ExchangeVKIDOAuthToken(
