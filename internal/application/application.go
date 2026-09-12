@@ -16,9 +16,11 @@ import (
 	"github.com/bboykiv/topsigner/internal/s3/storage"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
+	"github.com/bboykiv/topsigner/internal/service/group"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/service/user"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
+	"github.com/bboykiv/topsigner/internal/vk"
 	"github.com/bboykiv/topsigner/internal/vkid"
 )
 
@@ -35,6 +37,7 @@ func New() fx.Option {
 		database.Module,
 		keyvalue.Module,
 		s3.Module,
+		vk.Module,
 		vkid.Module,
 		fx.Provide(
 			NewLogger,
@@ -43,6 +46,11 @@ func New() fx.Option {
 			user.New,
 			font.New,
 			image.New,
+			group.New,
+			fx.Annotate(
+				repository.NewGroupRepository,
+				fx.As(new(group.Repository)),
+			),
 			fx.Annotate(
 				repository.NewFontRepository,
 				fx.As(new(font.Repository)),
@@ -67,6 +75,10 @@ func New() fx.Option {
 			fx.Annotate(
 				keyvalue.NewUserCacheRepository,
 				fx.As(new(auth.UserCacheRepository)),
+			),
+			fx.Annotate(
+				keyvalue.NewSessionCacheRepository,
+				fx.As(new(auth.SessionCacheRepository)),
 			),
 			fx.Annotate(
 				keyvalue.NewCodeVerifierRepository,

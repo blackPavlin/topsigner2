@@ -42,8 +42,9 @@ func (e Provider) Valid() bool {
 
 // AuthTokens Pair of auth tokens
 type AuthTokens struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
 }
 
 // Error defines model for Error.

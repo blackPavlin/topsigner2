@@ -1,9 +1,11 @@
 BEGIN;
+DROP TABLE groups;
 DROP TABLE fonts;
+DROP INDEX images_user_id_idx;
 DROP TABLE images;
 DROP INDEX sessions_user_id_idx;
 DROP TABLE sessions;
-DROP INDEX images_user_id_idx;
+DROP TYPE session_auth_type;
 DROP TABLE users;
 DROP TYPE user_role;
 COMMIT;

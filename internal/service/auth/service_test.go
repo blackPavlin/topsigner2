@@ -21,13 +21,16 @@ func TestService_Login_Success(t *testing.T) {
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
 		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
 		Auth: config.AuthConfig{
-			AccessTokenTTL: 15 * time.Minute,
-			SigningKey:     "secret-key",
+			RefreshTokenTTL: 5 * time.Minute,
+			AccessTokenTTL:  1 * time.Minute,
+			SigningKey:      "secret-key",
+			EncryptionKey:   "8f3kL9mN2pQrS7tVxYzA1bC4dE5fG6hI7jK8lM9nO0p=",
 		},
 	}
 
@@ -59,15 +62,21 @@ func TestService_Login_Success(t *testing.T) {
 		Set(t.Context(), gomock.Any(), gomock.Any()).
 		Return(nil)
 
-	service := auth.New(
+	sessionCacheRepository.EXPECT().
+		Set(t.Context(), gomock.Any(), gomock.Any()).
+		Return(nil)
+
+	service, err := auth.New(
 		zap.NewNop(),
 		config,
 		vkidClient,
 		userRepository,
 		sessionRepository,
 		userCacheRepository,
+		sessionCacheRepository,
 		codeVerifierRepository,
 	)
+	require.NoError(t, err)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    *user.Email,
@@ -89,22 +98,34 @@ func TestService_Login_UserNotFound(t *testing.T) {
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
 		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
+
+	config := &config.Config{
+		Auth: config.AuthConfig{
+			RefreshTokenTTL: 5 * time.Minute,
+			AccessTokenTTL:  1 * time.Minute,
+			SigningKey:      "secret-key",
+			EncryptionKey:   "8f3kL9mN2pQrS7tVxYzA1bC4dE5fG6hI7jK8lM9nO0p=",
+		},
+	}
 
 	userRepository.EXPECT().
 		Get(t.Context(), gomock.Any()).
 		Return(nil, model.ErrUserNotFound)
 
-	service := auth.New(
+	service, err := auth.New(
 		zap.NewNop(),
-		&config.Config{},
+		config,
 		vkidClient,
 		userRepository,
 		sessionRepository,
 		userCacheRepository,
+		sessionCacheRepository,
 		codeVerifierRepository,
 	)
+	require.NoError(t, err)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    "test@email.com",
@@ -121,8 +142,18 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
 		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
+
+	config := &config.Config{
+		Auth: config.AuthConfig{
+			RefreshTokenTTL: 5 * time.Minute,
+			AccessTokenTTL:  1 * time.Minute,
+			SigningKey:      "secret-key",
+			EncryptionKey:   "8f3kL9mN2pQrS7tVxYzA1bC4dE5fG6hI7jK8lM9nO0p=",
+		},
+	}
 
 	user := &model.User{
 		ID:           1,
@@ -134,15 +165,17 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 		Get(t.Context(), gomock.Any()).
 		Return(user, nil)
 
-	service := auth.New(
+	service, err := auth.New(
 		zap.NewNop(),
-		&config.Config{},
+		config,
 		vkidClient,
 		userRepository,
 		sessionRepository,
 		userCacheRepository,
+		sessionCacheRepository,
 		codeVerifierRepository,
 	)
+	require.NoError(t, err)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    "test@email.com",
@@ -159,13 +192,16 @@ func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
 		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
 		Auth: config.AuthConfig{
-			AccessTokenTTL: 15 * time.Minute,
-			SigningKey:     "secret-key",
+			RefreshTokenTTL: 5 * time.Minute,
+			AccessTokenTTL:  1 * time.Minute,
+			SigningKey:      "secret-key",
+			EncryptionKey:   "8f3kL9mN2pQrS7tVxYzA1bC4dE5fG6hI7jK8lM9nO0p=",
 		},
 	}
 
@@ -174,38 +210,48 @@ func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 	}
 
 	session := &model.Session{
-		ID: "session-id",
+		ID:       "session-id",
+		UserID:   user.ID,
+		AuthType: model.AuthTypePassword,
 	}
 
 	userCacheRepository.EXPECT().
-		Get(t.Context(), user.ID).
+		Get(gomock.Any(), user.ID).
 		Return(nil, model.ErrUserNotFound)
 
 	userRepository.EXPECT().
-		Get(t.Context(), gomock.Any()).
+		Get(gomock.Any(), gomock.Any()).
 		Return(user, nil)
 
-	userCacheRepository.EXPECT().
-		Set(t.Context(), gomock.Any(), gomock.Any()).
-		Return(nil)
+	sessionCacheRepository.EXPECT().
+		Get(gomock.Any(), session.ID).
+		Return(nil, model.ErrSessionNotFound)
 
-	service := auth.New(
+	sessionRepository.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(session, nil)
+
+	service, err := auth.New(
 		zap.NewNop(),
 		config,
 		vkidClient,
 		userRepository,
 		sessionRepository,
 		userCacheRepository,
+		sessionCacheRepository,
 		codeVerifierRepository,
 	)
+	require.NoError(t, err)
 
-	token, err := service.SignAccessToken(user.ID, session.ID)
+	token, err := service.SignAccessToken(user.ID, session.ID, config.Auth.AccessTokenTTL)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	authorizedUser, err := service.Authorize(t.Context(), token)
+	authUser, authSession, err := service.Authorize(t.Context(), token)
 	require.NoError(t, err)
-	require.Equal(t, user.ID, authorizedUser.ID)
+	require.Equal(t, user.ID, authUser.ID)
+	require.Equal(t, user.ID, authSession.UserID)
+	require.Equal(t, model.AuthTypePassword, authSession.AuthType)
 }
 
 func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
@@ -215,13 +261,16 @@ func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
 		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
 		Auth: config.AuthConfig{
-			AccessTokenTTL: 15 * time.Minute,
-			SigningKey:     "secret-key",
+			RefreshTokenTTL: 5 * time.Minute,
+			AccessTokenTTL:  1 * time.Minute,
+			SigningKey:      "secret-key",
+			EncryptionKey:   "8f3kL9mN2pQrS7tVxYzA1bC4dE5fG6hI7jK8lM9nO0p=",
 		},
 	}
 
@@ -230,30 +279,40 @@ func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
 	}
 
 	session := &model.Session{
-		ID: "session-id",
+		ID:       "session-id",
+		UserID:   user.ID,
+		AuthType: model.AuthTypePassword,
 	}
 
 	userCacheRepository.EXPECT().
-		Get(t.Context(), user.ID).
+		Get(gomock.Any(), user.ID).
 		Return(user, nil)
 
-	service := auth.New(
+	sessionCacheRepository.EXPECT().
+		Get(gomock.Any(), session.ID).
+		Return(session, nil)
+
+	service, err := auth.New(
 		zap.NewNop(),
 		config,
 		vkidClient,
 		userRepository,
 		sessionRepository,
 		userCacheRepository,
+		sessionCacheRepository,
 		codeVerifierRepository,
 	)
+	require.NoError(t, err)
 
-	token, err := service.SignAccessToken(user.ID, session.ID)
+	token, err := service.SignAccessToken(user.ID, session.ID, config.Auth.AccessTokenTTL)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	authorizedUser, err := service.Authorize(t.Context(), token)
+	authUser, authSession, err := service.Authorize(t.Context(), token)
 	require.NoError(t, err)
-	require.Equal(t, user.ID, authorizedUser.ID)
+	require.Equal(t, user.ID, authUser.ID)
+	require.Equal(t, user.ID, authSession.UserID)
+	require.Equal(t, model.AuthTypePassword, authSession.AuthType)
 }
 
 func TestService_Authorize_InvatidToken(t *testing.T) {
@@ -263,28 +322,34 @@ func TestService_Authorize_InvatidToken(t *testing.T) {
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
 		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
 		Auth: config.AuthConfig{
-			AccessTokenTTL: 15 * time.Minute,
-			SigningKey:     "secret-key",
+			RefreshTokenTTL: 5 * time.Minute,
+			AccessTokenTTL:  1 * time.Minute,
+			SigningKey:      "secret-key",
+			EncryptionKey:   "8f3kL9mN2pQrS7tVxYzA1bC4dE5fG6hI7jK8lM9nO0p=",
 		},
 	}
 
-	service := auth.New(
+	service, err := auth.New(
 		zap.NewNop(),
 		config,
 		vkidClient,
 		userRepository,
 		sessionRepository,
 		userCacheRepository,
+		sessionCacheRepository,
 		codeVerifierRepository,
 	)
+	require.NoError(t, err)
 
-	user, err := service.Authorize(t.Context(), "invalid token")
+	user, session, err := service.Authorize(t.Context(), "invalid token")
 	require.Nil(t, user)
+	require.Nil(t, session)
 	require.ErrorIs(t, err, auth.ErrInvalidAuthToken)
 }
 
@@ -295,13 +360,16 @@ func TestService_Authorize_UserNotFound(t *testing.T) {
 		sessionRepository      = mock.NewMockSessionRepository(ctrl)
 		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
 		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
+		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
 		vkidClient             = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
 		Auth: config.AuthConfig{
-			AccessTokenTTL: 15 * time.Minute,
-			SigningKey:     "secret-key",
+			RefreshTokenTTL: 5 * time.Minute,
+			AccessTokenTTL:  1 * time.Minute,
+			SigningKey:      "secret-key",
+			EncryptionKey:   "8f3kL9mN2pQrS7tVxYzA1bC4dE5fG6hI7jK8lM9nO0p=",
 		},
 	}
 
@@ -311,28 +379,35 @@ func TestService_Authorize_UserNotFound(t *testing.T) {
 	)
 
 	userCacheRepository.EXPECT().
-		Get(t.Context(), userID).
+		Get(gomock.Any(), userID).
 		Return(nil, model.ErrUserNotFound)
 
 	userRepository.EXPECT().
-		Get(t.Context(), gomock.Any()).
+		Get(gomock.Any(), gomock.Any()).
 		Return(nil, model.ErrUserNotFound)
 
-	service := auth.New(
+	sessionCacheRepository.EXPECT().
+		Get(gomock.Any(), sessionID).
+		Return(&model.Session{}, nil)
+
+	service, err := auth.New(
 		zap.NewNop(),
 		config,
 		vkidClient,
 		userRepository,
 		sessionRepository,
 		userCacheRepository,
+		sessionCacheRepository,
 		codeVerifierRepository,
 	)
+	require.NoError(t, err)
 
-	token, err := service.SignAccessToken(userID, sessionID)
+	token, err := service.SignAccessToken(userID, sessionID, config.Auth.AccessTokenTTL)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	user, err := service.Authorize(t.Context(), token)
+	user, session, err := service.Authorize(t.Context(), token)
 	require.ErrorIs(t, err, model.ErrUserNotFound)
 	require.Nil(t, user)
+	require.Nil(t, session)
 }

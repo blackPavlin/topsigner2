@@ -261,6 +261,45 @@ func (c *MockSessionRepositoryGetCall) DoAndReturn(f func(context.Context, *mode
 	return c
 }
 
+// List mocks base method.
+func (m *MockSessionRepository) List(ctx context.Context, query *model.SessionQuery) ([]*model.Session, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, query)
+	ret0, _ := ret[0].([]*model.Session)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockSessionRepositoryMockRecorder) List(ctx, query any) *MockSessionRepositoryListCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSessionRepository)(nil).List), ctx, query)
+	return &MockSessionRepositoryListCall{Call: call}
+}
+
+// MockSessionRepositoryListCall wrap *gomock.Call
+type MockSessionRepositoryListCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSessionRepositoryListCall) Return(arg0 []*model.Session, arg1 error) *MockSessionRepositoryListCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSessionRepositoryListCall) Do(f func(context.Context, *model.SessionQuery) ([]*model.Session, error)) *MockSessionRepositoryListCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSessionRepositoryListCall) DoAndReturn(f func(context.Context, *model.SessionQuery) ([]*model.Session, error)) *MockSessionRepositoryListCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Update mocks base method.
 func (m *MockSessionRepository) Update(ctx context.Context, session *model.Session) (*model.Session, error) {
 	m.ctrl.T.Helper()
@@ -540,6 +579,145 @@ func (c *MockUserCacheRepositorySetCall) DoAndReturn(f func(context.Context, *mo
 	return c
 }
 
+// MockSessionCacheRepository is a mock of SessionCacheRepository interface.
+type MockSessionCacheRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockSessionCacheRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockSessionCacheRepositoryMockRecorder is the mock recorder for MockSessionCacheRepository.
+type MockSessionCacheRepositoryMockRecorder struct {
+	mock *MockSessionCacheRepository
+}
+
+// NewMockSessionCacheRepository creates a new mock instance.
+func NewMockSessionCacheRepository(ctrl *gomock.Controller) *MockSessionCacheRepository {
+	mock := &MockSessionCacheRepository{ctrl: ctrl}
+	mock.recorder = &MockSessionCacheRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSessionCacheRepository) EXPECT() *MockSessionCacheRepositoryMockRecorder {
+	return m.recorder
+}
+
+// Delete mocks base method.
+func (m *MockSessionCacheRepository) Delete(ctx context.Context, sessionID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, sessionID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockSessionCacheRepositoryMockRecorder) Delete(ctx, sessionID any) *MockSessionCacheRepositoryDeleteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSessionCacheRepository)(nil).Delete), ctx, sessionID)
+	return &MockSessionCacheRepositoryDeleteCall{Call: call}
+}
+
+// MockSessionCacheRepositoryDeleteCall wrap *gomock.Call
+type MockSessionCacheRepositoryDeleteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSessionCacheRepositoryDeleteCall) Return(arg0 error) *MockSessionCacheRepositoryDeleteCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSessionCacheRepositoryDeleteCall) Do(f func(context.Context, string) error) *MockSessionCacheRepositoryDeleteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSessionCacheRepositoryDeleteCall) DoAndReturn(f func(context.Context, string) error) *MockSessionCacheRepositoryDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Get mocks base method.
+func (m *MockSessionCacheRepository) Get(ctx context.Context, sessionID string) (*model.Session, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, sessionID)
+	ret0, _ := ret[0].(*model.Session)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockSessionCacheRepositoryMockRecorder) Get(ctx, sessionID any) *MockSessionCacheRepositoryGetCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSessionCacheRepository)(nil).Get), ctx, sessionID)
+	return &MockSessionCacheRepositoryGetCall{Call: call}
+}
+
+// MockSessionCacheRepositoryGetCall wrap *gomock.Call
+type MockSessionCacheRepositoryGetCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSessionCacheRepositoryGetCall) Return(arg0 *model.Session, arg1 error) *MockSessionCacheRepositoryGetCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSessionCacheRepositoryGetCall) Do(f func(context.Context, string) (*model.Session, error)) *MockSessionCacheRepositoryGetCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSessionCacheRepositoryGetCall) DoAndReturn(f func(context.Context, string) (*model.Session, error)) *MockSessionCacheRepositoryGetCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Set mocks base method.
+func (m *MockSessionCacheRepository) Set(ctx context.Context, session *model.Session, ttl time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Set", ctx, session, ttl)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Set indicates an expected call of Set.
+func (mr *MockSessionCacheRepositoryMockRecorder) Set(ctx, session, ttl any) *MockSessionCacheRepositorySetCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSessionCacheRepository)(nil).Set), ctx, session, ttl)
+	return &MockSessionCacheRepositorySetCall{Call: call}
+}
+
+// MockSessionCacheRepositorySetCall wrap *gomock.Call
+type MockSessionCacheRepositorySetCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSessionCacheRepositorySetCall) Return(arg0 error) *MockSessionCacheRepositorySetCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSessionCacheRepositorySetCall) Do(f func(context.Context, *model.Session, time.Duration) error) *MockSessionCacheRepositorySetCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSessionCacheRepositorySetCall) DoAndReturn(f func(context.Context, *model.Session, time.Duration) error) *MockSessionCacheRepositorySetCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockVKIDClient is a mock of VKIDClient interface.
 type MockVKIDClient struct {
 	ctrl     *gomock.Controller
@@ -638,6 +816,83 @@ func (c *MockVKIDClientGenerateOAuthURLCall) Do(f func(string, string) (string, 
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockVKIDClientGenerateOAuthURLCall) DoAndReturn(f func(string, string) (string, error)) *MockVKIDClientGenerateOAuthURLCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Logout mocks base method.
+func (m *MockVKIDClient) Logout(ctx context.Context, token string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Logout", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Logout indicates an expected call of Logout.
+func (mr *MockVKIDClientMockRecorder) Logout(ctx, token any) *MockVKIDClientLogoutCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockVKIDClient)(nil).Logout), ctx, token)
+	return &MockVKIDClientLogoutCall{Call: call}
+}
+
+// MockVKIDClientLogoutCall wrap *gomock.Call
+type MockVKIDClientLogoutCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockVKIDClientLogoutCall) Return(arg0 error) *MockVKIDClientLogoutCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockVKIDClientLogoutCall) Do(f func(context.Context, string) error) *MockVKIDClientLogoutCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockVKIDClientLogoutCall) DoAndReturn(f func(context.Context, string) error) *MockVKIDClientLogoutCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// RefreshOAuthToken mocks base method.
+func (m *MockVKIDClient) RefreshOAuthToken(ctx context.Context, params *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RefreshOAuthToken", ctx, params)
+	ret0, _ := ret[0].(*auth.OAuthToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RefreshOAuthToken indicates an expected call of RefreshOAuthToken.
+func (mr *MockVKIDClientMockRecorder) RefreshOAuthToken(ctx, params any) *MockVKIDClientRefreshOAuthTokenCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshOAuthToken", reflect.TypeOf((*MockVKIDClient)(nil).RefreshOAuthToken), ctx, params)
+	return &MockVKIDClientRefreshOAuthTokenCall{Call: call}
+}
+
+// MockVKIDClientRefreshOAuthTokenCall wrap *gomock.Call
+type MockVKIDClientRefreshOAuthTokenCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockVKIDClientRefreshOAuthTokenCall) Return(arg0 *auth.OAuthToken, arg1 error) *MockVKIDClientRefreshOAuthTokenCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockVKIDClientRefreshOAuthTokenCall) Do(f func(context.Context, *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientRefreshOAuthTokenCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockVKIDClientRefreshOAuthTokenCall) DoAndReturn(f func(context.Context, *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientRefreshOAuthTokenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

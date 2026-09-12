@@ -2,18 +2,13 @@ package auth
 
 import (
 	"errors"
-	"time"
-)
-
-const (
-	stateBytes      = 24
-	codeVerifierTTL = 10 * time.Minute
 )
 
 var (
-	ErrInvalidAuthToken = errors.New("invalid auth token")
-	ErrTokenIsExpired   = errors.New("token is expired")
-	ErrInvalidPassword  = errors.New("invalid password")
+	ErrInvalidAuthToken          = errors.New("invalid auth token")
+	ErrTokenIsExpired            = errors.New("token is expired")
+	ErrInvalidPassword           = errors.New("invalid password")
+	ErrPasswordLoginNotAvailable = errors.New("password login not available")
 )
 
 type LoginInput struct {

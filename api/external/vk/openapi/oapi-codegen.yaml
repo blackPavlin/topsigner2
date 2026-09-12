@@ -3,6 +3,7 @@
 package: httpclient
 generate:
   models: true
+  client: true
 output: ./gen/external/vk/httpclient/httpclient.gen.go
 output-options:
   name-normalizer: ToCamelCaseWithInitialisms

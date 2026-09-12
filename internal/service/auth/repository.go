@@ -16,6 +16,7 @@ type UserRepository interface {
 
 type SessionRepository interface {
 	Get(ctx context.Context, filter *model.SessionFilter) (*model.Session, error)
+	List(ctx context.Context, query *model.SessionQuery) ([]*model.Session, error)
 	Create(ctx context.Context, session *model.Session) (*model.Session, error)
 	Update(ctx context.Context, session *model.Session) (*model.Session, error)
 	Delete(ctx context.Context, filter *model.SessionFilter) error
@@ -32,7 +33,15 @@ type UserCacheRepository interface {
 	Delete(ctx context.Context, userID int64) error
 }
 
+type SessionCacheRepository interface {
+	Get(ctx context.Context, sessionID string) (*model.Session, error)
+	Set(ctx context.Context, session *model.Session, ttl time.Duration) error
+	Delete(ctx context.Context, sessionID string) error
+}
+
 type VKIDClient interface {
 	GenerateOAuthURL(challenge, state string) (string, error)
 	ExchangeOAuthToken(ctx context.Context, params *OAuthExchangeTokenParams) (*OAuthToken, error)
+	RefreshOAuthToken(ctx context.Context, params *OAuthRefreshTokenParams) (*OAuthToken, error)
+	Logout(ctx context.Context, token string) error
 }

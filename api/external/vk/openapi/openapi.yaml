@@ -10,12 +10,105 @@ servers:
   - url: https://api.vk.com
     description: Production environment
 tags:
+  - name: Groups
+    description: User groups
 security:
   - BearerAuth: [ ]
 paths:
+  /method/groups.get:
+    get:
+      summary: Get user groups
+      description: Returns list of user groups
+      operationId: getGroups
+      tags:
+        - Groups
+      parameters:
+        - $ref: '#/components/parameters/Version'
+        - $ref: '#/components/parameters/Language'
+        - name: user_id
+          in: query
+          description: User ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: filter
+          in: query
+          description: List of group filters
+          required: false
+          schema:
+            type: string    
+      responses:
+        '200':
+          description: Get user groups result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  parameters:
+    Version:
+      name: v
+      in: query
+      description: API version
+      required: true
+      schema:
+        type: string
+        enum:
+          - "5.199"
+    Language:
+      name: lang
+      in: query
+      description: Language
+      required: false
+      schema:
+        type: string
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error_code
+        - error_msg
+      properties:
+        error_code:
+          type: integer
+        error_msg:
+          type: string
+
+    Group:
+      type: object
+      required:
+        - id
+        - name
+        - screen_name
+        - is_closed
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        screen_name:
+          type: string
+        is_closed:
+          type: integer
+          enum:
+            - 0
+            - 1
+            - 2
+        deactivated:
+          type: string
+          enum:
+            - deleted
+            - banned      

@@ -27,11 +27,13 @@ import (
 	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
+	"github.com/bboykiv/topsigner/internal/vk"
 	"github.com/bboykiv/topsigner/internal/vkid"
 )
 
 var (
 	server     *httptest.Server
+	vkServer   *httptest.Server
 	vkidServer *httptest.Server
 	client     *httpserver.ClientWithResponses
 )
@@ -196,6 +198,19 @@ func run(m *testing.M) int {
 		return 1
 	}
 
+	// todo: описать тестовый сервер vk
+	vkServer = httptest.NewServer(http.NewServeMux())
+	defer vkServer.Close()
+
+	cfg.VK.BaseURL = vkServer.URL
+
+	_, err = vk.NewClient(cfg)
+	if err != nil {
+		log.Fatalf("create vk cliet: %v", err)
+
+		return 1
+	}
+
 	var (
 		logger                 = zap.NewNop()
 		redisClient            = keyvalue.NewClient(cfg)
@@ -205,11 +220,28 @@ func run(m *testing.M) int {
 		fontRepository         = repository.NewFontRepository(pool)
 		codeVerifierRepository = keyvalue.NewCodeVerifierRepository(redisClient)
 		userCacheRepository    = keyvalue.NewUserCacheRepository(redisClient)
+		sessionCacheRepository = keyvalue.NewSessionCacheRepository(redisClient)
 		imageStorage           = storage.NewImageStorage(cfg, minioClient)
-		authService            = auth.New(logger, cfg, vkidClient, userRepository, sessionRepository, userCacheRepository, codeVerifierRepository)
-		imageService           = image.New(logger, imageRepository, imageStorage)
-		fontService            = font.New(logger, fontRepository)
 	)
+
+	authService, err := auth.New(
+		logger,
+		cfg,
+		vkidClient,
+		userRepository,
+		sessionRepository,
+		userCacheRepository,
+		sessionCacheRepository,
+		codeVerifierRepository,
+	)
+	if err != nil {
+		log.Fatalf("create auth service: %v", err)
+
+		return 1
+	}
+
+	imageService := image.New(logger, imageRepository, imageStorage)
+	fontService := font.New(logger, fontRepository)
 
 	server = httptest.NewServer(
 		httptransport.NewHandler(

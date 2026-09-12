@@ -10,6 +10,7 @@ const (
 	userTableName    = "users"
 	fontsTableName   = "fonts"
 	imageTableName   = "images"
+	groupTableName   = "groups"
 	sessionTableName = "sessions"
 )
 

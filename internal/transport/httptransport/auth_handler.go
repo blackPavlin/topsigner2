@@ -45,20 +45,26 @@ func (h *AuthHandler) AuthLogin(
 		UserAgent: mw.GetUserAgentFromContext(ctx),
 	})
 	if err != nil {
-		if errors.Is(err, model.ErrUserNotFound) {
+		switch {
+		case errors.Is(err, model.ErrUserNotFound):
 			return httpserver.AuthLogin401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
+		case errors.Is(err, auth.ErrPasswordLoginNotAvailable):
+			return httpserver.AuthLogin401JSONResponse{
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
+		default:
+			return httpserver.AuthLogin500JSONResponse{
+				InternalErrorJSONResponse: NewInternalError(),
+			}, nil
 		}
-
-		return httpserver.AuthLogin500JSONResponse{
-			InternalErrorJSONResponse: NewInternalError(),
-		}, nil
 	}
 
 	return httpserver.AuthLogin200JSONResponse{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
+		ExpiresAt:    token.ExpiresAt,
 	}, nil
 }
 
@@ -117,6 +123,7 @@ func (h *AuthHandler) AuthRefresh(
 	return httpserver.AuthRefresh200JSONResponse{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
+		ExpiresAt:    token.ExpiresAt,
 	}, nil
 }
 
@@ -157,13 +164,15 @@ func (h *AuthHandler) AuthOAuthCallback(
 	r httpserver.AuthOAuthCallbackRequestObject,
 ) (httpserver.AuthOAuthCallbackResponseObject, error) {
 	var (
-		tokenPair *auth.TokenPair
-		err       error
+		token *auth.TokenPair
+		err   error
 	)
+
+	// todo: валидация входных параметров
 
 	switch r.Provider {
 	case httpserver.Vkontakte:
-		tokenPair, err = h.authService.ExchangeVKIDOAuthToken(ctx, &auth.OAuthExchangeTokenParams{
+		token, err = h.authService.ExchangeVKIDOAuthToken(ctx, &auth.OAuthExchangeTokenParams{
 			Code:      r.Params.Code,
 			DeviceID:  r.Params.DeviceID,
 			State:     r.Params.State,
@@ -182,7 +191,8 @@ func (h *AuthHandler) AuthOAuthCallback(
 	}
 
 	return httpserver.AuthOAuthCallback200JSONResponse{
-		AccessToken:  tokenPair.AccessToken,
-		RefreshToken: tokenPair.RefreshToken,
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+		ExpiresAt:    token.ExpiresAt,
 	}, nil
 }

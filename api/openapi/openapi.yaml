@@ -363,6 +363,7 @@ components:
       required:
         - access_token
         - refresh_token
+        - expires_at
       properties:
         access_token:
           type: string
@@ -370,6 +371,10 @@ components:
         refresh_token:
           type: string
           x-order: 2
+        expires_at:
+          type: string
+          format: date-time
+          x-order: 3
 
     OAuthAuthorizationURL:
       type: object

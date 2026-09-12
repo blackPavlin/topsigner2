@@ -31,7 +31,8 @@ func (r *UserRepository) Get(ctx context.Context, filter *model.UserFilter) (*mo
 		"created_at",
 		"updated_at",
 	).
-		From(userTableName)
+		From(userTableName).
+		Limit(1)
 
 	builder = applyFilter(builder, "id", filter.ID)
 	builder = applyFilter(builder, "vk_user_id", filter.VKUserID)

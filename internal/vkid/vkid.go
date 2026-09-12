@@ -21,12 +21,9 @@ func NewClient(config *config.Config) (*Client, error) {
 	// todo: добавить логгирование
 	// todo: добавить метрики
 
-	client, err := httpclient.NewClientWithResponses(
-		config.VKID.BaseURL,
-		httpclient.WithBaseURL(config.VKID.BaseURL),
-	)
+	client, err := httpclient.NewClientWithResponses(config.VKID.BaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("create new client with responses: %w", err)
+		return nil, fmt.Errorf("create new vkid client with responses: %w", err)
 	}
 
 	return &Client{config: config, client: client}, nil

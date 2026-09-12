@@ -5,9 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"time"
 )
 
-const codeVerifierBytes = 32
+const (
+	stateBytes        = 24
+	codeVerifierBytes = 32
+	codeVerifierTTL   = 10 * time.Minute
+)
 
 func generateRandomString(size int) (string, error) {
 	buffer := make([]byte, size)
