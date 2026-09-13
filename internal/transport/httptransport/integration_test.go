@@ -18,6 +18,7 @@ import (
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/database"
 	"github.com/bboykiv/topsigner/internal/database/repository"
 	"github.com/bboykiv/topsigner/internal/keyvalue"
@@ -25,6 +26,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/s3/storage"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
+	"github.com/bboykiv/topsigner/internal/service/group"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
 	"github.com/bboykiv/topsigner/internal/vk"
@@ -204,9 +206,16 @@ func run(m *testing.M) int {
 
 	cfg.VK.BaseURL = vkServer.URL
 
-	_, err = vk.NewClient(cfg)
+	vkClient, err := vk.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("create vk cliet: %v", err)
+
+		return 1
+	}
+
+	encryptor, err := crypto.NewEncryptor(cfg.Auth.EncryptionKey)
+	if err != nil {
+		log.Fatalf("create encryptor: %v", err)
 
 		return 1
 	}
@@ -218,15 +227,17 @@ func run(m *testing.M) int {
 		sessionRepository      = repository.NewSessionRepository(pool)
 		imageRepository        = repository.NewImageRepository(pool)
 		fontRepository         = repository.NewFontRepository(pool)
+		groupRepository        = repository.NewGroupRepository(pool)
 		codeVerifierRepository = keyvalue.NewCodeVerifierRepository(redisClient)
 		userCacheRepository    = keyvalue.NewUserCacheRepository(redisClient)
 		sessionCacheRepository = keyvalue.NewSessionCacheRepository(redisClient)
 		imageStorage           = storage.NewImageStorage(cfg, minioClient)
 	)
 
-	authService, err := auth.New(
+	authService := auth.New(
 		logger,
 		cfg,
+		encryptor,
 		vkidClient,
 		userRepository,
 		sessionRepository,
@@ -234,14 +245,10 @@ func run(m *testing.M) int {
 		sessionCacheRepository,
 		codeVerifierRepository,
 	)
-	if err != nil {
-		log.Fatalf("create auth service: %v", err)
-
-		return 1
-	}
 
 	imageService := image.New(logger, imageRepository, imageStorage)
 	fontService := font.New(logger, fontRepository)
+	groupService := group.New(logger, cfg, encryptor, groupRepository, vkClient)
 
 	server = httptest.NewServer(
 		httptransport.NewHandler(
@@ -250,6 +257,7 @@ func run(m *testing.M) int {
 			authService,
 			imageService,
 			fontService,
+			groupService,
 		),
 	)
 	defer server.Close()

@@ -15,4 +15,6 @@ type Repository interface {
 	Delete(ctx context.Context, filter *model.GroupFilter) error
 }
 
-type VKClient interface{}
+type VKClient interface {
+	GetGroups(ctx context.Context, token string) ([]*Group, error)
+}

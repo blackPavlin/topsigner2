@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
@@ -26,7 +27,7 @@ func New(logger *zap.Logger, config *config.Config, repository Repository) *Serv
 }
 
 func (s *Service) Create(ctx context.Context, input *CreateUserInput) (*model.User, error) {
-	passwordHash, err := model.GeneratePasswordHash(input.Password)
+	passwordHash, err := crypto.GeneratePasswordHash(input.Password)
 	if err != nil {
 		return nil, fmt.Errorf("generate user password hash: %w", err)
 	}

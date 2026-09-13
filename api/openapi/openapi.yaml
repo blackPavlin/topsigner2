@@ -14,6 +14,8 @@ tags:
     description: Operations with images
   - name: Font
     description: Operations with fonts
+  - name: Group
+    description: Operations with groups
 security:
   - BearerAuth: [ ]
 paths:
@@ -299,6 +301,30 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/v1/groups:
+    get:
+      summary: Get list of groups
+      description: Returns a paginated list of groups
+      operationId: getGroups
+      tags:
+        - Group
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Paginated list of groups
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     BearerAuth:
@@ -466,6 +492,37 @@ components:
           x-order: 1  
         pagination:
           $ref: '#/components/schemas/Pagination'
+
+    Group:
+      type: object
+      description: Group resource
+      required:
+        - id
+        - name
+        - screen_name
+      properties:
+        id:
+          type: integer
+          format: int64
+          x-order: 1
+        name:
+          type: string
+          x-order: 2
+        screen_name:
+          type: string
+          x-order: 3
+      
+    GroupList:
+      type: object
+      description: List of groups
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Group'
+          x-order: 1  
 
   responses:
     BadRequest:

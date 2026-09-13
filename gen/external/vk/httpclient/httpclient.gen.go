@@ -15,6 +15,81 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for GroupDeactivated.
+const (
+	Banned  GroupDeactivated = "banned"
+	Deleted GroupDeactivated = "deleted"
+)
+
+// Valid indicates whether the value is a known member of the GroupDeactivated enum.
+func (e GroupDeactivated) Valid() bool {
+	switch e {
+	case Banned:
+		return true
+	case Deleted:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GroupIsClosed.
+const (
+	GroupIsClosedN0 GroupIsClosed = 0
+	GroupIsClosedN1 GroupIsClosed = 1
+	GroupIsClosedN2 GroupIsClosed = 2
+)
+
+// Valid indicates whether the value is a known member of the GroupIsClosed enum.
+func (e GroupIsClosed) Valid() bool {
+	switch e {
+	case GroupIsClosedN0:
+		return true
+	case GroupIsClosedN1:
+		return true
+	case GroupIsClosedN2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GroupsFilter.
+const (
+	Admin        GroupsFilter = "admin"
+	Advertiser   GroupsFilter = "advertiser"
+	Editor       GroupsFilter = "editor"
+	Events       GroupsFilter = "events"
+	Groups       GroupsFilter = "groups"
+	HasAddresses GroupsFilter = "has_addresses"
+	Moder        GroupsFilter = "moder"
+	Publics      GroupsFilter = "publics"
+)
+
+// Valid indicates whether the value is a known member of the GroupsFilter enum.
+func (e GroupsFilter) Valid() bool {
+	switch e {
+	case Admin:
+		return true
+	case Advertiser:
+		return true
+	case Editor:
+		return true
+	case Events:
+		return true
+	case Groups:
+		return true
+	case HasAddresses:
+		return true
+	case Moder:
+		return true
+	case Publics:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Version.
 const (
 	VersionN5199 Version = "5.199"
@@ -45,14 +120,62 @@ func (e GetGroupsParamsV) Valid() bool {
 	}
 }
 
+// Defines values for GetGroupsParamsExtended.
+const (
+	GetGroupsParamsExtendedN0 GetGroupsParamsExtended = 0
+	GetGroupsParamsExtendedN1 GetGroupsParamsExtended = 1
+)
+
+// Valid indicates whether the value is a known member of the GetGroupsParamsExtended enum.
+func (e GetGroupsParamsExtended) Valid() bool {
+	switch e {
+	case GetGroupsParamsExtendedN0:
+		return true
+	case GetGroupsParamsExtendedN1:
+		return true
+	default:
+		return false
+	}
+}
+
 // Error defines model for Error.
 type Error struct {
 	ErrorCode int    `json:"error_code"`
 	ErrorMsg  string `json:"error_msg"`
 }
 
+// Group defines model for Group.
+type Group struct {
+	Deactivated *GroupDeactivated `json:"deactivated,omitempty"`
+	ID          int64             `json:"id"`
+	IsClosed    GroupIsClosed     `json:"is_closed"`
+	Name        string            `json:"name"`
+	ScreenName  string            `json:"screen_name"`
+}
+
+// GroupDeactivated defines model for Group.Deactivated.
+type GroupDeactivated string
+
+// GroupIsClosed defines model for Group.IsClosed.
+type GroupIsClosed int
+
+// GroupIDList defines model for GroupIDList.
+type GroupIDList = []int64
+
+// GroupList defines model for GroupList.
+type GroupList = []Group
+
+// GroupsFilter Types of communities to return
+type GroupsFilter string
+
+// Count defines model for Count.
+type Count = int
+
 // Language defines model for Language.
 type Language = string
+
+// Offset defines model for Offset.
+type Offset = int
 
 // Version defines model for Version.
 type Version string
@@ -65,15 +188,94 @@ type GetGroupsParams struct {
 	// Lang Language
 	Lang *Language `form:"lang,omitempty" json:"lang,omitempty"`
 
-	// UserID User ID
-	UserID int64 `form:"user_id" json:"user_id"`
+	// Offset Offset needed to return a specific subset
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 
-	// Filter List of group filters
-	Filter *string `form:"filter,omitempty" json:"filter,omitempty"`
+	// Count Number to return
+	Count *Count `form:"count,omitempty" json:"count,omitempty"`
+
+	// UserID User ID
+	UserID *int64 `form:"user_id,omitempty" json:"user_id,omitempty"`
+
+	// Extended Return complete information
+	Extended *GetGroupsParamsExtended `form:"extended,omitempty" json:"extended,omitempty"`
+
+	// Filter Types of communities to return.
+	Filter *[]GroupsFilter `form:"filter,omitempty" json:"filter,omitempty"`
 }
 
 // GetGroupsParamsV defines parameters for GetGroups.
 type GetGroupsParamsV string
+
+// GetGroupsParamsExtended defines parameters for GetGroups.
+type GetGroupsParamsExtended int
+
+// GetGroups200JSONResponseBody_Response_Items defines parameters for GetGroups.
+type GetGroups200JSONResponseBody_Response_Items struct {
+	union json.RawMessage
+}
+
+// AsGroupList returns the union data inside the GetGroups200JSONResponseBody_Response_Items as a GroupList
+func (t GetGroups200JSONResponseBody_Response_Items) AsGroupList() (GroupList, error) {
+	var body GroupList
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGroupList overwrites any union data inside the GetGroups200JSONResponseBody_Response_Items as the provided GroupList
+func (t *GetGroups200JSONResponseBody_Response_Items) FromGroupList(v GroupList) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGroupList performs a merge with any union data inside the GetGroups200JSONResponseBody_Response_Items, using the provided GroupList
+func (t *GetGroups200JSONResponseBody_Response_Items) MergeGroupList(v GroupList) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGroupIDList returns the union data inside the GetGroups200JSONResponseBody_Response_Items as a GroupIDList
+func (t GetGroups200JSONResponseBody_Response_Items) AsGroupIDList() (GroupIDList, error) {
+	var body GroupIDList
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGroupIDList overwrites any union data inside the GetGroups200JSONResponseBody_Response_Items as the provided GroupIDList
+func (t *GetGroups200JSONResponseBody_Response_Items) FromGroupIDList(v GroupIDList) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGroupIDList performs a merge with any union data inside the GetGroups200JSONResponseBody_Response_Items, using the provided GroupIDList
+func (t *GetGroups200JSONResponseBody_Response_Items) MergeGroupIDList(v GroupIDList) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetGroups200JSONResponseBody_Response_Items) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetGroups200JSONResponseBody_Response_Items) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -222,17 +424,57 @@ func NewGetGroupsRequest(server string, params *GetGroupsParams) (*http.Request,
 
 		}
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "user_id", params.UserID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
 			}
+
+		}
+
+		if params.Count != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "count", *params.Count, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.UserID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "user_id", *params.UserID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Extended != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "extended", *params.Extended, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
 		}
 
 		if params.Filter != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filter", *params.Filter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "filter", *params.Filter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -315,13 +557,21 @@ type GetGroupsResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		Error *Error `json:"error,omitempty"`
+		Error    *Error `json:"error,omitempty"`
+		Response *struct {
+			Count int                                         `json:"count"`
+			Items GetGroups200JSONResponseBody_Response_Items `json:"items"`
+		} `json:"response,omitempty"`
 	}
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetGroupsResponse) GetJSON200() *struct {
-	Error *Error `json:"error,omitempty"`
+	Error    *Error `json:"error,omitempty"`
+	Response *struct {
+		Count int                                         `json:"count"`
+		Items GetGroups200JSONResponseBody_Response_Items `json:"items"`
+	} `json:"response,omitempty"`
 } {
 	return r.JSON200
 }
@@ -386,7 +636,11 @@ func ParseGetGroupsResponse(rsp *http.Response) (*GetGroupsResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			Error *Error `json:"error,omitempty"`
+			Error    *Error `json:"error,omitempty"`
+			Response *struct {
+				Count int                                         `json:"count"`
+				Items GetGroups200JSONResponseBody_Response_Items `json:"items"`
+			} `json:"response,omitempty"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

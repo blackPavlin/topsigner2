@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/auth/mock"
@@ -36,7 +37,7 @@ func TestService_Login_Success(t *testing.T) {
 
 	password := "password123"
 
-	passwordHash, err := model.GeneratePasswordHash(password)
+	passwordHash, err := crypto.GeneratePasswordHash(password)
 	require.NoError(t, err)
 
 	user := &model.User{
@@ -66,9 +67,13 @@ func TestService_Login_Success(t *testing.T) {
 		Set(t.Context(), gomock.Any(), gomock.Any()).
 		Return(nil)
 
-	service, err := auth.New(
+	encryptor, err := crypto.NewEncryptor(config.Auth.EncryptionKey)
+	require.NoError(t, err)
+
+	service := auth.New(
 		zap.NewNop(),
 		config,
+		encryptor,
 		vkidClient,
 		userRepository,
 		sessionRepository,
@@ -76,7 +81,6 @@ func TestService_Login_Success(t *testing.T) {
 		sessionCacheRepository,
 		codeVerifierRepository,
 	)
-	require.NoError(t, err)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    *user.Email,
@@ -115,9 +119,13 @@ func TestService_Login_UserNotFound(t *testing.T) {
 		Get(t.Context(), gomock.Any()).
 		Return(nil, model.ErrUserNotFound)
 
-	service, err := auth.New(
+	encryptor, err := crypto.NewEncryptor(config.Auth.EncryptionKey)
+	require.NoError(t, err)
+
+	service := auth.New(
 		zap.NewNop(),
 		config,
+		encryptor,
 		vkidClient,
 		userRepository,
 		sessionRepository,
@@ -125,7 +133,6 @@ func TestService_Login_UserNotFound(t *testing.T) {
 		sessionCacheRepository,
 		codeVerifierRepository,
 	)
-	require.NoError(t, err)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    "test@email.com",
@@ -165,9 +172,13 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 		Get(t.Context(), gomock.Any()).
 		Return(user, nil)
 
-	service, err := auth.New(
+	encryptor, err := crypto.NewEncryptor(config.Auth.EncryptionKey)
+	require.NoError(t, err)
+
+	service := auth.New(
 		zap.NewNop(),
 		config,
+		encryptor,
 		vkidClient,
 		userRepository,
 		sessionRepository,
@@ -175,7 +186,6 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 		sessionCacheRepository,
 		codeVerifierRepository,
 	)
-	require.NoError(t, err)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
 		Email:    "test@email.com",
@@ -231,9 +241,13 @@ func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 		Get(gomock.Any(), gomock.Any()).
 		Return(session, nil)
 
-	service, err := auth.New(
+	encryptor, err := crypto.NewEncryptor(config.Auth.EncryptionKey)
+	require.NoError(t, err)
+
+	service := auth.New(
 		zap.NewNop(),
 		config,
+		encryptor,
 		vkidClient,
 		userRepository,
 		sessionRepository,
@@ -241,7 +255,6 @@ func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 		sessionCacheRepository,
 		codeVerifierRepository,
 	)
-	require.NoError(t, err)
 
 	token, err := service.SignAccessToken(user.ID, session.ID, config.Auth.AccessTokenTTL)
 	require.NoError(t, err)
@@ -292,9 +305,13 @@ func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
 		Get(gomock.Any(), session.ID).
 		Return(session, nil)
 
-	service, err := auth.New(
+	encryptor, err := crypto.NewEncryptor(config.Auth.EncryptionKey)
+	require.NoError(t, err)
+
+	service := auth.New(
 		zap.NewNop(),
 		config,
+		encryptor,
 		vkidClient,
 		userRepository,
 		sessionRepository,
@@ -302,7 +319,6 @@ func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
 		sessionCacheRepository,
 		codeVerifierRepository,
 	)
-	require.NoError(t, err)
 
 	token, err := service.SignAccessToken(user.ID, session.ID, config.Auth.AccessTokenTTL)
 	require.NoError(t, err)
@@ -335,9 +351,13 @@ func TestService_Authorize_InvatidToken(t *testing.T) {
 		},
 	}
 
-	service, err := auth.New(
+	encryptor, err := crypto.NewEncryptor(config.Auth.EncryptionKey)
+	require.NoError(t, err)
+
+	service := auth.New(
 		zap.NewNop(),
 		config,
+		encryptor,
 		vkidClient,
 		userRepository,
 		sessionRepository,
@@ -345,7 +365,6 @@ func TestService_Authorize_InvatidToken(t *testing.T) {
 		sessionCacheRepository,
 		codeVerifierRepository,
 	)
-	require.NoError(t, err)
 
 	user, session, err := service.Authorize(t.Context(), "invalid token")
 	require.Nil(t, user)
@@ -390,9 +409,13 @@ func TestService_Authorize_UserNotFound(t *testing.T) {
 		Get(gomock.Any(), sessionID).
 		Return(&model.Session{}, nil)
 
-	service, err := auth.New(
+	encryptor, err := crypto.NewEncryptor(config.Auth.EncryptionKey)
+	require.NoError(t, err)
+
+	service := auth.New(
 		zap.NewNop(),
 		config,
+		encryptor,
 		vkidClient,
 		userRepository,
 		sessionRepository,
@@ -400,7 +423,6 @@ func TestService_Authorize_UserNotFound(t *testing.T) {
 		sessionCacheRepository,
 		codeVerifierRepository,
 	)
-	require.NoError(t, err)
 
 	token, err := service.SignAccessToken(userID, sessionID, config.Auth.AccessTokenTTL)
 	require.NoError(t, err)

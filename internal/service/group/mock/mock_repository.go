@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	model "github.com/bboykiv/topsigner/internal/model"
+	group "github.com/bboykiv/topsigner/internal/service/group"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,18 +43,18 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockRepository) Create(ctx context.Context, group *model.Group) (*model.Group, error) {
+func (m *MockRepository) Create(ctx context.Context, arg1 *model.Group) (*model.Group, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, group)
+	ret := m.ctrl.Call(m, "Create", ctx, arg1)
 	ret0, _ := ret[0].(*model.Group)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockRepositoryMockRecorder) Create(ctx, group any) *MockRepositoryCreateCall {
+func (mr *MockRepositoryMockRecorder) Create(ctx, arg1 any) *MockRepositoryCreateCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, group)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, arg1)
 	return &MockRepositoryCreateCall{Call: call}
 }
 
@@ -192,6 +193,69 @@ func (c *MockRepositoryListCall) Do(f func(context.Context, *model.GroupQuery) (
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockRepositoryListCall) DoAndReturn(f func(context.Context, *model.GroupQuery) ([]*model.Group, error)) *MockRepositoryListCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockVKClient is a mock of VKClient interface.
+type MockVKClient struct {
+	ctrl     *gomock.Controller
+	recorder *MockVKClientMockRecorder
+	isgomock struct{}
+}
+
+// MockVKClientMockRecorder is the mock recorder for MockVKClient.
+type MockVKClientMockRecorder struct {
+	mock *MockVKClient
+}
+
+// NewMockVKClient creates a new mock instance.
+func NewMockVKClient(ctrl *gomock.Controller) *MockVKClient {
+	mock := &MockVKClient{ctrl: ctrl}
+	mock.recorder = &MockVKClientMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockVKClient) EXPECT() *MockVKClientMockRecorder {
+	return m.recorder
+}
+
+// GetGroups mocks base method.
+func (m *MockVKClient) GetGroups(ctx context.Context, token string) ([]*group.Group, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGroups", ctx, token)
+	ret0, _ := ret[0].([]*group.Group)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetGroups indicates an expected call of GetGroups.
+func (mr *MockVKClientMockRecorder) GetGroups(ctx, token any) *MockVKClientGetGroupsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroups", reflect.TypeOf((*MockVKClient)(nil).GetGroups), ctx, token)
+	return &MockVKClientGetGroupsCall{Call: call}
+}
+
+// MockVKClientGetGroupsCall wrap *gomock.Call
+type MockVKClientGetGroupsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockVKClientGetGroupsCall) Return(arg0 []*group.Group, arg1 error) *MockVKClientGetGroupsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockVKClientGetGroupsCall) Do(f func(context.Context, string) ([]*group.Group, error)) *MockVKClientGetGroupsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockVKClientGetGroupsCall) DoAndReturn(f func(context.Context, string) ([]*group.Group, error)) *MockVKClientGetGroupsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

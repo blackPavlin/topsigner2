@@ -9,6 +9,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
+	"github.com/bboykiv/topsigner/internal/service/group"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 )
@@ -19,6 +20,7 @@ type strictServer struct {
 	*AuthHandler
 	*ImageHandler
 	*FontHandler
+	*GroupHandler
 }
 
 func NewHandler(
@@ -27,6 +29,7 @@ func NewHandler(
 	authService *auth.Service,
 	imageService *image.Service,
 	fontService *font.Service,
+	groupService *group.Service,
 ) http.Handler {
 	options := httpserver.ChiServerOptions{
 		Middlewares: []httpserver.MiddlewareFunc{
@@ -44,6 +47,7 @@ func NewHandler(
 		AuthHandler:  NewAuthHandler(authService),
 		ImageHandler: NewImageHandler(imageService),
 		FontHandler:  NewFontHandler(fontService),
+		GroupHandler: NewGroupHandler(groupService),
 	}
 
 	return httpserver.HandlerWithOptions(httpserver.NewStrictHandler(server, nil), options)

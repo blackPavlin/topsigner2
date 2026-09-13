@@ -11,13 +11,14 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
 type Service struct {
 	logger                 *zap.Logger
 	config                 *config.Config
-	encryptor              *Encryptor
+	encryptor              *crypto.Encryptor
 	vkidClient             VKIDClient
 	userRepository         UserRepository
 	sessionRepository      SessionRepository
@@ -29,18 +30,14 @@ type Service struct {
 func New(
 	logger *zap.Logger,
 	config *config.Config,
+	encryptor *crypto.Encryptor,
 	vkidClient VKIDClient,
 	userRepository UserRepository,
 	sessionRepository SessionRepository,
 	userCacheRepository UserCacheRepository,
 	sessionCacheRepository SessionCacheRepository,
 	codeVerifierRepository CodeVerifierRepository,
-) (*Service, error) {
-	encryptor, err := NewEncryptor(config.Auth.EncryptionKey)
-	if err != nil {
-		return nil, fmt.Errorf("create new encryptor: %w", err)
-	}
-
+) *Service {
 	return &Service{
 		logger:                 logger.Named("auth-service"),
 		config:                 config,
@@ -51,7 +48,7 @@ func New(
 		userCacheRepository:    userCacheRepository,
 		sessionCacheRepository: sessionCacheRepository,
 		codeVerifierRepository: codeVerifierRepository,
-	}, nil
+	}
 }
 
 func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, error) {
@@ -72,7 +69,7 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 		return nil, ErrPasswordLoginNotAvailable
 	}
 
-	if err = model.ComparePasswordAndHash(*user.PasswordHash, input.Password); err != nil {
+	if err = crypto.ComparePasswordAndHash(*user.PasswordHash, input.Password); err != nil {
 		return nil, ErrInvalidPassword
 	}
 

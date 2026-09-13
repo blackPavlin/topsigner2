@@ -14,9 +14,7 @@ type FontHandler struct {
 }
 
 func NewFontHandler(fontService *font.Service) *FontHandler {
-	return &FontHandler{
-		fontService: fontService,
-	}
+	return &FontHandler{fontService: fontService}
 }
 
 // Get list of fonts

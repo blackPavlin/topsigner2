@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/database"
 	"github.com/bboykiv/topsigner/internal/database/repository"
 	"github.com/bboykiv/topsigner/internal/keyvalue"
@@ -39,6 +40,7 @@ func New() fx.Option {
 		s3.Module,
 		vk.Module,
 		vkid.Module,
+		crypto.Module,
 		fx.Provide(
 			NewLogger,
 			config.New,
