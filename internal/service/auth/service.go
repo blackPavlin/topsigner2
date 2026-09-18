@@ -89,8 +89,6 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 		ExpiresAt:        time.Now().Add(s.config.Auth.RefreshTokenTTL),
 	}
 
-	// todo: не создавать новую сессию на каждый запрос авторизации, если user_id, ip и user_agent совпадают
-
 	session, err = s.sessionRepository.Create(ctx, session)
 	if err != nil {
 		s.logger.Error("create session", zap.Error(err))
@@ -192,8 +190,6 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		return nil, fmt.Errorf("get session: %w", err)
 	}
 
-	// todo: решить, нужно ли сверять user_agent и ip, в случае, если они не совпадают, выбрасывать ошибку и удалять сессию
-
 	if session.ExpiresAt.Before(time.Now()) {
 		if err = s.sessionCacheRepository.Delete(ctx, session.ID); err != nil {
 			s.logger.Error("delete session cache", zap.Error(err))
@@ -229,7 +225,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 			return nil, fmt.Errorf("decrypt oauth refresh token: %w", err)
 		}
 
-		state, err := generateRandomString(stateBytes)
+		state, err := crypto.GenerateRandomString(stateBytes)
 		if err != nil {
 			s.logger.Error("generate state", zap.Error(err))
 
@@ -419,14 +415,14 @@ func (s *Service) ParseAndValidateAccessToken(token string) (*AccessTokenClaims,
 }
 
 func (s *Service) GenerateVKIDOAuthURL(ctx context.Context) (string, error) {
-	codeVerifier, err := generateRandomString(codeVerifierBytes)
+	codeVerifier, err := crypto.GenerateRandomString(codeVerifierBytes)
 	if err != nil {
 		s.logger.Error("generate code verifier", zap.Error(err))
 
 		return "", fmt.Errorf("generate code verifier: %w", err)
 	}
 
-	state, err := generateRandomString(stateBytes)
+	state, err := crypto.GenerateRandomString(stateBytes)
 	if err != nil {
 		s.logger.Error("generate state", zap.Error(err))
 
@@ -526,8 +522,6 @@ func (s *Service) ExchangeVKIDOAuthToken(
 		OAuthRefreshTokenEnc: new(oAuthRefreshTokenEnc),
 		ExpiresAt:            time.Now().Add(s.config.VKID.RefreshTokenTTL),
 	}
-
-	// todo: не создавать новую сессию на каждый запрос авторизации, если user_id, ip и user_agent совпадают
 
 	session, err = s.sessionRepository.Create(ctx, session)
 	if err != nil {

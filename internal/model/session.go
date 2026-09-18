@@ -36,6 +36,8 @@ type SessionFilter struct {
 	ID               TextFilter
 	UserID           IDFilter
 	AuthType         TextFilter
+	IP               TextFilter
+	UserAgent        TextFilter
 	RefreshTokenHash TextFilter
 }
 

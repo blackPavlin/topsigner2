@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/bboykiv/topsigner/internal/crypto"
 )
 
 const refreshTokenBytes = 32
@@ -24,7 +26,7 @@ type TokenPair struct {
 }
 
 func generateRefreshToken() (string, error) {
-	token, err := generateRandomString(refreshTokenBytes)
+	token, err := crypto.GenerateRandomString(refreshTokenBytes)
 	if err != nil {
 		return "", fmt.Errorf("generate refresh token: %w", err)
 	}

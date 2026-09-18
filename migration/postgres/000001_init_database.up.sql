@@ -34,6 +34,7 @@ CREATE TABLE sessions (
 
     PRIMARY KEY (id),
     CONSTRAINT sessions_refresh_token_hash_unique UNIQUE (refresh_token_hash),
+    CONSTRAINT sessions_user_id_auth_type_ip_user_agent_unique UNIQUE (user_id, auth_type, ip, user_agent),
     CONSTRAINT sessions_user_id_fk FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
@@ -64,11 +65,12 @@ CREATE TABLE images (
 CREATE INDEX images_user_id_idx ON images (user_id);
 
 CREATE TABLE groups (
-    id 		    BIGINT 	    GENERATED ALWAYS AS IDENTITY,
-    user_id     BIGINT      NOT NULL,
-    external_id BIGINT      NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    id 		         BIGINT 	 GENERATED ALWAYS AS IDENTITY,
+    user_id          BIGINT      NOT NULL,
+    external_id      BIGINT      NOT NULL,
+    access_token_enc TEXT        NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     PRIMARY KEY (id),
     CONSTRAINT groups_user_id_external_id_unique UNIQUE (user_id, external_id),

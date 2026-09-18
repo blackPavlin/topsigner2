@@ -24,12 +24,20 @@ func (r *GroupRepository) Get(
 	ctx context.Context,
 	filter *model.GroupFilter,
 ) (*model.Group, error) {
-	builder := psql.Select("id", "user_id", "external_id", "created_at", "updated_at").
+	builder := psql.Select(
+		"id",
+		"user_id",
+		"external_id",
+		"access_token_enc",
+		"created_at",
+		"updated_at",
+	).
 		From(groupTableName).
 		Limit(1)
 
 	builder = applyFilter(builder, "id", filter.ID)
 	builder = applyFilter(builder, "user_id", filter.UserID)
+	builder = applyFilter(builder, "external_id", filter.ExternalID)
 
 	sql, args, err := builder.ToSql()
 	if err != nil {
@@ -42,6 +50,7 @@ func (r *GroupRepository) Get(
 		&group.ID,
 		&group.UserID,
 		&group.ExternalID,
+		&group.AccessTokenEnc,
 		&group.CreatedAt,
 		&group.UpdatedAt,
 	)
@@ -60,7 +69,14 @@ func (r *GroupRepository) List(
 	ctx context.Context,
 	query *model.GroupQuery,
 ) ([]*model.Group, error) {
-	builder := psql.Select("id", "user_id", "external_id", "created_at", "updated_at").
+	builder := psql.Select(
+		"id",
+		"user_id",
+		"external_id",
+		"access_token_enc",
+		"created_at",
+		"updated_at",
+	).
 		From(groupTableName).
 		OrderBy("created_at DESC", "id DESC").
 		Limit(uint64(query.Pagination.Limit))
@@ -93,6 +109,7 @@ func (r *GroupRepository) List(
 			&group.ID,
 			&group.UserID,
 			&group.ExternalID,
+			&group.AccessTokenEnc,
 			&group.CreatedAt,
 			&group.UpdatedAt,
 		)
@@ -112,8 +129,16 @@ func (r *GroupRepository) List(
 
 func (r *GroupRepository) Create(ctx context.Context, group *model.Group) (*model.Group, error) {
 	sql, args, err := psql.Insert(groupTableName).
-		Columns("user_id", "external_id").
-		Values(group.UserID).
+		Columns(
+			"user_id",
+			"external_id",
+			"access_token_enc",
+		).
+		Values(
+			group.UserID,
+			group.ExternalID,
+			group.AccessTokenEnc,
+		).
 		Suffix("ON CONFLICT DO NOTHING RETURNING id, created_at, updated_at").
 		ToSql()
 	if err != nil {
@@ -122,7 +147,6 @@ func (r *GroupRepository) Create(ctx context.Context, group *model.Group) (*mode
 
 	err = r.pool.QueryRow(ctx, sql, args...).Scan(
 		&group.ID,
-		&group.ExternalID,
 		&group.CreatedAt,
 		&group.UpdatedAt,
 	)
