@@ -123,11 +123,11 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
-  /api/v1/auth/oauth/{provider}:
+  /api/v1/auth/vkontakte/authorize:
     get:
-      summary: Get OAuth authorization URL
+      summary: Get vk OAuth authorization URL
       description: Builds and returns authorization URL
-      operationId: authOAuthGetURL
+      operationId: authGetVKOAuthURL
       tags:
         - Auth
       security: [ ]
@@ -144,13 +144,11 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
-    parameters:
-      - $ref: '#/components/parameters/Provider'
-  /api/v1/auth/oauth/{provider}/callback:
+  /api/v1/auth/vkontakte/callback:
     get:
-      summary: OAuth callback
+      summary: OAuth vk callback
       description: Exchanges the authorization code for a pair of auth tokens
-      operationId: authOAuthCallback
+      operationId: authVKOAuthCallback
       tags:
         - Auth
       security: [ ]
@@ -187,9 +185,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
-          $ref: '#/components/responses/InternalError'
-    parameters:
-      - $ref: '#/components/parameters/Provider'      
+          $ref: '#/components/responses/InternalError'     
   /api/v1/images:
     get:
       summary: Get list of user images
@@ -349,16 +345,9 @@ components:
       required: false
       schema:
         type: integer
-
-    Provider:
-      name: provider
-      in: path
-      description: OAuth provider identifier
-      required: true
-      schema:
-        type: string
-        enum:
-          - vkontakte
+        minimum: 1
+        maximum: 50
+        default: 50
 
   schemas:
     Error:
@@ -369,6 +358,7 @@ components:
         message:
           type: string
           description: Human-readable error description
+          x-order: 1
 
     Pagination:
       type: object
@@ -389,6 +379,7 @@ components:
       required:
         - access_token
         - refresh_token
+        - type
         - expires_at
       properties:
         access_token:
@@ -397,10 +388,15 @@ components:
         refresh_token:
           type: string
           x-order: 2
+        type:
+          type: string
+          enum:
+            - Bearer
+          x-order: 3
         expires_at:
           type: string
           format: date-time
-          x-order: 3
+          x-order: 4
 
     OAuthAuthorizationURL:
       type: object
