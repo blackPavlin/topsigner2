@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bboykiv/topsigner/gen/external/vkid/httpclient"
+	"github.com/bboykiv/topsigner/internal/adapter/vkid"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/service/auth"
-	"github.com/bboykiv/topsigner/internal/vkid"
 )
 
-func TestVKID_GenerateOAuthURL_Success(t *testing.T) {
+func TestVKID_GetAuthorizationURL_Success(t *testing.T) {
 	cfg := &config.Config{
 		VKID: config.VKIDConfig{
 			BaseURL:     "https://id.vk.com",
@@ -28,7 +28,7 @@ func TestVKID_GenerateOAuthURL_Success(t *testing.T) {
 	client, err := vkid.NewClient(cfg)
 	require.NoError(t, err)
 
-	got, err := client.GenerateOAuthURL("challenge123", "state456")
+	got, err := client.GetAuthorizationURL("challenge123", "state456")
 	require.NoError(t, err)
 
 	u, err := url.Parse(got)
@@ -40,7 +40,7 @@ func TestVKID_GenerateOAuthURL_Success(t *testing.T) {
 	require.Equal(t, "S256", u.Query().Get("code_challenge_method"))
 }
 
-func TestVKID_ExchangeOAuthToken_Success(t *testing.T) {
+func TestVKID_Exchange_Success(t *testing.T) {
 	const (
 		clientID    = "client123"
 		redirectURL = "https://example.com/callback"
@@ -98,7 +98,7 @@ func TestVKID_ExchangeOAuthToken_Success(t *testing.T) {
 	client, err := vkid.NewClient(cfg)
 	require.NoError(t, err)
 
-	got, err := client.ExchangeOAuthToken(t.Context(), params)
+	got, err := client.Exchange(t.Context(), params)
 	require.NoError(t, err)
 	require.Equal(t, tokenResponse.AccessToken, got.AccessToken)
 	require.Equal(t, tokenResponse.ExpiresIn, got.ExpiresIn)

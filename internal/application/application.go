@@ -8,21 +8,20 @@ import (
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
 
+	"github.com/bboykiv/topsigner/internal/adapter/postgres"
+	"github.com/bboykiv/topsigner/internal/adapter/redis"
+	"github.com/bboykiv/topsigner/internal/adapter/s3"
+	"github.com/bboykiv/topsigner/internal/adapter/vk"
+	"github.com/bboykiv/topsigner/internal/adapter/vkid"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/crypto"
-	"github.com/bboykiv/topsigner/internal/database"
-	"github.com/bboykiv/topsigner/internal/database/repository"
-	"github.com/bboykiv/topsigner/internal/keyvalue"
-	"github.com/bboykiv/topsigner/internal/s3"
-	"github.com/bboykiv/topsigner/internal/s3/storage"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/group"
+	"github.com/bboykiv/topsigner/internal/service/health"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/service/user"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
-	"github.com/bboykiv/topsigner/internal/vk"
-	"github.com/bboykiv/topsigner/internal/vkid"
 )
 
 func New() fx.Option {
@@ -35,8 +34,8 @@ func New() fx.Option {
 				),
 			}
 		}),
-		database.Module,
-		keyvalue.Module,
+		postgres.Module,
+		redis.Module,
 		s3.Module,
 		vk.Module,
 		vkid.Module,
@@ -49,42 +48,47 @@ func New() fx.Option {
 			font.New,
 			image.New,
 			group.New,
+			health.New,
 			fx.Annotate(
-				repository.NewGroupRepository,
+				postgres.NewGroupRepository,
 				fx.As(new(group.Repository)),
 			),
 			fx.Annotate(
-				repository.NewFontRepository,
+				postgres.NewFontRepository,
 				fx.As(new(font.Repository)),
 			),
 			fx.Annotate(
-				repository.NewImageRepository,
+				postgres.NewImageRepository,
 				fx.As(new(image.Repository)),
 			),
 			fx.Annotate(
-				storage.NewImageStorage,
+				s3.NewImageStorage,
 				fx.As(new(image.Storage)),
 			),
 			fx.Annotate(
-				repository.NewUserRepository,
+				postgres.NewUserRepository,
 				fx.As(new(user.Repository)),
 				fx.As(new(auth.UserRepository)),
 			),
 			fx.Annotate(
-				repository.NewSessionRepository,
+				postgres.NewSessionRepository,
 				fx.As(new(auth.SessionRepository)),
 			),
 			fx.Annotate(
-				keyvalue.NewUserCacheRepository,
+				redis.NewUserCache,
 				fx.As(new(auth.UserCacheRepository)),
 			),
 			fx.Annotate(
-				keyvalue.NewSessionCacheRepository,
+				redis.NewSessionCache,
 				fx.As(new(auth.SessionCacheRepository)),
 			),
 			fx.Annotate(
-				keyvalue.NewCodeVerifierRepository,
+				redis.NewCodeVerifierStore,
 				fx.As(new(auth.CodeVerifierRepository)),
+			),
+			fx.Annotate(
+				redis.NewGroupStateStore,
+				fx.As(new(group.StateRepository)),
 			),
 			NewHttpServer,
 			httptransport.NewHandler,

@@ -1,4 +1,4 @@
-package keyvalue
+package redis
 
 import (
 	"context"
@@ -13,15 +13,19 @@ import (
 
 const codeVerifierPrefix = "code_verifier:"
 
-type CodeVerifierRepository struct {
+type CodeVerifierStore struct {
 	client *redis.Client
 }
 
-func NewCodeVerifierRepository(client *redis.Client) *CodeVerifierRepository {
-	return &CodeVerifierRepository{client: client}
+func NewCodeVerifierStore(client *redis.Client) *CodeVerifierStore {
+	return &CodeVerifierStore{client: client}
 }
 
-func (r *CodeVerifierRepository) Set(
+func getCodeVerifierKey(state string) string {
+	return codeVerifierPrefix + state
+}
+
+func (r *CodeVerifierStore) Set(
 	ctx context.Context,
 	state, verifier string,
 	ttl time.Duration,
@@ -33,7 +37,7 @@ func (r *CodeVerifierRepository) Set(
 	return nil
 }
 
-func (r *CodeVerifierRepository) Pop(ctx context.Context, state string) (string, error) {
+func (r *CodeVerifierStore) Pop(ctx context.Context, state string) (string, error) {
 	result, err := r.client.GetDel(ctx, getCodeVerifierKey(state)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -44,8 +48,4 @@ func (r *CodeVerifierRepository) Pop(ctx context.Context, state string) (string,
 	}
 
 	return result, nil
-}
-
-func getCodeVerifierKey(state string) string {
-	return codeVerifierPrefix + state
 }

@@ -5,6 +5,11 @@ logging {
 
 discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
+
+  filter {
+    name   = "name"
+    values = ["topsigner"]
+  }
 }
 
 discovery.relabel "containers" {
@@ -37,19 +42,15 @@ loki.source.docker "containers" {
 loki.process "containers" {
   forward_to = [loki.write.default.receiver]
 
-  stage.match {
-    selector = "{service=\"topsigner\"}"
-
-    stage.json {
-      expressions = {
-        level = "level",
-      }
+  stage.json {
+    expressions = {
+      level = "level",
     }
+  }
 
-    stage.labels {
-      values = {
-        level = "",
-      }
+  stage.labels {
+    values = {
+      level = "",
     }
   }
 }

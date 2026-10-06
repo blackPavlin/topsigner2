@@ -1,4 +1,4 @@
-package keyvalue
+package redis
 
 import (
 	"context"
@@ -12,17 +12,21 @@ import (
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
-const sessionCachePrefix = "session_cache:"
+const sessionCachePrefix = "session:"
 
-type SessionCacheRepository struct {
+type SessionCache struct {
 	client *redis.Client
 }
 
-func NewSessionCacheRepository(client *redis.Client) *SessionCacheRepository {
-	return &SessionCacheRepository{client: client}
+func NewSessionCache(client *redis.Client) *SessionCache {
+	return &SessionCache{client: client}
 }
 
-func (r *SessionCacheRepository) Get(
+func getSessionCacheKey(sessionID string) string {
+	return sessionCachePrefix + sessionID
+}
+
+func (r *SessionCache) Get(
 	ctx context.Context,
 	sessionID string,
 ) (*model.Session, error) {
@@ -44,7 +48,7 @@ func (r *SessionCacheRepository) Get(
 	return &session, nil
 }
 
-func (r *SessionCacheRepository) Set(
+func (r *SessionCache) Set(
 	ctx context.Context,
 	session *model.Session,
 	ttl time.Duration,
@@ -62,14 +66,10 @@ func (r *SessionCacheRepository) Set(
 	return nil
 }
 
-func (r *SessionCacheRepository) Delete(ctx context.Context, sessionID string) error {
+func (r *SessionCache) Delete(ctx context.Context, sessionID string) error {
 	if err := r.client.Del(ctx, getSessionCacheKey(sessionID)).Err(); err != nil {
 		return fmt.Errorf("delete session cache: %w", err)
 	}
 
 	return nil
-}
-
-func getSessionCacheKey(sessionID string) string {
-	return sessionCachePrefix + sessionID
 }

@@ -1,4 +1,4 @@
-package database
+package postgres
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/config"
 )
 
-var Module = fx.Module("database", fx.Provide(New), fx.Invoke(MakeMigrations))
+var Module = fx.Module("postgres", fx.Provide(New), fx.Invoke(MakeMigrations))
 
 type Params struct {
 	fx.In

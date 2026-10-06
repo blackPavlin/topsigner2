@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
   version: '1.0.0'
   title: Topsigner
@@ -8,8 +8,10 @@ servers:
   - url: http://localhost:8080
     description: Local development server
 tags:
+  - name: Health
+    description: Application health check
   - name: Auth
-    description: Operations with authorization
+    description: Authentication and token management
   - name: Image
     description: Operations with images
   - name: Font
@@ -19,11 +21,32 @@ tags:
 security:
   - BearerAuth: [ ]
 paths:
+  /api/v1/health:
+    get:
+      summary: Health check
+      description: Returns the health status of the application
+      operationId: healthCheck
+      tags:
+        - Health
+      security: [ ]
+      responses:
+        '200':
+          description: Application and dependencies are healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Application or dependencies are unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
   /api/v1/auth/login:
     post:
       summary: Login user
-      description: Login user and get tokens
-      operationId: authLogin
+      description: Login with email and password
+      operationId: loginUser
       tags:
         - Auth
       security: [ ]
@@ -32,21 +55,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - email
-                - password
-              properties:
-                email:
-                  type: string
-                  format: email
-                  x-go-type: string
-                  x-oapi-codegen-extra-tags:
-                    validate: required,email
-                password:
-                  type: string
-                  x-oapi-codegen-extra-tags:
-                    validate: required,min=8,max=72
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
           description: Login successful
@@ -66,18 +75,15 @@ paths:
     post:
       summary: Logout user
       description: Invalidate refresh token and drop session
-      operationId: authLogout
+      operationId: logoutUser
       tags:
         - Auth
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
-            schema: 
-              type: object
-              properties: 
-                refreshToken:
-                  type: string
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
       responses:
         '204':
           description: Logout successful
@@ -93,7 +99,7 @@ paths:
     post:
       summary: Refresh auth tokens
       description: Exchange refresh token
-      operationId: authRefresh
+      operationId: refreshTokens
       tags:
         - Auth
       security: [ ]
@@ -102,12 +108,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - refreshToken
-              properties:
-                refreshToken:
-                  type: string
+              $ref: '#/components/schemas/RefreshRequest'
       responses:
         '200':
           description: Tokens successfully refreshed
@@ -123,11 +124,11 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
-  /api/v1/auth/vkontakte/authorize:
+  /api/v1/auth/vkid/authorize:
     get:
-      summary: Get vk OAuth authorization URL
+      summary: Get VK ID authorization URL
       description: Builds and returns authorization URL
-      operationId: authGetVKOAuthURL
+      operationId: getVKIDAuthorizationURL
       tags:
         - Auth
       security: [ ]
@@ -137,18 +138,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OAuthAuthorizationURL'
+                $ref: '#/components/schemas/VKIDAuthorization'
         '400':
           $ref: '#/components/responses/BadRequest'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
-  /api/v1/auth/vkontakte/callback:
+  /api/v1/auth/vkid/callback:
     get:
-      summary: OAuth vk callback
-      description: Exchanges the authorization code for a pair of auth tokens
-      operationId: authVKOAuthCallback
+      summary: Exchange VK ID authorization code
+      description: Exchange the authorization code for a pair of tokens
+      operationId: handleVKIDCallback
       tags:
         - Auth
       security: [ ]
@@ -156,19 +157,31 @@ paths:
         - name: code
           in: query
           description: Authorization code issued by the provider
-          required: true
+          required: false
           schema:
             type: string
         - name: state
           in: query
           description: Opaque value used to prevent CSRF attacks
-          required: true
+          required: false
           schema:
             type: string
         - name: device_id
           in: query
-          required: true
+          required: false
           description: Unique device identifier
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: Error code
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          required: false
+          description: Error description
           schema:
             type: string
       responses:
@@ -181,16 +194,16 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthorized'  
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
-          $ref: '#/components/responses/InternalError'     
+          $ref: '#/components/responses/InternalError'
   /api/v1/images:
     get:
       summary: Get list of user images
       description: Returns a paginated list of user images
-      operationId: getImages
+      operationId: listImages
       tags:
         - Image
       parameters:
@@ -222,14 +235,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              type: object
-              required:
-                - file
-              properties:
-                file:
-                  description: Image file to upload
-                  type: string
-                  format: binary  
+              $ref: '#/components/schemas/UploadImageRequest'
+            encoding:
+              file:
+                contentType: image/jpeg, image/png
       responses:
         '201':
           description: Image successfully uploaded
@@ -241,17 +250,27 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
-  /api/v1/images/{name}:
+  /api/v1/images/{image_id}:
+    parameters:
+      - name: image_id
+        in: path
+        required: true
+        description: Image ID
+        schema:
+          type: integer
+          format: int64
     delete:
-      summary: Delete image by name
-      description: Delete image by name
-      operationId: deleteImageByName
+      summary: Delete image
+      description: Delete user image by id
+      operationId: deleteImage
       tags:
         - Image
       responses:
@@ -261,22 +280,17 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
-    parameters:
-      - name: name
-        in: path
-        required: true
-        description: Image name
-        schema:
-          type: string
   /api/v1/fonts:
     get:
       summary: Get list of fonts
       description: Returns a paginated list of fonts
-      operationId: getFonts
+      operationId: listFonts
       tags:
         - Font
       parameters:
@@ -301,10 +315,11 @@ paths:
     get:
       summary: Get list of groups
       description: Returns a paginated list of groups
-      operationId: getGroups
+      operationId: listGroups
       tags:
         - Group
       parameters:
+        - $ref: '#/components/parameters/Cursor'
         - $ref: '#/components/parameters/Limit'
       responses:
         '200':
@@ -321,13 +336,88 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '500':
           $ref: '#/components/responses/InternalError'
+  /api/v1/groups/connect:
+    get:
+      summary: Get URL to connect group
+      description: Get VK authorization URL to connect group
+      operationId: getGroupConnectionURL
+      tags:
+        - Group
+      parameters:
+        - name: group_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Authorization URL generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupAuthorization'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/v1/groups/callback:
+    get:
+      summary: Exchange group authorization code
+      description: Exchange group authorization code for connect group
+      operationId: handleGroupCallback
+      tags:
+        - Group
+      security: [ ]
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: Error code
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          required: false
+          description: Error description
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Group successfully connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     BearerAuth:
+      description: Access token for authenticated endpoints
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT access token for authenticated endpoints
 
   parameters:
     Cursor:
@@ -356,22 +446,79 @@ components:
         - message
       properties:
         message:
-          type: string
           description: Human-readable error description
-          x-order: 1
+          type: string
 
     Pagination:
       type: object
       required:
-        - has_next
+        - next_cursor
       properties:
         next_cursor:
           type: string
           nullable: true
-          x-order: 1
-        has_next:
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          - degraded
+          - down
+
+    LoginRequest:
+      type: object
+      description: Credentials for email/password login
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          x-go-type: string
+          x-oapi-codegen-extra-tags:
+            validate: required,email
+        password:
+          type: string
+          minLength: 1
+          x-oapi-codegen-extra-tags:
+            validate: required,min=1
+
+    LogoutRequest:
+      type: object
+      description: Logout options
+      properties:
+        all_sessions:
           type: boolean
-          x-order: 2
+          default: false
+
+    RefreshRequest:
+      type: object
+      description: Refresh token exchange request
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+          x-oapi-codegen-extra-tags:
+            validate: required,min=1
+
+    UploadImageRequest:
+      type: object
+      description: Multipart form with an image file
+      required:
+        - file
+      properties:
+        file:
+          description: Image file to upload
+          type: string
+          format: binary
 
     AuthTokens:
       type: object
@@ -379,8 +526,8 @@ components:
       required:
         - access_token
         - refresh_token
-        - type
-        - expires_at
+        - token_type
+        - expires_in
       properties:
         access_token:
           type: string
@@ -388,19 +535,30 @@ components:
         refresh_token:
           type: string
           x-order: 2
-        type:
+        token_type:
           type: string
           enum:
             - Bearer
           x-order: 3
-        expires_at:
-          type: string
-          format: date-time
+        expires_in:
+          type: integer
+          format: int64
           x-order: 4
 
-    OAuthAuthorizationURL:
+    VKIDAuthorization:
       type: object
-      description: OAuth provider authorization URL
+      description: OAuth authorization URL
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          x-order: 1
+
+    GroupAuthorization:
+      type: object
+      description: Group authorization URL
       required:
         - url
       properties:
@@ -414,6 +572,7 @@ components:
       description: Image resource
       required:
         - id
+        - url
         - name
         - created_at
         - updated_at
@@ -422,17 +581,21 @@ components:
           type: integer
           format: int64
           x-order: 1
+        url:
+          type: string
+          format: uri
+          x-order: 2
         name:
           type: string
-          x-order: 2
+          x-order: 3
         created_at:
           type: string
           format: date-time
-          x-order: 3
+          x-order: 4
         updated_at:
           type: string
           format: date-time
-          x-order: 4
+          x-order: 5
 
     ImageList:
       type: object
@@ -445,9 +608,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Image'
-          x-order: 1  
+          x-order: 1
         pagination:
           $ref: '#/components/schemas/Pagination'
+          x-order: 2
 
     Font:
       type: object
@@ -485,9 +649,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Font'
-          x-order: 1  
+          x-order: 1
         pagination:
           $ref: '#/components/schemas/Pagination'
+          x-order: 2
 
     Group:
       type: object
@@ -496,6 +661,7 @@ components:
         - id
         - name
         - screen_name
+        - is_connected
       properties:
         id:
           type: integer
@@ -507,18 +673,25 @@ components:
         screen_name:
           type: string
           x-order: 3
-      
+        is_connected:
+          type: boolean
+          x-order: 4
+
     GroupList:
       type: object
-      description: List of groups
+      description: List of groups with cursor pagination
       required:
         - items
+        - pagination
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/Group'
-          x-order: 1  
+          x-order: 1
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+          x-order: 2
 
   responses:
     BadRequest:
@@ -556,6 +729,13 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
 
+    PayloadTooLarge:
+      description: Payload too large
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
     UnsupportedMediaType:
       description: Unsupported file type
       content:
@@ -568,6 +748,7 @@ components:
       headers:
         Retry-After:
           description: Seconds to wait before retrying
+          required: true
           schema:
             type: integer
       content:

@@ -12,6 +12,7 @@ package mock
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	model "github.com/bboykiv/topsigner/internal/model"
 	group "github.com/bboykiv/topsigner/internal/service/group"
@@ -221,6 +222,85 @@ func (m *MockVKClient) EXPECT() *MockVKClientMockRecorder {
 	return m.recorder
 }
 
+// ExchangGroupCode mocks base method.
+func (m *MockVKClient) ExchangGroupCode(ctx context.Context, code string) (int64, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExchangGroupCode", ctx, code)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ExchangGroupCode indicates an expected call of ExchangGroupCode.
+func (mr *MockVKClientMockRecorder) ExchangGroupCode(ctx, code any) *MockVKClientExchangGroupCodeCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExchangGroupCode", reflect.TypeOf((*MockVKClient)(nil).ExchangGroupCode), ctx, code)
+	return &MockVKClientExchangGroupCodeCall{Call: call}
+}
+
+// MockVKClientExchangGroupCodeCall wrap *gomock.Call
+type MockVKClientExchangGroupCodeCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockVKClientExchangGroupCodeCall) Return(arg0 int64, arg1 string, arg2 error) *MockVKClientExchangGroupCodeCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockVKClientExchangGroupCodeCall) Do(f func(context.Context, string) (int64, string, error)) *MockVKClientExchangGroupCodeCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockVKClientExchangGroupCodeCall) DoAndReturn(f func(context.Context, string) (int64, string, error)) *MockVKClientExchangGroupCodeCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GenerateConnectGroupURL mocks base method.
+func (m *MockVKClient) GenerateConnectGroupURL(groupID int64, state string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateConnectGroupURL", groupID, state)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GenerateConnectGroupURL indicates an expected call of GenerateConnectGroupURL.
+func (mr *MockVKClientMockRecorder) GenerateConnectGroupURL(groupID, state any) *MockVKClientGenerateConnectGroupURLCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateConnectGroupURL", reflect.TypeOf((*MockVKClient)(nil).GenerateConnectGroupURL), groupID, state)
+	return &MockVKClientGenerateConnectGroupURLCall{Call: call}
+}
+
+// MockVKClientGenerateConnectGroupURLCall wrap *gomock.Call
+type MockVKClientGenerateConnectGroupURLCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockVKClientGenerateConnectGroupURLCall) Return(arg0 string, arg1 error) *MockVKClientGenerateConnectGroupURLCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockVKClientGenerateConnectGroupURLCall) Do(f func(int64, string) (string, error)) *MockVKClientGenerateConnectGroupURLCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockVKClientGenerateConnectGroupURLCall) DoAndReturn(f func(int64, string) (string, error)) *MockVKClientGenerateConnectGroupURLCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetGroups mocks base method.
 func (m *MockVKClient) GetGroups(ctx context.Context, token string) ([]*group.Group, error) {
 	m.ctrl.T.Helper()
@@ -256,6 +336,107 @@ func (c *MockVKClientGetGroupsCall) Do(f func(context.Context, string) ([]*group
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockVKClientGetGroupsCall) DoAndReturn(f func(context.Context, string) ([]*group.Group, error)) *MockVKClientGetGroupsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockStateRepository is a mock of StateRepository interface.
+type MockStateRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockStateRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockStateRepositoryMockRecorder is the mock recorder for MockStateRepository.
+type MockStateRepositoryMockRecorder struct {
+	mock *MockStateRepository
+}
+
+// NewMockStateRepository creates a new mock instance.
+func NewMockStateRepository(ctrl *gomock.Controller) *MockStateRepository {
+	mock := &MockStateRepository{ctrl: ctrl}
+	mock.recorder = &MockStateRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockStateRepository) EXPECT() *MockStateRepositoryMockRecorder {
+	return m.recorder
+}
+
+// Pop mocks base method.
+func (m *MockStateRepository) Pop(ctx context.Context, state string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Pop", ctx, state)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Pop indicates an expected call of Pop.
+func (mr *MockStateRepositoryMockRecorder) Pop(ctx, state any) *MockStateRepositoryPopCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pop", reflect.TypeOf((*MockStateRepository)(nil).Pop), ctx, state)
+	return &MockStateRepositoryPopCall{Call: call}
+}
+
+// MockStateRepositoryPopCall wrap *gomock.Call
+type MockStateRepositoryPopCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateRepositoryPopCall) Return(arg0 int64, arg1 error) *MockStateRepositoryPopCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateRepositoryPopCall) Do(f func(context.Context, string) (int64, error)) *MockStateRepositoryPopCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateRepositoryPopCall) DoAndReturn(f func(context.Context, string) (int64, error)) *MockStateRepositoryPopCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Set mocks base method.
+func (m *MockStateRepository) Set(ctx context.Context, state string, userID int64, ttl time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Set", ctx, state, userID, ttl)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Set indicates an expected call of Set.
+func (mr *MockStateRepositoryMockRecorder) Set(ctx, state, userID, ttl any) *MockStateRepositorySetCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockStateRepository)(nil).Set), ctx, state, userID, ttl)
+	return &MockStateRepositorySetCall{Call: call}
+}
+
+// MockStateRepositorySetCall wrap *gomock.Call
+type MockStateRepositorySetCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateRepositorySetCall) Return(arg0 error) *MockStateRepositorySetCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateRepositorySetCall) Do(f func(context.Context, string, int64, time.Duration) error) *MockStateRepositorySetCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateRepositorySetCall) DoAndReturn(f func(context.Context, string, int64, time.Duration) error) *MockStateRepositorySetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

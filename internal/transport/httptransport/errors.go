@@ -3,7 +3,9 @@ package httptransport
 import (
 	"errors"
 	"fmt"
+	"net/http"
 
+	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
@@ -35,4 +37,9 @@ func NewBadRequestError(err error) httpserver.BadRequestJSONResponse {
 	}
 
 	return httpserver.BadRequestJSONResponse{Message: message}
+}
+
+func errorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
+	render.Status(r, http.StatusBadRequest)
+	render.Respond(w, r, NewBadRequestError(err))
 }

@@ -5,11 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/bboykiv/topsigner/gen/external/vkid/httpclient"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/service/auth"
+)
+
+var (
+	ErrInvalidAuthCode = errors.New("invalid authorization code")
+	ErrUpstream        = errors.New("upstream provider error")
 )
 
 type Client struct {
@@ -17,10 +21,9 @@ type Client struct {
 	client *httpclient.ClientWithResponses
 }
 
+// todo: добавить логгирование
+// todo: добавить метрики
 func NewClient(config *config.Config) (*Client, error) {
-	// todo: добавить логгирование
-	// todo: добавить метрики
-
 	client, err := httpclient.NewClientWithResponses(config.VKID.BaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("create new vkid client with responses: %w", err)
@@ -29,30 +32,26 @@ func NewClient(config *config.Config) (*Client, error) {
 	return &Client{config: config, client: client}, nil
 }
 
-func (c *Client) GenerateOAuthURL(challenge, state string) (string, error) {
-	u, err := url.Parse(c.config.VKID.BaseURL)
-	if err != nil {
-		return "", fmt.Errorf("parse vkid base url: %w", err)
+func (c *Client) GetAuthorizationURL(codeChallenge, state string) (string, error) {
+	params := &httpclient.AuthorizeParams{
+		ResponseType:        httpclient.Code,
+		ClientID:            c.config.VKID.ClientID,
+		RedirectURI:         c.config.VKID.RedirectURL,
+		CodeChallenge:       codeChallenge,
+		CodeChallengeMethod: httpclient.S256,
+		State:               state,
+		Scope:               &c.config.VKID.Scope,
 	}
 
-	u = u.JoinPath("authorize")
+	req, err := httpclient.NewAuthorizeRequest(c.config.VKID.BaseURL, params)
+	if err != nil {
+		return "", fmt.Errorf("create authorization request: %w", err)
+	}
 
-	q := u.Query()
-
-	q.Set("response_type", "code")
-	q.Set("client_id", c.config.VKID.ClientID)
-	q.Set("redirect_uri", c.config.VKID.RedirectURL)
-	q.Set("code_challenge", challenge)
-	q.Set("code_challenge_method", "S256")
-	q.Set("state", state)
-	q.Set("scope", c.config.VKID.Scope)
-
-	u.RawQuery = q.Encode()
-
-	return u.String(), nil
+	return req.URL.String(), nil
 }
 
-func (c *Client) ExchangeOAuthToken(
+func (c *Client) Exchange(
 	ctx context.Context,
 	params *auth.OAuthExchangeTokenParams,
 ) (*auth.OAuthToken, error) {
@@ -71,21 +70,17 @@ func (c *Client) ExchangeOAuthToken(
 		return nil, fmt.Errorf("exchane vkid oauth token: %w", err)
 	}
 
-	if resp.StatusCode() != http.StatusOK {
-		switch resp.StatusCode() {
-		case http.StatusBadRequest:
-			return nil, errors.New(resp.JSON400.Error)
-		case http.StatusInternalServerError:
-			return nil, errors.New(resp.JSON500.Error)
-		default:
-			// todo: улучшить обработку ошибок
-		}
+	switch {
+	case resp.StatusCode() == http.StatusOK && resp.JSON200 != nil:
+		return tokenResponseToOAuthToken(resp.JSON200), nil
+	case resp.StatusCode() == http.StatusBadRequest && resp.JSON400 != nil:
+		return nil, fmt.Errorf("%w: %s", ErrInvalidAuthCode, resp.JSON400.Error)
+	default:
+		return nil, ErrUpstream
 	}
-
-	return tokenResponseToOAuthToken(resp.JSON200), nil
 }
 
-func (c *Client) RefreshOAuthToken(
+func (c *Client) Refresh(
 	ctx context.Context,
 	params *auth.OAuthRefreshTokenParams,
 ) (*auth.OAuthToken, error) {
@@ -102,18 +97,14 @@ func (c *Client) RefreshOAuthToken(
 		return nil, fmt.Errorf("refresh vkid oauth token: %w", err)
 	}
 
-	if resp.StatusCode() != http.StatusOK {
-		switch resp.StatusCode() {
-		case http.StatusBadRequest:
-			return nil, errors.New(resp.JSON400.Error)
-		case http.StatusInternalServerError:
-			return nil, errors.New(resp.JSON500.Error)
-		default:
-			// todo: улучшить обработку ошибок
-		}
+	switch {
+	case resp.StatusCode() == http.StatusOK && resp.JSON200 != nil:
+		return tokenResponseToOAuthToken(resp.JSON200), nil
+	case resp.StatusCode() == http.StatusBadRequest && resp.JSON400 != nil:
+		return nil, fmt.Errorf("%w: %s", ErrInvalidAuthCode, resp.JSON400.Error)
+	default:
+		return nil, ErrUpstream
 	}
-
-	return tokenResponseToOAuthToken(resp.JSON200), nil
 }
 
 func (c *Client) Logout(ctx context.Context, token string) error {
@@ -127,18 +118,12 @@ func (c *Client) Logout(ctx context.Context, token string) error {
 		return fmt.Errorf("vkid logout: %w", err)
 	}
 
-	if resp.StatusCode() != http.StatusOK {
-		switch resp.StatusCode() {
-		case http.StatusBadRequest:
-			return errors.New(resp.JSON401.Error)
-		case http.StatusInternalServerError:
-			return errors.New(resp.JSON500.Error)
-		default:
-			// todo: улучшить обработку ошибок
-		}
+	switch {
+	case resp.StatusCode() == http.StatusOK && resp.JSON200 != nil:
+		return nil
+	default:
+		return ErrUpstream
 	}
-
-	return nil
 }
 
 func tokenResponseToOAuthToken(resp *httpclient.TokenResponse) *auth.OAuthToken {

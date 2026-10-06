@@ -1,8 +1,14 @@
-package repository
+package postgres
 
 import (
-	"github.com/Masterminds/squirrel"
+	"context"
+	"fmt"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
@@ -15,6 +21,26 @@ const (
 )
 
 var psql = squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+
+func NewPool(config *config.Config) (*pgxpool.Pool, error) {
+	conf, err := pgxpool.ParseConfig(config.Postgres.ToDataSource())
+	if err != nil {
+		return nil, fmt.Errorf("parse database pool config: %w", err)
+	}
+
+	conf.MaxConns = config.Postgres.MaxOpenConns
+	conf.MinConns = config.Postgres.MaxIdleConns
+	conf.MaxConnLifetime = config.Postgres.ConnMaxLifetime
+	conf.MaxConnIdleTime = config.Postgres.ConnMaxIdleTime
+	conf.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), conf)
+	if err != nil {
+		return nil, fmt.Errorf("create database pool: %w", err)
+	}
+
+	return pool, nil
+}
 
 func applyFilter[T comparable](
 	builder squirrel.SelectBuilder,

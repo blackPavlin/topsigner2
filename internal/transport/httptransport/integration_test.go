@@ -231,6 +231,7 @@ func run(m *testing.M) int {
 		codeVerifierRepository = keyvalue.NewCodeVerifierRepository(redisClient)
 		userCacheRepository    = keyvalue.NewUserCacheRepository(redisClient)
 		sessionCacheRepository = keyvalue.NewSessionCacheRepository(redisClient)
+		groupStateRepository   = keyvalue.NewGroupStateRepository(redisClient)
 		imageStorage           = storage.NewImageStorage(cfg, minioClient)
 	)
 
@@ -248,7 +249,7 @@ func run(m *testing.M) int {
 
 	imageService := image.New(logger, imageRepository, imageStorage)
 	fontService := font.New(logger, fontRepository)
-	groupService := group.New(logger, cfg, encryptor, groupRepository, vkClient)
+	groupService := group.New(logger, cfg, encryptor, groupRepository, groupStateRepository, vkClient)
 
 	server = httptest.NewServer(
 		httptransport.NewHandler(

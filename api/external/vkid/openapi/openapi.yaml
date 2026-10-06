@@ -1,9 +1,10 @@
 openapi: 3.0.0
 info:
   version: 1.0.0
-  title: Vkontakte ID
+  title: VK ID
   description: |
     Service authorization in vk ecosystem (VK ID)
+    Authorization Code + PKCE (https://id.vk.com/about/business/go/docs)
 servers:
   - url: 'https://id.vk.ru'
     description: Production environment
@@ -13,6 +14,58 @@ tags:
   - name: Auth
     description: Operations with authorization
 paths:
+  /authorize:
+    get:
+      summary: Authorization VK ID page
+      description: Redirect user to VK ID authorization page
+      operationId: authorize
+      parameters:
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - code
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code_challenge
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code_challenge_method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - S256
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect user to authorization page
+          headers:
+            Location:
+              schema:
+                type: string
   /oauth2/auth:
     post:
       summary: Exchange authorization code

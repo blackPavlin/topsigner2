@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   version: '1.0.0'
-  title: Vkontakte
+  title: VK
   description: |
     Methods for working with VK ecosystem
 servers:
@@ -10,6 +10,8 @@ servers:
   - url: https://api.vk.com
     description: Production environment
 tags:
+  - name: OAuth
+    description: VK OAuth
   - name: Groups
     description: User groups
 security:
@@ -68,11 +70,115 @@ paths:
                       - count
                     properties:
                       items:
-                          oneOf:
-                            - $ref: '#/components/schemas/GroupList'
-                            - $ref: '#/components/schemas/GroupIDList'
+                          $ref: '#/components/schemas/GroupList'
                       count:
                         type: integer  
+                  error:
+                    $ref: '#/components/schemas/Error'
+  /authorize:
+    servers:
+      - url: https://oauth.vk.com
+        description: VK OAuth
+    get:
+      summary: Authorization VK page
+      description: Redirect user to VK authorization page
+      operationId: authorize
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: group_ids
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - code
+        - name: display
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - page
+              - popup
+              - mobile
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Version'
+      responses:
+        '302':
+          description: Redirect user to authorization page
+          headers:
+            Location:
+              schema:
+                type: string    
+  /access_token:
+    servers:
+      - url: https://oauth.vk.com
+        description: VK OAuth
+    get:    
+      summary: Exchange code for group access tokens
+      description: Exchanges the temporary code for group access tokens
+      operationId: exchangeGroupCode
+      tags:
+        - OAuth
+      security: [ ]
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: client_secret
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exchange group code result
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - groups
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GroupToken'
                   error:
                     $ref: '#/components/schemas/Error'
 
@@ -173,9 +279,14 @@ components:
       items:
         $ref: '#/components/schemas/Group'
 
-    GroupIDList:
-      type: array
-      items:
-        type: integer
-        format: int64
-
+    GroupToken:
+      type: object
+      required:
+        - group_id
+        - access_token
+      properties:
+        group_id:
+          type: integer
+          format: int64
+        access_token:
+          type: string

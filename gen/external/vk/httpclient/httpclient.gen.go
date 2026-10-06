@@ -105,6 +105,57 @@ func (e Version) Valid() bool {
 	}
 }
 
+// Defines values for AuthorizeParamsResponseType.
+const (
+	Code AuthorizeParamsResponseType = "code"
+)
+
+// Valid indicates whether the value is a known member of the AuthorizeParamsResponseType enum.
+func (e AuthorizeParamsResponseType) Valid() bool {
+	switch e {
+	case Code:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuthorizeParamsDisplay.
+const (
+	Mobile AuthorizeParamsDisplay = "mobile"
+	Page   AuthorizeParamsDisplay = "page"
+	Popup  AuthorizeParamsDisplay = "popup"
+)
+
+// Valid indicates whether the value is a known member of the AuthorizeParamsDisplay enum.
+func (e AuthorizeParamsDisplay) Valid() bool {
+	switch e {
+	case Mobile:
+		return true
+	case Page:
+		return true
+	case Popup:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuthorizeParamsV.
+const (
+	AuthorizeParamsVN5199 AuthorizeParamsV = "5.199"
+)
+
+// Valid indicates whether the value is a known member of the AuthorizeParamsV enum.
+func (e AuthorizeParamsV) Valid() bool {
+	switch e {
+	case AuthorizeParamsVN5199:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetGroupsParamsV.
 const (
 	GetGroupsParamsVN5199 GetGroupsParamsV = "5.199"
@@ -159,11 +210,14 @@ type GroupDeactivated string
 // GroupIsClosed defines model for Group.IsClosed.
 type GroupIsClosed int
 
-// GroupIDList defines model for GroupIDList.
-type GroupIDList = []int64
-
 // GroupList defines model for GroupList.
 type GroupList = []Group
+
+// GroupToken defines model for GroupToken.
+type GroupToken struct {
+	AccessToken string `json:"access_token"`
+	GroupID     int64  `json:"group_id"`
+}
 
 // GroupsFilter Types of communities to return
 type GroupsFilter string
@@ -179,6 +233,37 @@ type Offset = int
 
 // Version defines model for Version.
 type Version string
+
+// ExchangeGroupCodeParams defines parameters for ExchangeGroupCode.
+type ExchangeGroupCodeParams struct {
+	ClientID     string `form:"client_id" json:"client_id"`
+	ClientSecret string `form:"client_secret" json:"client_secret"`
+	RedirectURI  string `form:"redirect_uri" json:"redirect_uri"`
+	Code         string `form:"code" json:"code"`
+}
+
+// AuthorizeParams defines parameters for Authorize.
+type AuthorizeParams struct {
+	ClientID     string                      `form:"client_id" json:"client_id"`
+	RedirectURI  string                      `form:"redirect_uri" json:"redirect_uri"`
+	GroupIds     string                      `form:"group_ids" json:"group_ids"`
+	Scope        string                      `form:"scope" json:"scope"`
+	ResponseType AuthorizeParamsResponseType `form:"response_type" json:"response_type"`
+	Display      *AuthorizeParamsDisplay     `form:"display,omitempty" json:"display,omitempty"`
+	State        *string                     `form:"state,omitempty" json:"state,omitempty"`
+
+	// V API version
+	V AuthorizeParamsV `form:"v" json:"v"`
+}
+
+// AuthorizeParamsResponseType defines parameters for Authorize.
+type AuthorizeParamsResponseType string
+
+// AuthorizeParamsDisplay defines parameters for Authorize.
+type AuthorizeParamsDisplay string
+
+// AuthorizeParamsV defines parameters for Authorize.
+type AuthorizeParamsV string
 
 // GetGroupsParams defines parameters for GetGroups.
 type GetGroupsParams struct {
@@ -209,73 +294,6 @@ type GetGroupsParamsV string
 
 // GetGroupsParamsExtended defines parameters for GetGroups.
 type GetGroupsParamsExtended int
-
-// GetGroups200JSONResponseBody_Response_Items defines parameters for GetGroups.
-type GetGroups200JSONResponseBody_Response_Items struct {
-	union json.RawMessage
-}
-
-// AsGroupList returns the union data inside the GetGroups200JSONResponseBody_Response_Items as a GroupList
-func (t GetGroups200JSONResponseBody_Response_Items) AsGroupList() (GroupList, error) {
-	var body GroupList
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGroupList overwrites any union data inside the GetGroups200JSONResponseBody_Response_Items as the provided GroupList
-func (t *GetGroups200JSONResponseBody_Response_Items) FromGroupList(v GroupList) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGroupList performs a merge with any union data inside the GetGroups200JSONResponseBody_Response_Items, using the provided GroupList
-func (t *GetGroups200JSONResponseBody_Response_Items) MergeGroupList(v GroupList) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsGroupIDList returns the union data inside the GetGroups200JSONResponseBody_Response_Items as a GroupIDList
-func (t GetGroups200JSONResponseBody_Response_Items) AsGroupIDList() (GroupIDList, error) {
-	var body GroupIDList
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromGroupIDList overwrites any union data inside the GetGroups200JSONResponseBody_Response_Items as the provided GroupIDList
-func (t *GetGroups200JSONResponseBody_Response_Items) FromGroupIDList(v GroupIDList) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeGroupIDList performs a merge with any union data inside the GetGroups200JSONResponseBody_Response_Items, using the provided GroupIDList
-func (t *GetGroups200JSONResponseBody_Response_Items) MergeGroupIDList(v GroupIDList) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t GetGroups200JSONResponseBody_Response_Items) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *GetGroups200JSONResponseBody_Response_Items) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -351,12 +369,60 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
+	// ExchangeGroupCode Exchange code for group access tokens
+	//
+	// Exchanges the temporary code for group access tokens.
+	//
+	// Corresponds with GET /access_token (the `ExchangeGroupCode` operationId).
+	ExchangeGroupCode(ctx context.Context, params *ExchangeGroupCodeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// Authorize Authorization VK page
+	//
+	// Redirect user to VK authorization page.
+	//
+	// Corresponds with GET /authorize (the `Authorize` operationId).
+	Authorize(ctx context.Context, params *AuthorizeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetGroups Get user groups
 	//
 	// Returns list of user groups.
 	//
 	// Corresponds with GET /method/groups.get (the `GetGroups` operationId).
 	GetGroups(ctx context.Context, params *GetGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// ExchangeGroupCode Exchange code for group access tokens
+//
+// Exchanges the temporary code for group access tokens.
+//
+// Corresponds with GET /access_token (the `ExchangeGroupCode` operationId).
+func (c *Client) ExchangeGroupCode(ctx context.Context, params *ExchangeGroupCodeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewExchangeGroupCodeRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// Authorize Authorization VK page
+//
+// Redirect user to VK authorization page.
+//
+// Corresponds with GET /authorize (the `Authorize` operationId).
+func (c *Client) Authorize(ctx context.Context, params *AuthorizeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthorizeRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // GetGroups Get user groups
@@ -374,6 +440,194 @@ func (c *Client) GetGroups(ctx context.Context, params *GetGroupsParams, reqEdit
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewExchangeGroupCodeRequest constructs an http.Request for the ExchangeGroupCode method
+func NewExchangeGroupCodeRequest(server string, params *ExchangeGroupCodeParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/access_token")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "client_id", params.ClientID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "client_secret", params.ClientSecret, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redirect_uri", params.RedirectURI, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAuthorizeRequest constructs an http.Request for the Authorize method
+func NewAuthorizeRequest(server string, params *AuthorizeParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/authorize")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "client_id", params.ClientID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redirect_uri", params.RedirectURI, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "group_ids", params.GroupIds, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "scope", params.Scope, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "response_type", params.ResponseType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Display != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "display", *params.Display, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "v", params.V, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetGroupsRequest constructs an http.Request for the GetGroups method
@@ -542,6 +796,24 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
+	// ExchangeGroupCodeWithResponse Exchange code for group access tokens
+	//
+	// Exchanges the temporary code for group access tokens.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /access_token (the `ExchangeGroupCode` operationId).
+	ExchangeGroupCodeWithResponse(ctx context.Context, params *ExchangeGroupCodeParams, reqEditors ...RequestEditorFn) (*ExchangeGroupCodeResponse, error)
+
+	// AuthorizeWithResponse Authorization VK page
+	//
+	// Redirect user to VK authorization page.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /authorize (the `Authorize` operationId).
+	AuthorizeWithResponse(ctx context.Context, params *AuthorizeParams, reqEditors ...RequestEditorFn) (*AuthorizeResponse, error)
+
 	// GetGroupsWithResponse Get user groups
 	//
 	// Returns list of user groups.
@@ -552,6 +824,94 @@ type ClientWithResponsesInterface interface {
 	GetGroupsWithResponse(ctx context.Context, params *GetGroupsParams, reqEditors ...RequestEditorFn) (*GetGroupsResponse, error)
 }
 
+type ExchangeGroupCodeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Error  *Error       `json:"error,omitempty"`
+		Groups []GroupToken `json:"groups"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ExchangeGroupCodeResponse) GetJSON200() *struct {
+	Error  *Error       `json:"error,omitempty"`
+	Groups []GroupToken `json:"groups"`
+} {
+	return r.JSON200
+}
+
+// GetBody returns the raw response body bytes
+func (r ExchangeGroupCodeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ExchangeGroupCodeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ExchangeGroupCodeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ExchangeGroupCodeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// AuthorizeResponse302Headers the declared response headers of an HTTP 302 response for Authorize
+type AuthorizeResponse302Headers struct {
+	Location *string
+}
+
+type AuthorizeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// Headers302 the parsed response headers for an HTTP 302 response
+	Headers302 *AuthorizeResponse302Headers
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthorizeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthorizeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthorizeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthorizeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetGroupsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -559,8 +919,8 @@ type GetGroupsResponse struct {
 	JSON200 *struct {
 		Error    *Error `json:"error,omitempty"`
 		Response *struct {
-			Count int                                         `json:"count"`
-			Items GetGroups200JSONResponseBody_Response_Items `json:"items"`
+			Count int       `json:"count"`
+			Items GroupList `json:"items"`
 		} `json:"response,omitempty"`
 	}
 }
@@ -569,8 +929,8 @@ type GetGroupsResponse struct {
 func (r GetGroupsResponse) GetJSON200() *struct {
 	Error    *Error `json:"error,omitempty"`
 	Response *struct {
-		Count int                                         `json:"count"`
-		Items GetGroups200JSONResponseBody_Response_Items `json:"items"`
+		Count int       `json:"count"`
+		Items GroupList `json:"items"`
 	} `json:"response,omitempty"`
 } {
 	return r.JSON200
@@ -605,6 +965,36 @@ func (r GetGroupsResponse) ContentType() string {
 	return ""
 }
 
+// ExchangeGroupCodeWithResponse Exchange code for group access tokens
+//
+// Exchanges the temporary code for group access tokens.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /access_token (the `ExchangeGroupCode` operationId).
+func (c *ClientWithResponses) ExchangeGroupCodeWithResponse(ctx context.Context, params *ExchangeGroupCodeParams, reqEditors ...RequestEditorFn) (*ExchangeGroupCodeResponse, error) {
+	rsp, err := c.ExchangeGroupCode(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseExchangeGroupCodeResponse(rsp)
+}
+
+// AuthorizeWithResponse Authorization VK page
+//
+// Redirect user to VK authorization page.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /authorize (the `Authorize` operationId).
+func (c *ClientWithResponses) AuthorizeWithResponse(ctx context.Context, params *AuthorizeParams, reqEditors ...RequestEditorFn) (*AuthorizeResponse, error) {
+	rsp, err := c.Authorize(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthorizeResponse(rsp)
+}
+
 // GetGroupsWithResponse Get user groups
 //
 // Returns list of user groups.
@@ -618,6 +1008,64 @@ func (c *ClientWithResponses) GetGroupsWithResponse(ctx context.Context, params 
 		return nil, err
 	}
 	return ParseGetGroupsResponse(rsp)
+}
+
+// ParseExchangeGroupCodeResponse parses an HTTP response from a ExchangeGroupCodeWithResponse call
+func ParseExchangeGroupCodeResponse(rsp *http.Response) (*ExchangeGroupCodeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ExchangeGroupCodeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Error  *Error       `json:"error,omitempty"`
+			Groups []GroupToken `json:"groups"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAuthorizeResponse parses an HTTP response from a AuthorizeWithResponse call
+func ParseAuthorizeResponse(rsp *http.Response) (*AuthorizeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthorizeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 302:
+		var headers AuthorizeResponse302Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers302 = &headers
+	}
+
+	return response, nil
 }
 
 // ParseGetGroupsResponse parses an HTTP response from a GetGroupsWithResponse call
@@ -638,8 +1086,8 @@ func ParseGetGroupsResponse(rsp *http.Response) (*GetGroupsResponse, error) {
 		var dest struct {
 			Error    *Error `json:"error,omitempty"`
 			Response *struct {
-				Count int                                         `json:"count"`
-				Items GetGroups200JSONResponseBody_Response_Items `json:"items"`
+				Count int       `json:"count"`
+				Items GroupList `json:"items"`
 			} `json:"response,omitempty"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

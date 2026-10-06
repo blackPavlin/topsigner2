@@ -1,9 +1,10 @@
 package group
 
-type Group struct {
-	ID         int64
-	Name       string
-	ScreenName string
-}
+const stateSize = 24
 
-type CreateInput struct{}
+type Group struct {
+	ID          int64
+	Name        string
+	ScreenName  string
+	IsConnected bool
+}

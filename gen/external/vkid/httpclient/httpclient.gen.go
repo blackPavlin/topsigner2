@@ -33,6 +33,36 @@ func (e TokenRequestGrantType) Valid() bool {
 	}
 }
 
+// Defines values for AuthorizeParamsResponseType.
+const (
+	Code AuthorizeParamsResponseType = "code"
+)
+
+// Valid indicates whether the value is a known member of the AuthorizeParamsResponseType enum.
+func (e AuthorizeParamsResponseType) Valid() bool {
+	switch e {
+	case Code:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuthorizeParamsCodeChallengeMethod.
+const (
+	S256 AuthorizeParamsCodeChallengeMethod = "S256"
+)
+
+// Valid indicates whether the value is a known member of the AuthorizeParamsCodeChallengeMethod enum.
+func (e AuthorizeParamsCodeChallengeMethod) Valid() bool {
+	switch e {
+	case S256:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Logout200JSONResponseBodyResponse.
 const (
 	N1 Logout200JSONResponseBodyResponse = 1
@@ -109,6 +139,23 @@ type InternalError = Error
 
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
+
+// AuthorizeParams defines parameters for Authorize.
+type AuthorizeParams struct {
+	ResponseType        AuthorizeParamsResponseType        `form:"response_type" json:"response_type"`
+	ClientID            string                             `form:"client_id" json:"client_id"`
+	RedirectURI         string                             `form:"redirect_uri" json:"redirect_uri"`
+	State               string                             `form:"state" json:"state"`
+	CodeChallenge       string                             `form:"code_challenge" json:"code_challenge"`
+	CodeChallengeMethod AuthorizeParamsCodeChallengeMethod `form:"code_challenge_method" json:"code_challenge_method"`
+	Scope               *string                            `form:"scope,omitempty" json:"scope,omitempty"`
+}
+
+// AuthorizeParamsResponseType defines parameters for Authorize.
+type AuthorizeParamsResponseType string
+
+// AuthorizeParamsCodeChallengeMethod defines parameters for Authorize.
+type AuthorizeParamsCodeChallengeMethod string
 
 // LogoutFormdataBody defines parameters for Logout.
 type LogoutFormdataBody struct {
@@ -208,6 +255,13 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
+	// Authorize Authorization VK ID page
+	//
+	// Redirect user to VK ID authorization page.
+	//
+	// Corresponds with GET /authorize (the `Authorize` operationId).
+	Authorize(ctx context.Context, params *AuthorizeParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ExchangeTokenWithBody Exchange authorization code
 	//
 	// Exchange authorization code for tokens / refresh access_token.
@@ -261,6 +315,23 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /oauth2/user_info (the `GetUserInfo` operationId).
 	GetUserInfoWithFormdataBody(ctx context.Context, body GetUserInfoFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+// Authorize Authorization VK ID page
+//
+// Redirect user to VK ID authorization page.
+//
+// Corresponds with GET /authorize (the `Authorize` operationId).
+func (c *Client) Authorize(ctx context.Context, params *AuthorizeParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthorizeRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 // ExchangeTokenWithBody Exchange authorization code
@@ -375,6 +446,108 @@ func (c *Client) GetUserInfoWithFormdataBody(ctx context.Context, body GetUserIn
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewAuthorizeRequest constructs an http.Request for the Authorize method
+func NewAuthorizeRequest(server string, params *AuthorizeParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/authorize")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "response_type", params.ResponseType, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "client_id", params.ClientID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "redirect_uri", params.RedirectURI, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code_challenge", params.CodeChallenge, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code_challenge_method", params.CodeChallengeMethod, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Scope != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "scope", *params.Scope, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewExchangeTokenRequestWithFormdataBody calls the generic ExchangeToken builder with application/x-www-form-urlencoded body
@@ -541,6 +714,15 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
+	// AuthorizeWithResponse Authorization VK ID page
+	//
+	// Redirect user to VK ID authorization page.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /authorize (the `Authorize` operationId).
+	AuthorizeWithResponse(ctx context.Context, params *AuthorizeParams, reqEditors ...RequestEditorFn) (*AuthorizeResponse, error)
+
 	// ExchangeTokenWithBodyWithResponse Exchange authorization code
 	//
 	// Exchange authorization code for tokens / refresh access_token.
@@ -594,6 +776,47 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /oauth2/user_info (the `GetUserInfo` operationId).
 	GetUserInfoWithFormdataBodyWithResponse(ctx context.Context, body GetUserInfoFormdataRequestBody, reqEditors ...RequestEditorFn) (*GetUserInfoResponse, error)
+}
+
+// AuthorizeResponse302Headers the declared response headers of an HTTP 302 response for Authorize
+type AuthorizeResponse302Headers struct {
+	Location *string
+}
+
+type AuthorizeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// Headers302 the parsed response headers for an HTTP 302 response
+	Headers302 *AuthorizeResponse302Headers
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthorizeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthorizeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthorizeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthorizeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ExchangeTokenResponse struct {
@@ -765,6 +988,21 @@ func (r GetUserInfoResponse) ContentType() string {
 	return ""
 }
 
+// AuthorizeWithResponse Authorization VK ID page
+//
+// Redirect user to VK ID authorization page.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /authorize (the `Authorize` operationId).
+func (c *ClientWithResponses) AuthorizeWithResponse(ctx context.Context, params *AuthorizeParams, reqEditors ...RequestEditorFn) (*AuthorizeResponse, error) {
+	rsp, err := c.Authorize(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthorizeResponse(rsp)
+}
+
 // ExchangeTokenWithBodyWithResponse Exchange authorization code
 //
 // Exchange authorization code for tokens / refresh access_token.
@@ -853,6 +1091,35 @@ func (c *ClientWithResponses) GetUserInfoWithFormdataBodyWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseGetUserInfoResponse(rsp)
+}
+
+// ParseAuthorizeResponse parses an HTTP response from a AuthorizeWithResponse call
+func ParseAuthorizeResponse(rsp *http.Response) (*AuthorizeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthorizeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 302:
+		var headers AuthorizeResponse302Headers
+		if values := rsp.Header.Values("Location"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "Location", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.Location = &value
+		}
+		response.Headers302 = &headers
+	}
+
+	return response, nil
 }
 
 // ParseExchangeTokenResponse parses an HTTP response from a ExchangeTokenWithResponse call

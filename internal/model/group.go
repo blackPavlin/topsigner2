@@ -8,6 +8,7 @@ import (
 var (
 	ErrGroupNotFound      = errors.New("group not found")
 	ErrGroupAlreadyExists = errors.New("group already exists")
+	ErrGroupStateNotFound = errors.New("group state not found")
 )
 
 type Group struct {

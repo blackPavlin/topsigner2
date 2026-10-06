@@ -13,8 +13,9 @@ type VKIDConfig struct {
 }
 
 type VKConfig struct {
-	BaseURL          string `envconfig:"BASE_URL"           required:"true"`
-	OAuthBaseURL     string `envconfig:"OAUTH_BASE_URL"     required:"true"`
-	OAuthRedirectURL string `envconfig:"OAUTH_REDIRECT_URL" required:"true"`
-	OAuthScope       string `envconfig:"OAUTH_SCOPE"        default:"manage,messages"`
+	BaseURL          string        `envconfig:"BASE_URL"           required:"true"`
+	OAuthBaseURL     string        `envconfig:"OAUTH_BASE_URL"     required:"true"`
+	OAuthRedirectURL string        `envconfig:"OAUTH_REDIRECT_URL" required:"true"`
+	OAuthScope       string        `envconfig:"OAUTH_SCOPE"        default:"manage,messages"`
+	OAuthStateTTL    time.Duration `envconfig:"OAUTH_STATE_TTL"    default:"1h"`
 }

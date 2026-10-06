@@ -4,6 +4,7 @@ package group
 
 import (
 	"context"
+	"time"
 
 	"github.com/bboykiv/topsigner/internal/model"
 )
@@ -17,4 +18,11 @@ type Repository interface {
 
 type VKClient interface {
 	GetGroups(ctx context.Context, token string) ([]*Group, error)
+	GenerateConnectGroupURL(groupID int64, state string) (string, error)
+	ExchangGroupCode(ctx context.Context, code string) (int64, string, error)
+}
+
+type StateRepository interface {
+	Set(ctx context.Context, state string, userID int64, ttl time.Duration) error
+	Pop(ctx context.Context, state string) (int64, error)
 }

@@ -25,15 +25,36 @@ const (
 	BearerAuthScopes bearerAuthContextKey = "BearerAuth.Scopes"
 )
 
-// Defines values for Provider.
+// Defines values for AuthTokensTokenType.
 const (
-	Vkontakte Provider = "vkontakte"
+	Bearer AuthTokensTokenType = "Bearer"
 )
 
-// Valid indicates whether the value is a known member of the Provider enum.
-func (e Provider) Valid() bool {
+// Valid indicates whether the value is a known member of the AuthTokensTokenType enum.
+func (e AuthTokensTokenType) Valid() bool {
 	switch e {
-	case Vkontakte:
+	case Bearer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HealthStatusStatus.
+const (
+	Degraded HealthStatusStatus = "degraded"
+	Down     HealthStatusStatus = "down"
+	Ok       HealthStatusStatus = "ok"
+)
+
+// Valid indicates whether the value is a known member of the HealthStatusStatus enum.
+func (e HealthStatusStatus) Valid() bool {
+	switch e {
+	case Degraded:
+		return true
+	case Down:
+		return true
+	case Ok:
 		return true
 	default:
 		return false
@@ -42,10 +63,14 @@ func (e Provider) Valid() bool {
 
 // AuthTokens Pair of auth tokens
 type AuthTokens struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at"`
+	AccessToken  string              `json:"access_token"`
+	RefreshToken string              `json:"refresh_token"`
+	TokenType    AuthTokensTokenType `json:"token_type"`
+	ExpiresIn    int64               `json:"expires_in"`
 }
+
+// AuthTokensTokenType defines model for AuthTokens.TokenType.
+type AuthTokensTokenType string
 
 // Error defines model for Error.
 type Error struct {
@@ -69,19 +94,35 @@ type FontList struct {
 
 // Group Group resource
 type Group struct {
-	ID         int64  `json:"id"`
-	Name       string `json:"name"`
-	ScreenName string `json:"screen_name"`
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	ScreenName  string `json:"screen_name"`
+	IsConnected bool   `json:"is_connected"`
 }
 
-// GroupList List of groups
-type GroupList struct {
-	Items []Group `json:"items"`
+// GroupAuthorization Group authorization URL
+type GroupAuthorization struct {
+	URL string `json:"url"`
 }
+
+// GroupList List of groups with cursor pagination
+type GroupList struct {
+	Items      []Group    `json:"items"`
+	Pagination Pagination `json:"pagination"`
+}
+
+// HealthStatus defines model for HealthStatus.
+type HealthStatus struct {
+	Status HealthStatusStatus `json:"status"`
+}
+
+// HealthStatusStatus defines model for HealthStatus.Status.
+type HealthStatusStatus string
 
 // Image Image resource
 type Image struct {
 	ID        int64     `json:"id"`
+	URL       string    `json:"url"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -93,15 +134,36 @@ type ImageList struct {
 	Pagination Pagination `json:"pagination"`
 }
 
-// OAuthAuthorizationURL OAuth provider authorization URL
-type OAuthAuthorizationURL struct {
-	URL string `json:"url"`
+// LoginRequest Credentials for email/password login
+type LoginRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=1"`
+}
+
+// LogoutRequest Logout options
+type LogoutRequest struct {
+	AllSessions *bool `json:"all_sessions,omitempty"`
 }
 
 // Pagination defines model for Pagination.
 type Pagination struct {
-	NextCursor *string `json:"next_cursor,omitempty"`
-	HasNext    bool    `json:"has_next"`
+	NextCursor *string `json:"next_cursor"`
+}
+
+// RefreshRequest Refresh token exchange request
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" validate:"required,min=1"`
+}
+
+// UploadImageRequest Multipart form with an image file
+type UploadImageRequest struct {
+	// File Image file to upload
+	File openapi_types.File `json:"file"`
+}
+
+// VKIDAuthorization OAuth authorization URL
+type VKIDAuthorization struct {
+	URL string `json:"url"`
 }
 
 // Cursor defines model for Cursor.
@@ -110,17 +172,17 @@ type Cursor = string
 // Limit defines model for Limit.
 type Limit = int
 
-// Provider defines model for Provider.
-type Provider string
-
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
-// Conflict defines model for Conflict.
-type Conflict = Error
-
 // InternalError defines model for InternalError.
 type InternalError = Error
+
+// NotFound defines model for NotFound.
+type NotFound = Error
+
+// PayloadTooLarge defines model for PayloadTooLarge.
+type PayloadTooLarge = Error
 
 // TooManyRequests defines model for TooManyRequests.
 type TooManyRequests = Error
@@ -128,39 +190,32 @@ type TooManyRequests = Error
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
+// UnsupportedMediaType defines model for UnsupportedMediaType.
+type UnsupportedMediaType = Error
+
 // bearerAuthContextKey is the context key for BearerAuth security scheme
 type bearerAuthContextKey string
 
-// AuthLoginJSONBody defines parameters for AuthLogin.
-type AuthLoginJSONBody struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8,max=72"`
-}
-
-// AuthLogoutJSONBody defines parameters for AuthLogout.
-type AuthLogoutJSONBody struct {
-	RefreshToken *string `json:"refreshToken,omitempty"`
-}
-
-// AuthOAuthCallbackParams defines parameters for AuthOAuthCallback.
-type AuthOAuthCallbackParams struct {
+// HandleVKIDCallbackParams defines parameters for HandleVKIDCallback.
+type HandleVKIDCallbackParams struct {
 	// Code Authorization code issued by the provider
-	Code string `form:"code" json:"code"`
+	Code *string `form:"code,omitempty" json:"code,omitempty"`
 
 	// State Opaque value used to prevent CSRF attacks
-	State string `form:"state" json:"state"`
+	State *string `form:"state,omitempty" json:"state,omitempty"`
 
 	// DeviceID Unique device identifier
-	DeviceID string `form:"device_id" json:"device_id"`
+	DeviceID *string `form:"device_id,omitempty" json:"device_id,omitempty"`
+
+	// Error Error code
+	Error *string `form:"error,omitempty" json:"error,omitempty"`
+
+	// ErrorDescription Error description
+	ErrorDescription *string `form:"error_description,omitempty" json:"error_description,omitempty"`
 }
 
-// AuthRefreshJSONBody defines parameters for AuthRefresh.
-type AuthRefreshJSONBody struct {
-	RefreshToken string `json:"refreshToken"`
-}
-
-// GetFontsParams defines parameters for GetFonts.
-type GetFontsParams struct {
+// ListFontsParams defines parameters for ListFonts.
+type ListFontsParams struct {
 	// Cursor Cursor for pagination
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 
@@ -168,14 +223,8 @@ type GetFontsParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// GetGroupsParams defines parameters for GetGroups.
-type GetGroupsParams struct {
-	// Limit Maximum number of items to return
-	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
-// GetImagesParams defines parameters for GetImages.
-type GetImagesParams struct {
+// ListGroupsParams defines parameters for ListGroups.
+type ListGroupsParams struct {
 	// Cursor Cursor for pagination
 	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 
@@ -183,23 +232,43 @@ type GetImagesParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// UploadImageMultipartBody defines parameters for UploadImage.
-type UploadImageMultipartBody struct {
-	// File Image file to upload
-	File openapi_types.File `json:"file"`
+// HandleGroupCallbackParams defines parameters for HandleGroupCallback.
+type HandleGroupCallbackParams struct {
+	Code  *string `form:"code,omitempty" json:"code,omitempty"`
+	State *string `form:"state,omitempty" json:"state,omitempty"`
+
+	// Error Error code
+	Error *string `form:"error,omitempty" json:"error,omitempty"`
+
+	// ErrorDescription Error description
+	ErrorDescription *string `form:"error_description,omitempty" json:"error_description,omitempty"`
 }
 
-// AuthLoginJSONRequestBody defines body for AuthLogin for application/json ContentType.
-type AuthLoginJSONRequestBody AuthLoginJSONBody
+// GetGroupConnectionURLParams defines parameters for GetGroupConnectionURL.
+type GetGroupConnectionURLParams struct {
+	GroupID int64 `form:"group_id" json:"group_id"`
+}
 
-// AuthLogoutJSONRequestBody defines body for AuthLogout for application/json ContentType.
-type AuthLogoutJSONRequestBody AuthLogoutJSONBody
+// ListImagesParams defines parameters for ListImages.
+type ListImagesParams struct {
+	// Cursor Cursor for pagination
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 
-// AuthRefreshJSONRequestBody defines body for AuthRefresh for application/json ContentType.
-type AuthRefreshJSONRequestBody AuthRefreshJSONBody
+	// Limit Maximum number of items to return
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// LoginUserJSONRequestBody defines body for LoginUser for application/json ContentType.
+type LoginUserJSONRequestBody = LoginRequest
+
+// LogoutUserJSONRequestBody defines body for LogoutUser for application/json ContentType.
+type LogoutUserJSONRequestBody = LogoutRequest
+
+// RefreshTokensJSONRequestBody defines body for RefreshTokens for application/json ContentType.
+type RefreshTokensJSONRequestBody = RefreshRequest
 
 // UploadImageMultipartRequestBody defines body for UploadImage for multipart/form-data ContentType.
-type UploadImageMultipartRequestBody UploadImageMultipartBody
+type UploadImageMultipartRequestBody = UploadImageRequest
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -275,94 +344,115 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
-	// AuthLoginWithBody Login user
+	// LoginUserWithBody Login user
 	//
-	// Login user and get tokens.
+	// Login with email and password.
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with POST /api/v1/auth/login (the `AuthLogin` operationId).
-	AuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /api/v1/auth/login (the `LoginUser` operationId).
+	LoginUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthLogin Login user
+	// LoginUser Login user
 	//
-	// Login user and get tokens.
+	// Login with email and password.
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with POST /api/v1/auth/login (the `AuthLogin` operationId).
-	AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /api/v1/auth/login (the `LoginUser` operationId).
+	LoginUser(ctx context.Context, body LoginUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthLogoutWithBody Logout user
+	// LogoutUserWithBody Logout user
 	//
 	// Invalidate refresh token and drop session.
 	//
 	// Takes any type of body and a specified content type.
 	//
-	// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
-	AuthLogoutWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /api/v1/auth/logout (the `LogoutUser` operationId).
+	LogoutUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthLogout Logout user
+	// LogoutUser Logout user
 	//
 	// Invalidate refresh token and drop session.
 	//
 	// Takes a body of the `application/json` content type.
 	//
-	// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
-	AuthLogout(ctx context.Context, body AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with POST /api/v1/auth/logout (the `LogoutUser` operationId).
+	LogoutUser(ctx context.Context, body LogoutUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthOAuthGetURL Get OAuth authorization URL
+	// RefreshTokensWithBody Refresh auth tokens
+	//
+	// Exchange refresh token.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /api/v1/auth/refresh (the `RefreshTokens` operationId).
+	RefreshTokensWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RefreshTokens Refresh auth tokens
+	//
+	// Exchange refresh token.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /api/v1/auth/refresh (the `RefreshTokens` operationId).
+	RefreshTokens(ctx context.Context, body RefreshTokensJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetVKIDAuthorizationURL Get VK ID authorization URL
 	//
 	// Builds and returns authorization URL.
 	//
-	// Corresponds with GET /api/v1/auth/oauth/{provider} (the `AuthOAuthGetURL` operationId).
-	AuthOAuthGetURL(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /api/v1/auth/vkid/authorize (the `GetVKIDAuthorizationURL` operationId).
+	GetVKIDAuthorizationURL(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthOAuthCallback OAuth callback
+	// HandleVKIDCallback Exchange VK ID authorization code
 	//
-	// Exchanges the authorization code for a pair of auth tokens.
+	// Exchange the authorization code for a pair of tokens.
 	//
-	// Corresponds with GET /api/v1/auth/oauth/{provider}/callback (the `AuthOAuthCallback` operationId).
-	AuthOAuthCallback(ctx context.Context, provider Provider, params *AuthOAuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /api/v1/auth/vkid/callback (the `HandleVKIDCallback` operationId).
+	HandleVKIDCallback(ctx context.Context, params *HandleVKIDCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthRefreshWithBody Refresh auth tokens
-	//
-	// Exchange refresh token.
-	//
-	// Takes any type of body and a specified content type.
-	//
-	// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
-	AuthRefreshWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// AuthRefresh Refresh auth tokens
-	//
-	// Exchange refresh token.
-	//
-	// Takes a body of the `application/json` content type.
-	//
-	// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
-	AuthRefresh(ctx context.Context, body AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetFonts Get list of fonts
+	// ListFonts Get list of fonts
 	//
 	// Returns a paginated list of fonts.
 	//
-	// Corresponds with GET /api/v1/fonts (the `GetFonts` operationId).
-	GetFonts(ctx context.Context, params *GetFontsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /api/v1/fonts (the `ListFonts` operationId).
+	ListFonts(ctx context.Context, params *ListFontsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetGroups Get list of groups
+	// ListGroups Get list of groups
 	//
 	// Returns a paginated list of groups.
 	//
-	// Corresponds with GET /api/v1/groups (the `GetGroups` operationId).
-	GetGroups(ctx context.Context, params *GetGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /api/v1/groups (the `ListGroups` operationId).
+	ListGroups(ctx context.Context, params *ListGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetImages Get list of user images
+	// HandleGroupCallback Exchange group authorization code
+	//
+	// Exchange group authorization code for connect group.
+	//
+	// Corresponds with GET /api/v1/groups/callback (the `HandleGroupCallback` operationId).
+	HandleGroupCallback(ctx context.Context, params *HandleGroupCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetGroupConnectionURL Get URL to connect group
+	//
+	// Get VK authorization URL to connect group.
+	//
+	// Corresponds with GET /api/v1/groups/connect (the `GetGroupConnectionURL` operationId).
+	GetGroupConnectionURL(ctx context.Context, params *GetGroupConnectionURLParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// HealthCheck Health check
+	//
+	// Returns the health status of the application.
+	//
+	// Corresponds with GET /api/v1/health (the `HealthCheck` operationId).
+	HealthCheck(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListImages Get list of user images
 	//
 	// Returns a paginated list of user images.
 	//
-	// Corresponds with GET /api/v1/images (the `GetImages` operationId).
-	GetImages(ctx context.Context, params *GetImagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Corresponds with GET /api/v1/images (the `ListImages` operationId).
+	ListImages(ctx context.Context, params *ListImagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UploadImageWithBody Upload image file
 	//
@@ -373,21 +463,23 @@ type ClientInterface interface {
 	// Corresponds with POST /api/v1/images (the `UploadImage` operationId).
 	UploadImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteImageByName Delete image by name
+	// DeleteImage Delete image
 	//
-	// Corresponds with DELETE /api/v1/images/{name} (the `DeleteImageByName` operationId).
-	DeleteImageByName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// Delete user image by id.
+	//
+	// Corresponds with DELETE /api/v1/images/{image_id} (the `DeleteImage` operationId).
+	DeleteImage(ctx context.Context, imageID int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-// AuthLoginWithBody Login user
+// LoginUserWithBody Login user
 //
-// Login user and get tokens.
+// Login with email and password.
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with POST /api/v1/auth/login (the `AuthLogin` operationId).
-func (c *Client) AuthLoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthLoginRequestWithBody(c.Server, contentType, body)
+// Corresponds with POST /api/v1/auth/login (the `LoginUser` operationId).
+func (c *Client) LoginUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginUserRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -398,15 +490,15 @@ func (c *Client) AuthLoginWithBody(ctx context.Context, contentType string, body
 	return c.Client.Do(req)
 }
 
-// AuthLogin Login user
+// LoginUser Login user
 //
-// Login user and get tokens.
+// Login with email and password.
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with POST /api/v1/auth/login (the `AuthLogin` operationId).
-func (c *Client) AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthLoginRequest(c.Server, body)
+// Corresponds with POST /api/v1/auth/login (the `LoginUser` operationId).
+func (c *Client) LoginUser(ctx context.Context, body LoginUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginUserRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -417,15 +509,15 @@ func (c *Client) AuthLogin(ctx context.Context, body AuthLoginJSONRequestBody, r
 	return c.Client.Do(req)
 }
 
-// AuthLogoutWithBody Logout user
+// LogoutUserWithBody Logout user
 //
 // Invalidate refresh token and drop session.
 //
 // Takes any type of body and a specified content type.
 //
-// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
-func (c *Client) AuthLogoutWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthLogoutRequestWithBody(c.Server, contentType, body)
+// Corresponds with POST /api/v1/auth/logout (the `LogoutUser` operationId).
+func (c *Client) LogoutUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLogoutUserRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -436,15 +528,15 @@ func (c *Client) AuthLogoutWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-// AuthLogout Logout user
+// LogoutUser Logout user
 //
 // Invalidate refresh token and drop session.
 //
 // Takes a body of the `application/json` content type.
 //
-// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
-func (c *Client) AuthLogout(ctx context.Context, body AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthLogoutRequest(c.Server, body)
+// Corresponds with POST /api/v1/auth/logout (the `LogoutUser` operationId).
+func (c *Client) LogoutUser(ctx context.Context, body LogoutUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLogoutUserRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -455,13 +547,51 @@ func (c *Client) AuthLogout(ctx context.Context, body AuthLogoutJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-// AuthOAuthGetURL Get OAuth authorization URL
+// RefreshTokensWithBody Refresh auth tokens
+//
+// Exchange refresh token.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /api/v1/auth/refresh (the `RefreshTokens` operationId).
+func (c *Client) RefreshTokensWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRefreshTokensRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RefreshTokens Refresh auth tokens
+//
+// Exchange refresh token.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /api/v1/auth/refresh (the `RefreshTokens` operationId).
+func (c *Client) RefreshTokens(ctx context.Context, body RefreshTokensJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRefreshTokensRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetVKIDAuthorizationURL Get VK ID authorization URL
 //
 // Builds and returns authorization URL.
 //
-// Corresponds with GET /api/v1/auth/oauth/{provider} (the `AuthOAuthGetURL` operationId).
-func (c *Client) AuthOAuthGetURL(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthOAuthGetURLRequest(c.Server, provider)
+// Corresponds with GET /api/v1/auth/vkid/authorize (the `GetVKIDAuthorizationURL` operationId).
+func (c *Client) GetVKIDAuthorizationURL(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetVKIDAuthorizationURLRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -472,13 +602,13 @@ func (c *Client) AuthOAuthGetURL(ctx context.Context, provider Provider, reqEdit
 	return c.Client.Do(req)
 }
 
-// AuthOAuthCallback OAuth callback
+// HandleVKIDCallback Exchange VK ID authorization code
 //
-// Exchanges the authorization code for a pair of auth tokens.
+// Exchange the authorization code for a pair of tokens.
 //
-// Corresponds with GET /api/v1/auth/oauth/{provider}/callback (the `AuthOAuthCallback` operationId).
-func (c *Client) AuthOAuthCallback(ctx context.Context, provider Provider, params *AuthOAuthCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthOAuthCallbackRequest(c.Server, provider, params)
+// Corresponds with GET /api/v1/auth/vkid/callback (the `HandleVKIDCallback` operationId).
+func (c *Client) HandleVKIDCallback(ctx context.Context, params *HandleVKIDCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHandleVKIDCallbackRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -489,51 +619,13 @@ func (c *Client) AuthOAuthCallback(ctx context.Context, provider Provider, param
 	return c.Client.Do(req)
 }
 
-// AuthRefreshWithBody Refresh auth tokens
-//
-// Exchange refresh token.
-//
-// Takes any type of body and a specified content type.
-//
-// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
-func (c *Client) AuthRefreshWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthRefreshRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// AuthRefresh Refresh auth tokens
-//
-// Exchange refresh token.
-//
-// Takes a body of the `application/json` content type.
-//
-// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
-func (c *Client) AuthRefresh(ctx context.Context, body AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAuthRefreshRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// GetFonts Get list of fonts
+// ListFonts Get list of fonts
 //
 // Returns a paginated list of fonts.
 //
-// Corresponds with GET /api/v1/fonts (the `GetFonts` operationId).
-func (c *Client) GetFonts(ctx context.Context, params *GetFontsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetFontsRequest(c.Server, params)
+// Corresponds with GET /api/v1/fonts (the `ListFonts` operationId).
+func (c *Client) ListFonts(ctx context.Context, params *ListFontsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListFontsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -544,13 +636,13 @@ func (c *Client) GetFonts(ctx context.Context, params *GetFontsParams, reqEditor
 	return c.Client.Do(req)
 }
 
-// GetGroups Get list of groups
+// ListGroups Get list of groups
 //
 // Returns a paginated list of groups.
 //
-// Corresponds with GET /api/v1/groups (the `GetGroups` operationId).
-func (c *Client) GetGroups(ctx context.Context, params *GetGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetGroupsRequest(c.Server, params)
+// Corresponds with GET /api/v1/groups (the `ListGroups` operationId).
+func (c *Client) ListGroups(ctx context.Context, params *ListGroupsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListGroupsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -561,13 +653,64 @@ func (c *Client) GetGroups(ctx context.Context, params *GetGroupsParams, reqEdit
 	return c.Client.Do(req)
 }
 
-// GetImages Get list of user images
+// HandleGroupCallback Exchange group authorization code
+//
+// Exchange group authorization code for connect group.
+//
+// Corresponds with GET /api/v1/groups/callback (the `HandleGroupCallback` operationId).
+func (c *Client) HandleGroupCallback(ctx context.Context, params *HandleGroupCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHandleGroupCallbackRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetGroupConnectionURL Get URL to connect group
+//
+// Get VK authorization URL to connect group.
+//
+// Corresponds with GET /api/v1/groups/connect (the `GetGroupConnectionURL` operationId).
+func (c *Client) GetGroupConnectionURL(ctx context.Context, params *GetGroupConnectionURLParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetGroupConnectionURLRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// HealthCheck Health check
+//
+// Returns the health status of the application.
+//
+// Corresponds with GET /api/v1/health (the `HealthCheck` operationId).
+func (c *Client) HealthCheck(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHealthCheckRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListImages Get list of user images
 //
 // Returns a paginated list of user images.
 //
-// Corresponds with GET /api/v1/images (the `GetImages` operationId).
-func (c *Client) GetImages(ctx context.Context, params *GetImagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetImagesRequest(c.Server, params)
+// Corresponds with GET /api/v1/images (the `ListImages` operationId).
+func (c *Client) ListImages(ctx context.Context, params *ListImagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListImagesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -597,11 +740,13 @@ func (c *Client) UploadImageWithBody(ctx context.Context, contentType string, bo
 	return c.Client.Do(req)
 }
 
-// DeleteImageByName Delete image by name
+// DeleteImage Delete image
 //
-// Corresponds with DELETE /api/v1/images/{name} (the `DeleteImageByName` operationId).
-func (c *Client) DeleteImageByName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteImageByNameRequest(c.Server, name)
+// Delete user image by id.
+//
+// Corresponds with DELETE /api/v1/images/{image_id} (the `DeleteImage` operationId).
+func (c *Client) DeleteImage(ctx context.Context, imageID int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteImageRequest(c.Server, imageID)
 	if err != nil {
 		return nil, err
 	}
@@ -612,19 +757,19 @@ func (c *Client) DeleteImageByName(ctx context.Context, name string, reqEditors 
 	return c.Client.Do(req)
 }
 
-// NewAuthLoginRequest calls the generic AuthLogin builder with application/json body
-func NewAuthLoginRequest(server string, body AuthLoginJSONRequestBody) (*http.Request, error) {
+// NewLoginUserRequest calls the generic LoginUser builder with application/json body
+func NewLoginUserRequest(server string, body LoginUserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAuthLoginRequestWithBody(server, "application/json", bodyReader)
+	return NewLoginUserRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewAuthLoginRequestWithBody constructs an http.Request for the AuthLogin method, with any body, and a specified content type
-func NewAuthLoginRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewLoginUserRequestWithBody constructs an http.Request for the LoginUser method, with any body, and a specified content type
+func NewLoginUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -652,19 +797,19 @@ func NewAuthLoginRequestWithBody(server string, contentType string, body io.Read
 	return req, nil
 }
 
-// NewAuthLogoutRequest calls the generic AuthLogout builder with application/json body
-func NewAuthLogoutRequest(server string, body AuthLogoutJSONRequestBody) (*http.Request, error) {
+// NewLogoutUserRequest calls the generic LogoutUser builder with application/json body
+func NewLogoutUserRequest(server string, body LogoutUserJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAuthLogoutRequestWithBody(server, "application/json", bodyReader)
+	return NewLogoutUserRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewAuthLogoutRequestWithBody constructs an http.Request for the AuthLogout method, with any body, and a specified content type
-func NewAuthLogoutRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewLogoutUserRequestWithBody constructs an http.Request for the LogoutUser method, with any body, and a specified content type
+func NewLogoutUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -692,126 +837,19 @@ func NewAuthLogoutRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
-// NewAuthOAuthGetURLRequest constructs an http.Request for the AuthOAuthGetURL method
-func NewAuthOAuthGetURLRequest(server string, provider Provider) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "provider", provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/auth/oauth/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewAuthOAuthCallbackRequest constructs an http.Request for the AuthOAuthCallback method
-func NewAuthOAuthCallbackRequest(server string, provider Provider, params *AuthOAuthCallbackParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "provider", provider, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/auth/oauth/%s/callback", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "device_id", params.DeviceID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewAuthRefreshRequest calls the generic AuthRefresh builder with application/json body
-func NewAuthRefreshRequest(server string, body AuthRefreshJSONRequestBody) (*http.Request, error) {
+// NewRefreshTokensRequest calls the generic RefreshTokens builder with application/json body
+func NewRefreshTokensRequest(server string, body RefreshTokensJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAuthRefreshRequestWithBody(server, "application/json", bodyReader)
+	return NewRefreshTokensRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewAuthRefreshRequestWithBody constructs an http.Request for the AuthRefresh method, with any body, and a specified content type
-func NewAuthRefreshRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewRefreshTokensRequestWithBody constructs an http.Request for the RefreshTokens method, with any body, and a specified content type
+func NewRefreshTokensRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -839,8 +877,137 @@ func NewAuthRefreshRequestWithBody(server string, contentType string, body io.Re
 	return req, nil
 }
 
-// NewGetFontsRequest constructs an http.Request for the GetFonts method
-func NewGetFontsRequest(server string, params *GetFontsParams) (*http.Request, error) {
+// NewGetVKIDAuthorizationURLRequest constructs an http.Request for the GetVKIDAuthorizationURL method
+func NewGetVKIDAuthorizationURLRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/auth/vkid/authorize")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewHandleVKIDCallbackRequest constructs an http.Request for the HandleVKIDCallback method
+func NewHandleVKIDCallbackRequest(server string, params *HandleVKIDCallbackParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/auth/vkid/callback")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Code != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", *params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.DeviceID != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "device_id", *params.DeviceID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Error != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "error", *params.Error, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ErrorDescription != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "error_description", *params.ErrorDescription, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListFontsRequest constructs an http.Request for the ListFonts method
+func NewListFontsRequest(server string, params *ListFontsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -905,8 +1072,8 @@ func NewGetFontsRequest(server string, params *GetFontsParams) (*http.Request, e
 	return req, nil
 }
 
-// NewGetGroupsRequest constructs an http.Request for the GetGroups method
-func NewGetGroupsRequest(server string, params *GetGroupsParams) (*http.Request, error) {
+// NewListGroupsRequest constructs an http.Request for the ListGroups method
+func NewListGroupsRequest(server string, params *ListGroupsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -932,6 +1099,18 @@ func NewGetGroupsRequest(server string, params *GetGroupsParams) (*http.Request,
 		// styled parameters, preserving literal commas as delimiters
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
 
 		if params.Limit != nil {
 
@@ -959,8 +1138,175 @@ func NewGetGroupsRequest(server string, params *GetGroupsParams) (*http.Request,
 	return req, nil
 }
 
-// NewGetImagesRequest constructs an http.Request for the GetImages method
-func NewGetImagesRequest(server string, params *GetImagesParams) (*http.Request, error) {
+// NewHandleGroupCallbackRequest constructs an http.Request for the HandleGroupCallback method
+func NewHandleGroupCallbackRequest(server string, params *HandleGroupCallbackParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/groups/callback")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Code != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", *params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.State != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Error != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "error", *params.Error, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.ErrorDescription != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "error_description", *params.ErrorDescription, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetGroupConnectionURLRequest constructs an http.Request for the GetGroupConnectionURL method
+func NewGetGroupConnectionURLRequest(server string, params *GetGroupConnectionURLParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/groups/connect")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "group_id", params.GroupID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewHealthCheckRequest constructs an http.Request for the HealthCheck method
+func NewHealthCheckRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/health")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListImagesRequest constructs an http.Request for the ListImages method
+func NewListImagesRequest(server string, params *ListImagesParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1054,13 +1400,13 @@ func NewUploadImageRequestWithBody(server string, contentType string, body io.Re
 	return req, nil
 }
 
-// NewDeleteImageByNameRequest constructs an http.Request for the DeleteImageByName method
-func NewDeleteImageByNameRequest(server string, name string) (*http.Request, error) {
+// NewDeleteImageRequest constructs an http.Request for the DeleteImage method
+func NewDeleteImageRequest(server string, imageID int64) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "image_id", imageID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: "int64"})
 	if err != nil {
 		return nil, err
 	}
@@ -1132,104 +1478,131 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
-	// AuthLoginWithBodyWithResponse Login user
+	// LoginUserWithBodyWithResponse Login user
 	//
-	// Login user and get tokens.
+	// Login with email and password.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /api/v1/auth/login (the `AuthLogin` operationId).
-	AuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
+	// Corresponds with POST /api/v1/auth/login (the `LoginUser` operationId).
+	LoginUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginUserResponse, error)
 
-	// AuthLoginWithResponse Login user
+	// LoginUserWithResponse Login user
 	//
-	// Login user and get tokens.
+	// Login with email and password.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /api/v1/auth/login (the `AuthLogin` operationId).
-	AuthLoginWithResponse(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error)
+	// Corresponds with POST /api/v1/auth/login (the `LoginUser` operationId).
+	LoginUserWithResponse(ctx context.Context, body LoginUserJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginUserResponse, error)
 
-	// AuthLogoutWithBodyWithResponse Logout user
+	// LogoutUserWithBodyWithResponse Logout user
 	//
 	// Invalidate refresh token and drop session.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
-	AuthLogoutWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
+	// Corresponds with POST /api/v1/auth/logout (the `LogoutUser` operationId).
+	LogoutUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LogoutUserResponse, error)
 
-	// AuthLogoutWithResponse Logout user
+	// LogoutUserWithResponse Logout user
 	//
 	// Invalidate refresh token and drop session.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
-	AuthLogoutWithResponse(ctx context.Context, body AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error)
+	// Corresponds with POST /api/v1/auth/logout (the `LogoutUser` operationId).
+	LogoutUserWithResponse(ctx context.Context, body LogoutUserJSONRequestBody, reqEditors ...RequestEditorFn) (*LogoutUserResponse, error)
 
-	// AuthOAuthGetURLWithResponse Get OAuth authorization URL
+	// RefreshTokensWithBodyWithResponse Refresh auth tokens
+	//
+	// Exchange refresh token.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/auth/refresh (the `RefreshTokens` operationId).
+	RefreshTokensWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RefreshTokensResponse, error)
+
+	// RefreshTokensWithResponse Refresh auth tokens
+	//
+	// Exchange refresh token.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /api/v1/auth/refresh (the `RefreshTokens` operationId).
+	RefreshTokensWithResponse(ctx context.Context, body RefreshTokensJSONRequestBody, reqEditors ...RequestEditorFn) (*RefreshTokensResponse, error)
+
+	// GetVKIDAuthorizationURLWithResponse Get VK ID authorization URL
 	//
 	// Builds and returns authorization URL.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /api/v1/auth/oauth/{provider} (the `AuthOAuthGetURL` operationId).
-	AuthOAuthGetURLWithResponse(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*AuthOAuthGetURLResponse, error)
+	// Corresponds with GET /api/v1/auth/vkid/authorize (the `GetVKIDAuthorizationURL` operationId).
+	GetVKIDAuthorizationURLWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetVKIDAuthorizationURLResponse, error)
 
-	// AuthOAuthCallbackWithResponse OAuth callback
+	// HandleVKIDCallbackWithResponse Exchange VK ID authorization code
 	//
-	// Exchanges the authorization code for a pair of auth tokens.
+	// Exchange the authorization code for a pair of tokens.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /api/v1/auth/oauth/{provider}/callback (the `AuthOAuthCallback` operationId).
-	AuthOAuthCallbackWithResponse(ctx context.Context, provider Provider, params *AuthOAuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthOAuthCallbackResponse, error)
+	// Corresponds with GET /api/v1/auth/vkid/callback (the `HandleVKIDCallback` operationId).
+	HandleVKIDCallbackWithResponse(ctx context.Context, params *HandleVKIDCallbackParams, reqEditors ...RequestEditorFn) (*HandleVKIDCallbackResponse, error)
 
-	// AuthRefreshWithBodyWithResponse Refresh auth tokens
-	//
-	// Exchange refresh token.
-	//
-	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
-	AuthRefreshWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthRefreshResponse, error)
-
-	// AuthRefreshWithResponse Refresh auth tokens
-	//
-	// Exchange refresh token.
-	//
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
-	AuthRefreshWithResponse(ctx context.Context, body AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthRefreshResponse, error)
-
-	// GetFontsWithResponse Get list of fonts
+	// ListFontsWithResponse Get list of fonts
 	//
 	// Returns a paginated list of fonts.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /api/v1/fonts (the `GetFonts` operationId).
-	GetFontsWithResponse(ctx context.Context, params *GetFontsParams, reqEditors ...RequestEditorFn) (*GetFontsResponse, error)
+	// Corresponds with GET /api/v1/fonts (the `ListFonts` operationId).
+	ListFontsWithResponse(ctx context.Context, params *ListFontsParams, reqEditors ...RequestEditorFn) (*ListFontsResponse, error)
 
-	// GetGroupsWithResponse Get list of groups
+	// ListGroupsWithResponse Get list of groups
 	//
 	// Returns a paginated list of groups.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /api/v1/groups (the `GetGroups` operationId).
-	GetGroupsWithResponse(ctx context.Context, params *GetGroupsParams, reqEditors ...RequestEditorFn) (*GetGroupsResponse, error)
+	// Corresponds with GET /api/v1/groups (the `ListGroups` operationId).
+	ListGroupsWithResponse(ctx context.Context, params *ListGroupsParams, reqEditors ...RequestEditorFn) (*ListGroupsResponse, error)
 
-	// GetImagesWithResponse Get list of user images
+	// HandleGroupCallbackWithResponse Exchange group authorization code
+	//
+	// Exchange group authorization code for connect group.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/groups/callback (the `HandleGroupCallback` operationId).
+	HandleGroupCallbackWithResponse(ctx context.Context, params *HandleGroupCallbackParams, reqEditors ...RequestEditorFn) (*HandleGroupCallbackResponse, error)
+
+	// GetGroupConnectionURLWithResponse Get URL to connect group
+	//
+	// Get VK authorization URL to connect group.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/groups/connect (the `GetGroupConnectionURL` operationId).
+	GetGroupConnectionURLWithResponse(ctx context.Context, params *GetGroupConnectionURLParams, reqEditors ...RequestEditorFn) (*GetGroupConnectionURLResponse, error)
+
+	// HealthCheckWithResponse Health check
+	//
+	// Returns the health status of the application.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /api/v1/health (the `HealthCheck` operationId).
+	HealthCheckWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthCheckResponse, error)
+
+	// ListImagesWithResponse Get list of user images
 	//
 	// Returns a paginated list of user images.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with GET /api/v1/images (the `GetImages` operationId).
-	GetImagesWithResponse(ctx context.Context, params *GetImagesParams, reqEditors ...RequestEditorFn) (*GetImagesResponse, error)
+	// Corresponds with GET /api/v1/images (the `ListImages` operationId).
+	ListImagesWithResponse(ctx context.Context, params *ListImagesParams, reqEditors ...RequestEditorFn) (*ListImagesResponse, error)
 
 	// UploadImageWithBodyWithResponse Upload image file
 	//
@@ -1240,20 +1613,22 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /api/v1/images (the `UploadImage` operationId).
 	UploadImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadImageResponse, error)
 
-	// DeleteImageByNameWithResponse Delete image by name
+	// DeleteImageWithResponse Delete image
+	//
+	// Delete user image by id.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
-	// Corresponds with DELETE /api/v1/images/{name} (the `DeleteImageByName` operationId).
-	DeleteImageByNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteImageByNameResponse, error)
+	// Corresponds with DELETE /api/v1/images/{image_id} (the `DeleteImage` operationId).
+	DeleteImageWithResponse(ctx context.Context, imageID int64, reqEditors ...RequestEditorFn) (*DeleteImageResponse, error)
 }
 
-// AuthLoginResponse429Headers the declared response headers of an HTTP 429 response for AuthLogin
-type AuthLoginResponse429Headers struct {
-	RetryAfter *int
+// LoginUserResponse429Headers the declared response headers of an HTTP 429 response for LoginUser
+type LoginUserResponse429Headers struct {
+	RetryAfter int
 }
 
-type AuthLoginResponse struct {
+type LoginUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
@@ -1267,41 +1642,41 @@ type AuthLoginResponse struct {
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
 	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *AuthLoginResponse429Headers
+	Headers429 *LoginUserResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r AuthLoginResponse) GetJSON200() *AuthTokens {
+func (r LoginUserResponse) GetJSON200() *AuthTokens {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r AuthLoginResponse) GetJSON400() *BadRequest {
+func (r LoginUserResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r AuthLoginResponse) GetJSON401() *Unauthorized {
+func (r LoginUserResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r AuthLoginResponse) GetJSON429() *TooManyRequests {
+func (r LoginUserResponse) GetJSON429() *TooManyRequests {
 	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r AuthLoginResponse) GetJSON500() *InternalError {
+func (r LoginUserResponse) GetJSON500() *InternalError {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r AuthLoginResponse) GetBody() []byte {
+func (r LoginUserResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r AuthLoginResponse) Status() string {
+func (r LoginUserResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1309,7 +1684,7 @@ func (r AuthLoginResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r AuthLoginResponse) StatusCode() int {
+func (r LoginUserResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1317,19 +1692,19 @@ func (r AuthLoginResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r AuthLoginResponse) ContentType() string {
+func (r LoginUserResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-// AuthLogoutResponse429Headers the declared response headers of an HTTP 429 response for AuthLogout
-type AuthLogoutResponse429Headers struct {
-	RetryAfter *int
+// LogoutUserResponse429Headers the declared response headers of an HTTP 429 response for LogoutUser
+type LogoutUserResponse429Headers struct {
+	RetryAfter int
 }
 
-type AuthLogoutResponse struct {
+type LogoutUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -1341,36 +1716,36 @@ type AuthLogoutResponse struct {
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
 	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *AuthLogoutResponse429Headers
+	Headers429 *LogoutUserResponse429Headers
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r AuthLogoutResponse) GetJSON400() *BadRequest {
+func (r LogoutUserResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r AuthLogoutResponse) GetJSON401() *Unauthorized {
+func (r LogoutUserResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r AuthLogoutResponse) GetJSON429() *TooManyRequests {
+func (r LogoutUserResponse) GetJSON429() *TooManyRequests {
 	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r AuthLogoutResponse) GetJSON500() *InternalError {
+func (r LogoutUserResponse) GetJSON500() *InternalError {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r AuthLogoutResponse) GetBody() []byte {
+func (r LogoutUserResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r AuthLogoutResponse) Status() string {
+func (r LogoutUserResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1378,7 +1753,7 @@ func (r AuthLogoutResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r AuthLogoutResponse) StatusCode() int {
+func (r LogoutUserResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1386,88 +1761,19 @@ func (r AuthLogoutResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r AuthLogoutResponse) ContentType() string {
+func (r LogoutUserResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-// AuthOAuthGetURLResponse429Headers the declared response headers of an HTTP 429 response for AuthOAuthGetURL
-type AuthOAuthGetURLResponse429Headers struct {
-	RetryAfter *int
+// RefreshTokensResponse429Headers the declared response headers of an HTTP 429 response for RefreshTokens
+type RefreshTokensResponse429Headers struct {
+	RetryAfter int
 }
 
-type AuthOAuthGetURLResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *OAuthAuthorizationURL
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *BadRequest
-	// JSON429 the response for an HTTP 429 `application/json` response
-	JSON429 *TooManyRequests
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *InternalError
-	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *AuthOAuthGetURLResponse429Headers
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r AuthOAuthGetURLResponse) GetJSON200() *OAuthAuthorizationURL {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r AuthOAuthGetURLResponse) GetJSON400() *BadRequest {
-	return r.JSON400
-}
-
-// GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r AuthOAuthGetURLResponse) GetJSON429() *TooManyRequests {
-	return r.JSON429
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r AuthOAuthGetURLResponse) GetJSON500() *InternalError {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r AuthOAuthGetURLResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r AuthOAuthGetURLResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r AuthOAuthGetURLResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r AuthOAuthGetURLResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-// AuthOAuthCallbackResponse429Headers the declared response headers of an HTTP 429 response for AuthOAuthCallback
-type AuthOAuthCallbackResponse429Headers struct {
-	RetryAfter *int
-}
-
-type AuthOAuthCallbackResponse struct {
+type RefreshTokensResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
@@ -1481,41 +1787,41 @@ type AuthOAuthCallbackResponse struct {
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
 	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *AuthOAuthCallbackResponse429Headers
+	Headers429 *RefreshTokensResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r AuthOAuthCallbackResponse) GetJSON200() *AuthTokens {
+func (r RefreshTokensResponse) GetJSON200() *AuthTokens {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r AuthOAuthCallbackResponse) GetJSON400() *BadRequest {
+func (r RefreshTokensResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r AuthOAuthCallbackResponse) GetJSON401() *Unauthorized {
+func (r RefreshTokensResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r AuthOAuthCallbackResponse) GetJSON429() *TooManyRequests {
+func (r RefreshTokensResponse) GetJSON429() *TooManyRequests {
 	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r AuthOAuthCallbackResponse) GetJSON500() *InternalError {
+func (r RefreshTokensResponse) GetJSON500() *InternalError {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r AuthOAuthCallbackResponse) GetBody() []byte {
+func (r RefreshTokensResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r AuthOAuthCallbackResponse) Status() string {
+func (r RefreshTokensResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1523,7 +1829,7 @@ func (r AuthOAuthCallbackResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r AuthOAuthCallbackResponse) StatusCode() int {
+func (r RefreshTokensResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1531,19 +1837,88 @@ func (r AuthOAuthCallbackResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r AuthOAuthCallbackResponse) ContentType() string {
+func (r RefreshTokensResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-// AuthRefreshResponse429Headers the declared response headers of an HTTP 429 response for AuthRefresh
-type AuthRefreshResponse429Headers struct {
-	RetryAfter *int
+// GetVKIDAuthorizationURLResponse429Headers the declared response headers of an HTTP 429 response for GetVKIDAuthorizationURL
+type GetVKIDAuthorizationURLResponse429Headers struct {
+	RetryAfter int
 }
 
-type AuthRefreshResponse struct {
+type GetVKIDAuthorizationURLResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *VKIDAuthorization
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *TooManyRequests
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalError
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GetVKIDAuthorizationURLResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetVKIDAuthorizationURLResponse) GetJSON200() *VKIDAuthorization {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetVKIDAuthorizationURLResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r GetVKIDAuthorizationURLResponse) GetJSON429() *TooManyRequests {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetVKIDAuthorizationURLResponse) GetJSON500() *InternalError {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetVKIDAuthorizationURLResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetVKIDAuthorizationURLResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetVKIDAuthorizationURLResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetVKIDAuthorizationURLResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// HandleVKIDCallbackResponse429Headers the declared response headers of an HTTP 429 response for HandleVKIDCallback
+type HandleVKIDCallbackResponse429Headers struct {
+	RetryAfter int
+}
+
+type HandleVKIDCallbackResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
@@ -1557,41 +1932,41 @@ type AuthRefreshResponse struct {
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
 	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *AuthRefreshResponse429Headers
+	Headers429 *HandleVKIDCallbackResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r AuthRefreshResponse) GetJSON200() *AuthTokens {
+func (r HandleVKIDCallbackResponse) GetJSON200() *AuthTokens {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r AuthRefreshResponse) GetJSON400() *BadRequest {
+func (r HandleVKIDCallbackResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r AuthRefreshResponse) GetJSON401() *Unauthorized {
+func (r HandleVKIDCallbackResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r AuthRefreshResponse) GetJSON429() *TooManyRequests {
+func (r HandleVKIDCallbackResponse) GetJSON429() *TooManyRequests {
 	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r AuthRefreshResponse) GetJSON500() *InternalError {
+func (r HandleVKIDCallbackResponse) GetJSON500() *InternalError {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r AuthRefreshResponse) GetBody() []byte {
+func (r HandleVKIDCallbackResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r AuthRefreshResponse) Status() string {
+func (r HandleVKIDCallbackResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1599,7 +1974,7 @@ func (r AuthRefreshResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r AuthRefreshResponse) StatusCode() int {
+func (r HandleVKIDCallbackResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1607,19 +1982,19 @@ func (r AuthRefreshResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r AuthRefreshResponse) ContentType() string {
+func (r HandleVKIDCallbackResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-// GetFontsResponse429Headers the declared response headers of an HTTP 429 response for GetFonts
-type GetFontsResponse429Headers struct {
-	RetryAfter *int
+// ListFontsResponse429Headers the declared response headers of an HTTP 429 response for ListFonts
+type ListFontsResponse429Headers struct {
+	RetryAfter int
 }
 
-type GetFontsResponse struct {
+type ListFontsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
@@ -1633,41 +2008,41 @@ type GetFontsResponse struct {
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
 	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *GetFontsResponse429Headers
+	Headers429 *ListFontsResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetFontsResponse) GetJSON200() *FontList {
+func (r ListFontsResponse) GetJSON200() *FontList {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r GetFontsResponse) GetJSON400() *BadRequest {
+func (r ListFontsResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetFontsResponse) GetJSON401() *Unauthorized {
+func (r ListFontsResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r GetFontsResponse) GetJSON429() *TooManyRequests {
+func (r ListFontsResponse) GetJSON429() *TooManyRequests {
 	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r GetFontsResponse) GetJSON500() *InternalError {
+func (r ListFontsResponse) GetJSON500() *InternalError {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r GetFontsResponse) GetBody() []byte {
+func (r ListFontsResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r GetFontsResponse) Status() string {
+func (r ListFontsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1675,7 +2050,7 @@ func (r GetFontsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetFontsResponse) StatusCode() int {
+func (r ListFontsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1683,19 +2058,19 @@ func (r GetFontsResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetFontsResponse) ContentType() string {
+func (r ListFontsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-// GetGroupsResponse429Headers the declared response headers of an HTTP 429 response for GetGroups
-type GetGroupsResponse429Headers struct {
-	RetryAfter *int
+// ListGroupsResponse429Headers the declared response headers of an HTTP 429 response for ListGroups
+type ListGroupsResponse429Headers struct {
+	RetryAfter int
 }
 
-type GetGroupsResponse struct {
+type ListGroupsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
@@ -1709,41 +2084,41 @@ type GetGroupsResponse struct {
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
 	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *GetGroupsResponse429Headers
+	Headers429 *ListGroupsResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetGroupsResponse) GetJSON200() *GroupList {
+func (r ListGroupsResponse) GetJSON200() *GroupList {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r GetGroupsResponse) GetJSON400() *BadRequest {
+func (r ListGroupsResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetGroupsResponse) GetJSON401() *Unauthorized {
+func (r ListGroupsResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r GetGroupsResponse) GetJSON429() *TooManyRequests {
+func (r ListGroupsResponse) GetJSON429() *TooManyRequests {
 	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r GetGroupsResponse) GetJSON500() *InternalError {
+func (r ListGroupsResponse) GetJSON500() *InternalError {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r GetGroupsResponse) GetBody() []byte {
+func (r ListGroupsResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r GetGroupsResponse) Status() string {
+func (r ListGroupsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1751,7 +2126,7 @@ func (r GetGroupsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetGroupsResponse) StatusCode() int {
+func (r ListGroupsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1759,19 +2134,219 @@ func (r GetGroupsResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetGroupsResponse) ContentType() string {
+func (r ListGroupsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-// GetImagesResponse429Headers the declared response headers of an HTTP 429 response for GetImages
-type GetImagesResponse429Headers struct {
-	RetryAfter *int
+// HandleGroupCallbackResponse429Headers the declared response headers of an HTTP 429 response for HandleGroupCallback
+type HandleGroupCallbackResponse429Headers struct {
+	RetryAfter int
 }
 
-type GetImagesResponse struct {
+type HandleGroupCallbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Group
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *TooManyRequests
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalError
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *HandleGroupCallbackResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r HandleGroupCallbackResponse) GetJSON200() *Group {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r HandleGroupCallbackResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r HandleGroupCallbackResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r HandleGroupCallbackResponse) GetJSON429() *TooManyRequests {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r HandleGroupCallbackResponse) GetJSON500() *InternalError {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r HandleGroupCallbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r HandleGroupCallbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r HandleGroupCallbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r HandleGroupCallbackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// GetGroupConnectionURLResponse429Headers the declared response headers of an HTTP 429 response for GetGroupConnectionURL
+type GetGroupConnectionURLResponse429Headers struct {
+	RetryAfter int
+}
+
+type GetGroupConnectionURLResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *GroupAuthorization
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *BadRequest
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *Unauthorized
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *TooManyRequests
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *InternalError
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *GetGroupConnectionURLResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetGroupConnectionURLResponse) GetJSON200() *GroupAuthorization {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetGroupConnectionURLResponse) GetJSON400() *BadRequest {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetGroupConnectionURLResponse) GetJSON401() *Unauthorized {
+	return r.JSON401
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r GetGroupConnectionURLResponse) GetJSON429() *TooManyRequests {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetGroupConnectionURLResponse) GetJSON500() *InternalError {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetGroupConnectionURLResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetGroupConnectionURLResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetGroupConnectionURLResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetGroupConnectionURLResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type HealthCheckResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *HealthStatus
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *HealthStatus
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r HealthCheckResponse) GetJSON200() *HealthStatus {
+	return r.JSON200
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r HealthCheckResponse) GetJSON503() *HealthStatus {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r HealthCheckResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r HealthCheckResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r HealthCheckResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r HealthCheckResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ListImagesResponse429Headers the declared response headers of an HTTP 429 response for ListImages
+type ListImagesResponse429Headers struct {
+	RetryAfter int
+}
+
+type ListImagesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
@@ -1785,41 +2360,41 @@ type GetImagesResponse struct {
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
 	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *GetImagesResponse429Headers
+	Headers429 *ListImagesResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetImagesResponse) GetJSON200() *ImageList {
+func (r ListImagesResponse) GetJSON200() *ImageList {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r GetImagesResponse) GetJSON400() *BadRequest {
+func (r ListImagesResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetImagesResponse) GetJSON401() *Unauthorized {
+func (r ListImagesResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r GetImagesResponse) GetJSON429() *TooManyRequests {
+func (r ListImagesResponse) GetJSON429() *TooManyRequests {
 	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r GetImagesResponse) GetJSON500() *InternalError {
+func (r ListImagesResponse) GetJSON500() *InternalError {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r GetImagesResponse) GetBody() []byte {
+func (r ListImagesResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r GetImagesResponse) Status() string {
+func (r ListImagesResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1827,7 +2402,7 @@ func (r GetImagesResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetImagesResponse) StatusCode() int {
+func (r ListImagesResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1835,7 +2410,7 @@ func (r GetImagesResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetImagesResponse) ContentType() string {
+func (r ListImagesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -1844,7 +2419,7 @@ func (r GetImagesResponse) ContentType() string {
 
 // UploadImageResponse429Headers the declared response headers of an HTTP 429 response for UploadImage
 type UploadImageResponse429Headers struct {
-	RetryAfter *int
+	RetryAfter int
 }
 
 type UploadImageResponse struct {
@@ -1856,8 +2431,10 @@ type UploadImageResponse struct {
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
 	JSON401 *Unauthorized
-	// JSON409 the response for an HTTP 409 `application/json` response
-	JSON409 *Conflict
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *PayloadTooLarge
+	// JSON415 the response for an HTTP 415 `application/json` response
+	JSON415 *UnsupportedMediaType
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *TooManyRequests
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -1881,9 +2458,14 @@ func (r UploadImageResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
-// GetJSON409 returns the response for an HTTP 409 `application/json` response
-func (r UploadImageResponse) GetJSON409() *Conflict {
-	return r.JSON409
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r UploadImageResponse) GetJSON413() *PayloadTooLarge {
+	return r.JSON413
+}
+
+// GetJSON415 returns the response for an HTTP 415 `application/json` response
+func (r UploadImageResponse) GetJSON415() *UnsupportedMediaType {
+	return r.JSON415
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -1925,53 +2507,60 @@ func (r UploadImageResponse) ContentType() string {
 	return ""
 }
 
-// DeleteImageByNameResponse429Headers the declared response headers of an HTTP 429 response for DeleteImageByName
-type DeleteImageByNameResponse429Headers struct {
-	RetryAfter *int
+// DeleteImageResponse429Headers the declared response headers of an HTTP 429 response for DeleteImage
+type DeleteImageResponse429Headers struct {
+	RetryAfter int
 }
 
-type DeleteImageByNameResponse struct {
+type DeleteImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
 	JSON401 *Unauthorized
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *NotFound
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *TooManyRequests
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
 	// Headers429 the parsed response headers for an HTTP 429 response
-	Headers429 *DeleteImageByNameResponse429Headers
+	Headers429 *DeleteImageResponse429Headers
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r DeleteImageByNameResponse) GetJSON400() *BadRequest {
+func (r DeleteImageResponse) GetJSON400() *BadRequest {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r DeleteImageByNameResponse) GetJSON401() *Unauthorized {
+func (r DeleteImageResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
 }
 
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteImageResponse) GetJSON404() *NotFound {
+	return r.JSON404
+}
+
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
-func (r DeleteImageByNameResponse) GetJSON429() *TooManyRequests {
+func (r DeleteImageResponse) GetJSON429() *TooManyRequests {
 	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r DeleteImageByNameResponse) GetJSON500() *InternalError {
+func (r DeleteImageResponse) GetJSON500() *InternalError {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-func (r DeleteImageByNameResponse) GetBody() []byte {
+func (r DeleteImageResponse) GetBody() []byte {
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteImageByNameResponse) Status() string {
+func (r DeleteImageResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1979,7 +2568,7 @@ func (r DeleteImageByNameResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteImageByNameResponse) StatusCode() int {
+func (r DeleteImageResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1987,176 +2576,221 @@ func (r DeleteImageByNameResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteImageByNameResponse) ContentType() string {
+func (r DeleteImageResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
 	return ""
 }
 
-// AuthLoginWithBodyWithResponse Login user
+// LoginUserWithBodyWithResponse Login user
 //
-// Login user and get tokens.
+// Login with email and password.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /api/v1/auth/login (the `AuthLogin` operationId).
-func (c *ClientWithResponses) AuthLoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error) {
-	rsp, err := c.AuthLoginWithBody(ctx, contentType, body, reqEditors...)
+// Corresponds with POST /api/v1/auth/login (the `LoginUser` operationId).
+func (c *ClientWithResponses) LoginUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginUserResponse, error) {
+	rsp, err := c.LoginUserWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthLoginResponse(rsp)
+	return ParseLoginUserResponse(rsp)
 }
 
-// AuthLoginWithResponse Login user
+// LoginUserWithResponse Login user
 //
-// Login user and get tokens.
+// Login with email and password.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /api/v1/auth/login (the `AuthLogin` operationId).
-func (c *ClientWithResponses) AuthLoginWithResponse(ctx context.Context, body AuthLoginJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLoginResponse, error) {
-	rsp, err := c.AuthLogin(ctx, body, reqEditors...)
+// Corresponds with POST /api/v1/auth/login (the `LoginUser` operationId).
+func (c *ClientWithResponses) LoginUserWithResponse(ctx context.Context, body LoginUserJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginUserResponse, error) {
+	rsp, err := c.LoginUser(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthLoginResponse(rsp)
+	return ParseLoginUserResponse(rsp)
 }
 
-// AuthLogoutWithBodyWithResponse Logout user
+// LogoutUserWithBodyWithResponse Logout user
 //
 // Invalidate refresh token and drop session.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
-func (c *ClientWithResponses) AuthLogoutWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error) {
-	rsp, err := c.AuthLogoutWithBody(ctx, contentType, body, reqEditors...)
+// Corresponds with POST /api/v1/auth/logout (the `LogoutUser` operationId).
+func (c *ClientWithResponses) LogoutUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LogoutUserResponse, error) {
+	rsp, err := c.LogoutUserWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthLogoutResponse(rsp)
+	return ParseLogoutUserResponse(rsp)
 }
 
-// AuthLogoutWithResponse Logout user
+// LogoutUserWithResponse Logout user
 //
 // Invalidate refresh token and drop session.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Corresponds with POST /api/v1/auth/logout (the `AuthLogout` operationId).
-func (c *ClientWithResponses) AuthLogoutWithResponse(ctx context.Context, body AuthLogoutJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthLogoutResponse, error) {
-	rsp, err := c.AuthLogout(ctx, body, reqEditors...)
+// Corresponds with POST /api/v1/auth/logout (the `LogoutUser` operationId).
+func (c *ClientWithResponses) LogoutUserWithResponse(ctx context.Context, body LogoutUserJSONRequestBody, reqEditors ...RequestEditorFn) (*LogoutUserResponse, error) {
+	rsp, err := c.LogoutUser(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthLogoutResponse(rsp)
+	return ParseLogoutUserResponse(rsp)
 }
 
-// AuthOAuthGetURLWithResponse Get OAuth authorization URL
+// RefreshTokensWithBodyWithResponse Refresh auth tokens
+//
+// Exchange refresh token.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/auth/refresh (the `RefreshTokens` operationId).
+func (c *ClientWithResponses) RefreshTokensWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RefreshTokensResponse, error) {
+	rsp, err := c.RefreshTokensWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRefreshTokensResponse(rsp)
+}
+
+// RefreshTokensWithResponse Refresh auth tokens
+//
+// Exchange refresh token.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /api/v1/auth/refresh (the `RefreshTokens` operationId).
+func (c *ClientWithResponses) RefreshTokensWithResponse(ctx context.Context, body RefreshTokensJSONRequestBody, reqEditors ...RequestEditorFn) (*RefreshTokensResponse, error) {
+	rsp, err := c.RefreshTokens(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRefreshTokensResponse(rsp)
+}
+
+// GetVKIDAuthorizationURLWithResponse Get VK ID authorization URL
 //
 // Builds and returns authorization URL.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /api/v1/auth/oauth/{provider} (the `AuthOAuthGetURL` operationId).
-func (c *ClientWithResponses) AuthOAuthGetURLWithResponse(ctx context.Context, provider Provider, reqEditors ...RequestEditorFn) (*AuthOAuthGetURLResponse, error) {
-	rsp, err := c.AuthOAuthGetURL(ctx, provider, reqEditors...)
+// Corresponds with GET /api/v1/auth/vkid/authorize (the `GetVKIDAuthorizationURL` operationId).
+func (c *ClientWithResponses) GetVKIDAuthorizationURLWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetVKIDAuthorizationURLResponse, error) {
+	rsp, err := c.GetVKIDAuthorizationURL(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthOAuthGetURLResponse(rsp)
+	return ParseGetVKIDAuthorizationURLResponse(rsp)
 }
 
-// AuthOAuthCallbackWithResponse OAuth callback
+// HandleVKIDCallbackWithResponse Exchange VK ID authorization code
 //
-// Exchanges the authorization code for a pair of auth tokens.
+// Exchange the authorization code for a pair of tokens.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /api/v1/auth/oauth/{provider}/callback (the `AuthOAuthCallback` operationId).
-func (c *ClientWithResponses) AuthOAuthCallbackWithResponse(ctx context.Context, provider Provider, params *AuthOAuthCallbackParams, reqEditors ...RequestEditorFn) (*AuthOAuthCallbackResponse, error) {
-	rsp, err := c.AuthOAuthCallback(ctx, provider, params, reqEditors...)
+// Corresponds with GET /api/v1/auth/vkid/callback (the `HandleVKIDCallback` operationId).
+func (c *ClientWithResponses) HandleVKIDCallbackWithResponse(ctx context.Context, params *HandleVKIDCallbackParams, reqEditors ...RequestEditorFn) (*HandleVKIDCallbackResponse, error) {
+	rsp, err := c.HandleVKIDCallback(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAuthOAuthCallbackResponse(rsp)
+	return ParseHandleVKIDCallbackResponse(rsp)
 }
 
-// AuthRefreshWithBodyWithResponse Refresh auth tokens
-//
-// Exchange refresh token.
-//
-// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
-func (c *ClientWithResponses) AuthRefreshWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AuthRefreshResponse, error) {
-	rsp, err := c.AuthRefreshWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseAuthRefreshResponse(rsp)
-}
-
-// AuthRefreshWithResponse Refresh auth tokens
-//
-// Exchange refresh token.
-//
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Corresponds with POST /api/v1/auth/refresh (the `AuthRefresh` operationId).
-func (c *ClientWithResponses) AuthRefreshWithResponse(ctx context.Context, body AuthRefreshJSONRequestBody, reqEditors ...RequestEditorFn) (*AuthRefreshResponse, error) {
-	rsp, err := c.AuthRefresh(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseAuthRefreshResponse(rsp)
-}
-
-// GetFontsWithResponse Get list of fonts
+// ListFontsWithResponse Get list of fonts
 //
 // Returns a paginated list of fonts.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /api/v1/fonts (the `GetFonts` operationId).
-func (c *ClientWithResponses) GetFontsWithResponse(ctx context.Context, params *GetFontsParams, reqEditors ...RequestEditorFn) (*GetFontsResponse, error) {
-	rsp, err := c.GetFonts(ctx, params, reqEditors...)
+// Corresponds with GET /api/v1/fonts (the `ListFonts` operationId).
+func (c *ClientWithResponses) ListFontsWithResponse(ctx context.Context, params *ListFontsParams, reqEditors ...RequestEditorFn) (*ListFontsResponse, error) {
+	rsp, err := c.ListFonts(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetFontsResponse(rsp)
+	return ParseListFontsResponse(rsp)
 }
 
-// GetGroupsWithResponse Get list of groups
+// ListGroupsWithResponse Get list of groups
 //
 // Returns a paginated list of groups.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /api/v1/groups (the `GetGroups` operationId).
-func (c *ClientWithResponses) GetGroupsWithResponse(ctx context.Context, params *GetGroupsParams, reqEditors ...RequestEditorFn) (*GetGroupsResponse, error) {
-	rsp, err := c.GetGroups(ctx, params, reqEditors...)
+// Corresponds with GET /api/v1/groups (the `ListGroups` operationId).
+func (c *ClientWithResponses) ListGroupsWithResponse(ctx context.Context, params *ListGroupsParams, reqEditors ...RequestEditorFn) (*ListGroupsResponse, error) {
+	rsp, err := c.ListGroups(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetGroupsResponse(rsp)
+	return ParseListGroupsResponse(rsp)
 }
 
-// GetImagesWithResponse Get list of user images
+// HandleGroupCallbackWithResponse Exchange group authorization code
+//
+// Exchange group authorization code for connect group.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/groups/callback (the `HandleGroupCallback` operationId).
+func (c *ClientWithResponses) HandleGroupCallbackWithResponse(ctx context.Context, params *HandleGroupCallbackParams, reqEditors ...RequestEditorFn) (*HandleGroupCallbackResponse, error) {
+	rsp, err := c.HandleGroupCallback(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHandleGroupCallbackResponse(rsp)
+}
+
+// GetGroupConnectionURLWithResponse Get URL to connect group
+//
+// Get VK authorization URL to connect group.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/groups/connect (the `GetGroupConnectionURL` operationId).
+func (c *ClientWithResponses) GetGroupConnectionURLWithResponse(ctx context.Context, params *GetGroupConnectionURLParams, reqEditors ...RequestEditorFn) (*GetGroupConnectionURLResponse, error) {
+	rsp, err := c.GetGroupConnectionURL(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetGroupConnectionURLResponse(rsp)
+}
+
+// HealthCheckWithResponse Health check
+//
+// Returns the health status of the application.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /api/v1/health (the `HealthCheck` operationId).
+func (c *ClientWithResponses) HealthCheckWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthCheckResponse, error) {
+	rsp, err := c.HealthCheck(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHealthCheckResponse(rsp)
+}
+
+// ListImagesWithResponse Get list of user images
 //
 // Returns a paginated list of user images.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with GET /api/v1/images (the `GetImages` operationId).
-func (c *ClientWithResponses) GetImagesWithResponse(ctx context.Context, params *GetImagesParams, reqEditors ...RequestEditorFn) (*GetImagesResponse, error) {
-	rsp, err := c.GetImages(ctx, params, reqEditors...)
+// Corresponds with GET /api/v1/images (the `ListImages` operationId).
+func (c *ClientWithResponses) ListImagesWithResponse(ctx context.Context, params *ListImagesParams, reqEditors ...RequestEditorFn) (*ListImagesResponse, error) {
+	rsp, err := c.ListImages(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseGetImagesResponse(rsp)
+	return ParseListImagesResponse(rsp)
 }
 
 // UploadImageWithBodyWithResponse Upload image file
@@ -2174,28 +2808,30 @@ func (c *ClientWithResponses) UploadImageWithBodyWithResponse(ctx context.Contex
 	return ParseUploadImageResponse(rsp)
 }
 
-// DeleteImageByNameWithResponse Delete image by name
+// DeleteImageWithResponse Delete image
+//
+// Delete user image by id.
 //
 // Returns a wrapper object for the known response body format(s).
 //
-// Corresponds with DELETE /api/v1/images/{name} (the `DeleteImageByName` operationId).
-func (c *ClientWithResponses) DeleteImageByNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*DeleteImageByNameResponse, error) {
-	rsp, err := c.DeleteImageByName(ctx, name, reqEditors...)
+// Corresponds with DELETE /api/v1/images/{image_id} (the `DeleteImage` operationId).
+func (c *ClientWithResponses) DeleteImageWithResponse(ctx context.Context, imageID int64, reqEditors ...RequestEditorFn) (*DeleteImageResponse, error) {
+	rsp, err := c.DeleteImage(ctx, imageID, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteImageByNameResponse(rsp)
+	return ParseDeleteImageResponse(rsp)
 }
 
-// ParseAuthLoginResponse parses an HTTP response from a AuthLoginWithResponse call
-func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
+// ParseLoginUserResponse parses an HTTP response from a LoginUserWithResponse call
+func ParseLoginUserResponse(rsp *http.Response) (*LoginUserResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AuthLoginResponse{
+	response := &LoginUserResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2240,13 +2876,13 @@ func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
 
 	switch {
 	case rsp.StatusCode == 429:
-		var headers AuthLoginResponse429Headers
+		var headers LoginUserResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2254,15 +2890,15 @@ func ParseAuthLoginResponse(rsp *http.Response) (*AuthLoginResponse, error) {
 	return response, nil
 }
 
-// ParseAuthLogoutResponse parses an HTTP response from a AuthLogoutWithResponse call
-func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
+// ParseLogoutUserResponse parses an HTTP response from a LogoutUserWithResponse call
+func ParseLogoutUserResponse(rsp *http.Response) (*LogoutUserResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AuthLogoutResponse{
+	response := &LogoutUserResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2303,13 +2939,13 @@ func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
 
 	switch {
 	case rsp.StatusCode == 429:
-		var headers AuthLogoutResponse429Headers
+		var headers LogoutUserResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2317,75 +2953,15 @@ func ParseAuthLogoutResponse(rsp *http.Response) (*AuthLogoutResponse, error) {
 	return response, nil
 }
 
-// ParseAuthOAuthGetURLResponse parses an HTTP response from a AuthOAuthGetURLWithResponse call
-func ParseAuthOAuthGetURLResponse(rsp *http.Response) (*AuthOAuthGetURLResponse, error) {
+// ParseRefreshTokensResponse parses an HTTP response from a RefreshTokensWithResponse call
+func ParseRefreshTokensResponse(rsp *http.Response) (*RefreshTokensResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AuthOAuthGetURLResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest OAuthAuthorizationURL
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest TooManyRequests
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	switch {
-	case rsp.StatusCode == 429:
-		var headers AuthOAuthGetURLResponse429Headers
-		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
-			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
-				return nil, err
-			}
-			headers.RetryAfter = &value
-		}
-		response.Headers429 = &headers
-	}
-
-	return response, nil
-}
-
-// ParseAuthOAuthCallbackResponse parses an HTTP response from a AuthOAuthCallbackWithResponse call
-func ParseAuthOAuthCallbackResponse(rsp *http.Response) (*AuthOAuthCallbackResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &AuthOAuthCallbackResponse{
+	response := &RefreshTokensResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2430,13 +3006,13 @@ func ParseAuthOAuthCallbackResponse(rsp *http.Response) (*AuthOAuthCallbackRespo
 
 	switch {
 	case rsp.StatusCode == 429:
-		var headers AuthOAuthCallbackResponse429Headers
+		var headers RefreshTokensResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2444,15 +3020,75 @@ func ParseAuthOAuthCallbackResponse(rsp *http.Response) (*AuthOAuthCallbackRespo
 	return response, nil
 }
 
-// ParseAuthRefreshResponse parses an HTTP response from a AuthRefreshWithResponse call
-func ParseAuthRefreshResponse(rsp *http.Response) (*AuthRefreshResponse, error) {
+// ParseGetVKIDAuthorizationURLResponse parses an HTTP response from a GetVKIDAuthorizationURLWithResponse call
+func ParseGetVKIDAuthorizationURLResponse(rsp *http.Response) (*GetVKIDAuthorizationURLResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AuthRefreshResponse{
+	response := &GetVKIDAuthorizationURLResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VKIDAuthorization
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers GetVKIDAuthorizationURLResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseHandleVKIDCallbackResponse parses an HTTP response from a HandleVKIDCallbackWithResponse call
+func ParseHandleVKIDCallbackResponse(rsp *http.Response) (*HandleVKIDCallbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &HandleVKIDCallbackResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2497,13 +3133,13 @@ func ParseAuthRefreshResponse(rsp *http.Response) (*AuthRefreshResponse, error) 
 
 	switch {
 	case rsp.StatusCode == 429:
-		var headers AuthRefreshResponse429Headers
+		var headers HandleVKIDCallbackResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2511,15 +3147,15 @@ func ParseAuthRefreshResponse(rsp *http.Response) (*AuthRefreshResponse, error) 
 	return response, nil
 }
 
-// ParseGetFontsResponse parses an HTTP response from a GetFontsWithResponse call
-func ParseGetFontsResponse(rsp *http.Response) (*GetFontsResponse, error) {
+// ParseListFontsResponse parses an HTTP response from a ListFontsWithResponse call
+func ParseListFontsResponse(rsp *http.Response) (*ListFontsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetFontsResponse{
+	response := &ListFontsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2564,13 +3200,13 @@ func ParseGetFontsResponse(rsp *http.Response) (*GetFontsResponse, error) {
 
 	switch {
 	case rsp.StatusCode == 429:
-		var headers GetFontsResponse429Headers
+		var headers ListFontsResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2578,15 +3214,15 @@ func ParseGetFontsResponse(rsp *http.Response) (*GetFontsResponse, error) {
 	return response, nil
 }
 
-// ParseGetGroupsResponse parses an HTTP response from a GetGroupsWithResponse call
-func ParseGetGroupsResponse(rsp *http.Response) (*GetGroupsResponse, error) {
+// ParseListGroupsResponse parses an HTTP response from a ListGroupsWithResponse call
+func ParseListGroupsResponse(rsp *http.Response) (*ListGroupsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetGroupsResponse{
+	response := &ListGroupsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2631,13 +3267,13 @@ func ParseGetGroupsResponse(rsp *http.Response) (*GetGroupsResponse, error) {
 
 	switch {
 	case rsp.StatusCode == 429:
-		var headers GetGroupsResponse429Headers
+		var headers ListGroupsResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2645,15 +3281,182 @@ func ParseGetGroupsResponse(rsp *http.Response) (*GetGroupsResponse, error) {
 	return response, nil
 }
 
-// ParseGetImagesResponse parses an HTTP response from a GetImagesWithResponse call
-func ParseGetImagesResponse(rsp *http.Response) (*GetImagesResponse, error) {
+// ParseHandleGroupCallbackResponse parses an HTTP response from a HandleGroupCallbackWithResponse call
+func ParseHandleGroupCallbackResponse(rsp *http.Response) (*HandleGroupCallbackResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &GetImagesResponse{
+	response := &HandleGroupCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Group
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers HandleGroupCallbackResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseGetGroupConnectionURLResponse parses an HTTP response from a GetGroupConnectionURLWithResponse call
+func ParseGetGroupConnectionURLResponse(rsp *http.Response) (*GetGroupConnectionURLResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetGroupConnectionURLResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GroupAuthorization
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest TooManyRequests
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers GetGroupConnectionURLResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseHealthCheckResponse parses an HTTP response from a HealthCheckWithResponse call
+func ParseHealthCheckResponse(rsp *http.Response) (*HealthCheckResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &HealthCheckResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest HealthStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest HealthStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListImagesResponse parses an HTTP response from a ListImagesWithResponse call
+func ParseListImagesResponse(rsp *http.Response) (*ListImagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListImagesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2698,13 +3501,13 @@ func ParseGetImagesResponse(rsp *http.Response) (*GetImagesResponse, error) {
 
 	switch {
 	case rsp.StatusCode == 429:
-		var headers GetImagesResponse429Headers
+		var headers ListImagesResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2747,12 +3550,19 @@ func ParseUploadImageResponse(rsp *http.Response) (*UploadImageResponse, error) 
 		}
 		response.JSON401 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest Conflict
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest PayloadTooLarge
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON409 = &dest
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 415:
+		var dest UnsupportedMediaType
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON415 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
@@ -2775,10 +3585,10 @@ func ParseUploadImageResponse(rsp *http.Response) (*UploadImageResponse, error) 
 		var headers UploadImageResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2786,15 +3596,15 @@ func ParseUploadImageResponse(rsp *http.Response) (*UploadImageResponse, error) 
 	return response, nil
 }
 
-// ParseDeleteImageByNameResponse parses an HTTP response from a DeleteImageByNameWithResponse call
-func ParseDeleteImageByNameResponse(rsp *http.Response) (*DeleteImageByNameResponse, error) {
+// ParseDeleteImageResponse parses an HTTP response from a DeleteImageWithResponse call
+func ParseDeleteImageResponse(rsp *http.Response) (*DeleteImageResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteImageByNameResponse{
+	response := &DeleteImageResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2817,6 +3627,13 @@ func ParseDeleteImageByNameResponse(rsp *http.Response) (*DeleteImageByNameRespo
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2835,13 +3652,13 @@ func ParseDeleteImageByNameResponse(rsp *http.Response) (*DeleteImageByNameRespo
 
 	switch {
 	case rsp.StatusCode == 429:
-		var headers DeleteImageByNameResponse429Headers
+		var headers DeleteImageResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
-			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: ""}); err != nil {
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			}
-			headers.RetryAfter = &value
+			headers.RetryAfter = value
 		}
 		response.Headers429 = &headers
 	}
@@ -2851,87 +3668,114 @@ func ParseDeleteImageByNameResponse(rsp *http.Response) (*DeleteImageByNameRespo
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// AuthLogin Login user
+	// LoginUser Login user
 	// (POST /api/v1/auth/login)
-	AuthLogin(w http.ResponseWriter, r *http.Request)
-	// AuthLogout Logout user
+	LoginUser(w http.ResponseWriter, r *http.Request)
+	// LogoutUser Logout user
 	// (POST /api/v1/auth/logout)
-	AuthLogout(w http.ResponseWriter, r *http.Request)
-	// AuthOAuthGetURL Get OAuth authorization URL
-	// (GET /api/v1/auth/oauth/{provider})
-	AuthOAuthGetURL(w http.ResponseWriter, r *http.Request, provider Provider)
-	// AuthOAuthCallback OAuth callback
-	// (GET /api/v1/auth/oauth/{provider}/callback)
-	AuthOAuthCallback(w http.ResponseWriter, r *http.Request, provider Provider, params AuthOAuthCallbackParams)
-	// AuthRefresh Refresh auth tokens
+	LogoutUser(w http.ResponseWriter, r *http.Request)
+	// RefreshTokens Refresh auth tokens
 	// (POST /api/v1/auth/refresh)
-	AuthRefresh(w http.ResponseWriter, r *http.Request)
-	// GetFonts Get list of fonts
+	RefreshTokens(w http.ResponseWriter, r *http.Request)
+	// GetVKIDAuthorizationURL Get VK ID authorization URL
+	// (GET /api/v1/auth/vkid/authorize)
+	GetVKIDAuthorizationURL(w http.ResponseWriter, r *http.Request)
+	// HandleVKIDCallback Exchange VK ID authorization code
+	// (GET /api/v1/auth/vkid/callback)
+	HandleVKIDCallback(w http.ResponseWriter, r *http.Request, params HandleVKIDCallbackParams)
+	// ListFonts Get list of fonts
 	// (GET /api/v1/fonts)
-	GetFonts(w http.ResponseWriter, r *http.Request, params GetFontsParams)
-	// GetGroups Get list of groups
+	ListFonts(w http.ResponseWriter, r *http.Request, params ListFontsParams)
+	// ListGroups Get list of groups
 	// (GET /api/v1/groups)
-	GetGroups(w http.ResponseWriter, r *http.Request, params GetGroupsParams)
-	// GetImages Get list of user images
+	ListGroups(w http.ResponseWriter, r *http.Request, params ListGroupsParams)
+	// HandleGroupCallback Exchange group authorization code
+	// (GET /api/v1/groups/callback)
+	HandleGroupCallback(w http.ResponseWriter, r *http.Request, params HandleGroupCallbackParams)
+	// GetGroupConnectionURL Get URL to connect group
+	// (GET /api/v1/groups/connect)
+	GetGroupConnectionURL(w http.ResponseWriter, r *http.Request, params GetGroupConnectionURLParams)
+	// HealthCheck Health check
+	// (GET /api/v1/health)
+	HealthCheck(w http.ResponseWriter, r *http.Request)
+	// ListImages Get list of user images
 	// (GET /api/v1/images)
-	GetImages(w http.ResponseWriter, r *http.Request, params GetImagesParams)
+	ListImages(w http.ResponseWriter, r *http.Request, params ListImagesParams)
 	// UploadImage Upload image file
 	// (POST /api/v1/images)
 	UploadImage(w http.ResponseWriter, r *http.Request)
-	// DeleteImageByName Delete image by name
-	// (DELETE /api/v1/images/{name})
-	DeleteImageByName(w http.ResponseWriter, r *http.Request, name string)
+	// DeleteImage Delete image
+	// (DELETE /api/v1/images/{image_id})
+	DeleteImage(w http.ResponseWriter, r *http.Request, imageID int64)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
 
-// AuthLogin Login user
+// LoginUser Login user
 // (POST /api/v1/auth/login)
-func (_ Unimplemented) AuthLogin(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// AuthLogout Logout user
+// LogoutUser Logout user
 // (POST /api/v1/auth/logout)
-func (_ Unimplemented) AuthLogout(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// AuthOAuthGetURL Get OAuth authorization URL
-// (GET /api/v1/auth/oauth/{provider})
-func (_ Unimplemented) AuthOAuthGetURL(w http.ResponseWriter, r *http.Request, provider Provider) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// AuthOAuthCallback OAuth callback
-// (GET /api/v1/auth/oauth/{provider}/callback)
-func (_ Unimplemented) AuthOAuthCallback(w http.ResponseWriter, r *http.Request, provider Provider, params AuthOAuthCallbackParams) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// AuthRefresh Refresh auth tokens
+// RefreshTokens Refresh auth tokens
 // (POST /api/v1/auth/refresh)
-func (_ Unimplemented) AuthRefresh(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// GetFonts Get list of fonts
+// GetVKIDAuthorizationURL Get VK ID authorization URL
+// (GET /api/v1/auth/vkid/authorize)
+func (_ Unimplemented) GetVKIDAuthorizationURL(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// HandleVKIDCallback Exchange VK ID authorization code
+// (GET /api/v1/auth/vkid/callback)
+func (_ Unimplemented) HandleVKIDCallback(w http.ResponseWriter, r *http.Request, params HandleVKIDCallbackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListFonts Get list of fonts
 // (GET /api/v1/fonts)
-func (_ Unimplemented) GetFonts(w http.ResponseWriter, r *http.Request, params GetFontsParams) {
+func (_ Unimplemented) ListFonts(w http.ResponseWriter, r *http.Request, params ListFontsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// GetGroups Get list of groups
+// ListGroups Get list of groups
 // (GET /api/v1/groups)
-func (_ Unimplemented) GetGroups(w http.ResponseWriter, r *http.Request, params GetGroupsParams) {
+func (_ Unimplemented) ListGroups(w http.ResponseWriter, r *http.Request, params ListGroupsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// GetImages Get list of user images
+// HandleGroupCallback Exchange group authorization code
+// (GET /api/v1/groups/callback)
+func (_ Unimplemented) HandleGroupCallback(w http.ResponseWriter, r *http.Request, params HandleGroupCallbackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetGroupConnectionURL Get URL to connect group
+// (GET /api/v1/groups/connect)
+func (_ Unimplemented) GetGroupConnectionURL(w http.ResponseWriter, r *http.Request, params GetGroupConnectionURLParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// HealthCheck Health check
+// (GET /api/v1/health)
+func (_ Unimplemented) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListImages Get list of user images
 // (GET /api/v1/images)
-func (_ Unimplemented) GetImages(w http.ResponseWriter, r *http.Request, params GetImagesParams) {
+func (_ Unimplemented) ListImages(w http.ResponseWriter, r *http.Request, params ListImagesParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2941,9 +3785,9 @@ func (_ Unimplemented) UploadImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// DeleteImageByName Delete image by name
-// (DELETE /api/v1/images/{name})
-func (_ Unimplemented) DeleteImageByName(w http.ResponseWriter, r *http.Request, name string) {
+// DeleteImage Delete image
+// (DELETE /api/v1/images/{image_id})
+func (_ Unimplemented) DeleteImage(w http.ResponseWriter, r *http.Request, imageID int64) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2956,11 +3800,11 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// AuthLogin operation middleware
-func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Request) {
+// LoginUser operation middleware
+func (siw *ServerInterfaceWrapper) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthLogin(w, r)
+		siw.Handler.LoginUser(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2970,8 +3814,8 @@ func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
-// AuthLogout operation middleware
-func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Request) {
+// LogoutUser operation middleware
+func (siw *ServerInterfaceWrapper) LogoutUser(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
@@ -2980,7 +3824,7 @@ func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Req
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthLogout(w, r)
+		siw.Handler.LogoutUser(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2990,23 +3834,11 @@ func (siw *ServerInterfaceWrapper) AuthLogout(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
-// AuthOAuthGetURL operation middleware
-func (siw *ServerInterfaceWrapper) AuthOAuthGetURL(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "provider" -------------
-	var provider Provider
-
-	err = runtime.BindStyledParameterWithOptions("simple", "provider", chi.URLParam(r, "provider"), &provider, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "provider", Err: err})
-		return
-	}
+// RefreshTokens operation middleware
+func (siw *ServerInterfaceWrapper) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthOAuthGetURL(w, r, provider)
+		siw.Handler.RefreshTokens(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3016,27 +3848,32 @@ func (siw *ServerInterfaceWrapper) AuthOAuthGetURL(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
-// AuthOAuthCallback operation middleware
-func (siw *ServerInterfaceWrapper) AuthOAuthCallback(w http.ResponseWriter, r *http.Request) {
+// GetVKIDAuthorizationURL operation middleware
+func (siw *ServerInterfaceWrapper) GetVKIDAuthorizationURL(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetVKIDAuthorizationURL(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// HandleVKIDCallback operation middleware
+func (siw *ServerInterfaceWrapper) HandleVKIDCallback(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
 
-	// ------------- Path parameter "provider" -------------
-	var provider Provider
-
-	err = runtime.BindStyledParameterWithOptions("simple", "provider", chi.URLParam(r, "provider"), &provider, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "provider", Err: err})
-		return
-	}
-
 	// Parameter object where we will unmarshal all parameters from the context
-	var params AuthOAuthCallbackParams
+	var params HandleVKIDCallbackParams
 
-	// ------------- Required query parameter "code" -------------
+	// ------------- Optional query parameter "code" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
@@ -3047,9 +3884,9 @@ func (siw *ServerInterfaceWrapper) AuthOAuthCallback(w http.ResponseWriter, r *h
 		return
 	}
 
-	// ------------- Required query parameter "state" -------------
+	// ------------- Optional query parameter "state" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
@@ -3060,9 +3897,9 @@ func (siw *ServerInterfaceWrapper) AuthOAuthCallback(w http.ResponseWriter, r *h
 		return
 	}
 
-	// ------------- Required query parameter "device_id" -------------
+	// ------------- Optional query parameter "device_id" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "device_id", r.URL.Query(), &params.DeviceID, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "device_id", r.URL.Query(), &params.DeviceID, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
@@ -3073,8 +3910,34 @@ func (siw *ServerInterfaceWrapper) AuthOAuthCallback(w http.ResponseWriter, r *h
 		return
 	}
 
+	// ------------- Optional query parameter "error" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", r.URL.Query(), &params.Error, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "error_description" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error_description", r.URL.Query(), &params.ErrorDescription, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error_description"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error_description", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthOAuthCallback(w, r, provider, params)
+		siw.Handler.HandleVKIDCallback(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3084,22 +3947,8 @@ func (siw *ServerInterfaceWrapper) AuthOAuthCallback(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
-// AuthRefresh operation middleware
-func (siw *ServerInterfaceWrapper) AuthRefresh(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AuthRefresh(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetFonts operation middleware
-func (siw *ServerInterfaceWrapper) GetFonts(w http.ResponseWriter, r *http.Request) {
+// ListFonts operation middleware
+func (siw *ServerInterfaceWrapper) ListFonts(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
@@ -3111,7 +3960,7 @@ func (siw *ServerInterfaceWrapper) GetFonts(w http.ResponseWriter, r *http.Reque
 	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetFontsParams
+	var params ListFontsParams
 
 	// ------------- Optional query parameter "cursor" -------------
 
@@ -3140,7 +3989,7 @@ func (siw *ServerInterfaceWrapper) GetFonts(w http.ResponseWriter, r *http.Reque
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetFonts(w, r, params)
+		siw.Handler.ListFonts(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3150,8 +3999,8 @@ func (siw *ServerInterfaceWrapper) GetFonts(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
-// GetGroups operation middleware
-func (siw *ServerInterfaceWrapper) GetGroups(w http.ResponseWriter, r *http.Request) {
+// ListGroups operation middleware
+func (siw *ServerInterfaceWrapper) ListGroups(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
@@ -3163,46 +4012,7 @@ func (siw *ServerInterfaceWrapper) GetGroups(w http.ResponseWriter, r *http.Requ
 	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetGroupsParams
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetGroups(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetImages operation middleware
-func (siw *ServerInterfaceWrapper) GetImages(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetImagesParams
+	var params ListGroupsParams
 
 	// ------------- Optional query parameter "cursor" -------------
 
@@ -3231,7 +4041,184 @@ func (siw *ServerInterfaceWrapper) GetImages(w http.ResponseWriter, r *http.Requ
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetImages(w, r, params)
+		siw.Handler.ListGroups(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// HandleGroupCallback operation middleware
+func (siw *ServerInterfaceWrapper) HandleGroupCallback(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params HandleGroupCallbackParams
+
+	// ------------- Optional query parameter "code" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "code"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "error" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", r.URL.Query(), &params.Error, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "error_description" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error_description", r.URL.Query(), &params.ErrorDescription, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error_description"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error_description", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.HandleGroupCallback(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGroupConnectionURL operation middleware
+func (siw *ServerInterfaceWrapper) GetGroupConnectionURL(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGroupConnectionURLParams
+
+	// ------------- Required query parameter "group_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "group_id", r.URL.Query(), &params.GroupID, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "group_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "group_id", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGroupConnectionURL(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// HealthCheck operation middleware
+func (siw *ServerInterfaceWrapper) HealthCheck(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.HealthCheck(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListImages operation middleware
+func (siw *ServerInterfaceWrapper) ListImages(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListImagesParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListImages(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3261,18 +4248,18 @@ func (siw *ServerInterfaceWrapper) UploadImage(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
-// DeleteImageByName operation middleware
-func (siw *ServerInterfaceWrapper) DeleteImageByName(w http.ResponseWriter, r *http.Request) {
+// DeleteImage operation middleware
+func (siw *ServerInterfaceWrapper) DeleteImage(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
 
-	// ------------- Path parameter "name" -------------
-	var name string
+	// ------------- Path parameter "image_id" -------------
+	var imageID int64
 
-	err = runtime.BindStyledParameterWithOptions("simple", "name", chi.URLParam(r, "name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	err = runtime.BindStyledParameterWithOptions("simple", "image_id", chi.URLParam(r, "image_id"), &imageID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: r.URL.RawPath == ""})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "image_id", Err: err})
 		return
 	}
 
@@ -3283,7 +4270,7 @@ func (siw *ServerInterfaceWrapper) DeleteImageByName(w http.ResponseWriter, r *h
 	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteImageByName(w, r, name)
+		siw.Handler.DeleteImage(w, r, imageID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3407,34 +4394,43 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/api/v1/auth/login", wrapper.AuthLogin)
+		r.Get(options.BaseURL+"/api/v1/health", wrapper.HealthCheck)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/api/v1/auth/logout", wrapper.AuthLogout)
+		r.Post(options.BaseURL+"/api/v1/auth/login", wrapper.LoginUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/api/v1/auth/refresh", wrapper.AuthRefresh)
+		r.Post(options.BaseURL+"/api/v1/auth/logout", wrapper.LogoutUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/auth/oauth/{provider}", wrapper.AuthOAuthGetURL)
+		r.Post(options.BaseURL+"/api/v1/auth/refresh", wrapper.RefreshTokens)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/auth/oauth/{provider}/callback", wrapper.AuthOAuthCallback)
+		r.Get(options.BaseURL+"/api/v1/auth/vkid/authorize", wrapper.GetVKIDAuthorizationURL)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/images", wrapper.GetImages)
+		r.Get(options.BaseURL+"/api/v1/auth/vkid/callback", wrapper.HandleVKIDCallback)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/images", wrapper.ListImages)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/api/v1/images", wrapper.UploadImage)
 	})
 	r.Group(func(r chi.Router) {
-		r.Delete(options.BaseURL+"/api/v1/images/{name}", wrapper.DeleteImageByName)
+		r.Delete(options.BaseURL+"/api/v1/images/{image_id}", wrapper.DeleteImage)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/fonts", wrapper.GetFonts)
+		r.Get(options.BaseURL+"/api/v1/fonts", wrapper.ListFonts)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/api/v1/groups", wrapper.GetGroups)
+		r.Get(options.BaseURL+"/api/v1/groups", wrapper.ListGroups)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/groups/connect", wrapper.GetGroupConnectionURL)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/v1/groups/callback", wrapper.HandleGroupCallback)
 	})
 
 	return r
@@ -3442,12 +4438,14 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 type BadRequestJSONResponse Error
 
-type ConflictJSONResponse Error
-
 type InternalErrorJSONResponse Error
 
+type NotFoundJSONResponse Error
+
+type PayloadTooLargeJSONResponse Error
+
 type TooManyRequestsResponseHeaders struct {
-	RetryAfter *int
+	RetryAfter int
 }
 type TooManyRequestsJSONResponse struct {
 	Body Error
@@ -3457,17 +4455,19 @@ type TooManyRequestsJSONResponse struct {
 
 type UnauthorizedJSONResponse Error
 
-type AuthLoginRequestObject struct {
-	Body *AuthLoginJSONRequestBody
+type UnsupportedMediaTypeJSONResponse Error
+
+type LoginUserRequestObject struct {
+	Body *LoginUserJSONRequestBody
 }
 
-type AuthLoginResponseObject interface {
-	VisitAuthLoginResponse(w http.ResponseWriter) error
+type LoginUserResponseObject interface {
+	VisitLoginUserResponse(w http.ResponseWriter) error
 }
 
-type AuthLogin200JSONResponse AuthTokens
+type LoginUser200JSONResponse AuthTokens
 
-func (response AuthLogin200JSONResponse) VisitAuthLoginResponse(w http.ResponseWriter) error {
+func (response LoginUser200JSONResponse) VisitLoginUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3479,9 +4479,9 @@ func (response AuthLogin200JSONResponse) VisitAuthLoginResponse(w http.ResponseW
 	return err
 }
 
-type AuthLogin400JSONResponse struct{ BadRequestJSONResponse }
+type LoginUser400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response AuthLogin400JSONResponse) VisitAuthLoginResponse(w http.ResponseWriter) error {
+func (response LoginUser400JSONResponse) VisitLoginUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3493,9 +4493,9 @@ func (response AuthLogin400JSONResponse) VisitAuthLoginResponse(w http.ResponseW
 	return err
 }
 
-type AuthLogin401JSONResponse struct{ UnauthorizedJSONResponse }
+type LoginUser401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response AuthLogin401JSONResponse) VisitAuthLoginResponse(w http.ResponseWriter) error {
+func (response LoginUser401JSONResponse) VisitLoginUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3507,26 +4507,24 @@ func (response AuthLogin401JSONResponse) VisitAuthLoginResponse(w http.ResponseW
 	return err
 }
 
-type AuthLogin429JSONResponse struct{ TooManyRequestsJSONResponse }
+type LoginUser429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response AuthLogin429JSONResponse) VisitAuthLoginResponse(w http.ResponseWriter) error {
+func (response LoginUser429JSONResponse) VisitLoginUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type AuthLogin500JSONResponse struct{ InternalErrorJSONResponse }
+type LoginUser500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response AuthLogin500JSONResponse) VisitAuthLoginResponse(w http.ResponseWriter) error {
+func (response LoginUser500JSONResponse) VisitLoginUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3538,25 +4536,25 @@ func (response AuthLogin500JSONResponse) VisitAuthLoginResponse(w http.ResponseW
 	return err
 }
 
-type AuthLogoutRequestObject struct {
-	Body *AuthLogoutJSONRequestBody
+type LogoutUserRequestObject struct {
+	Body *LogoutUserJSONRequestBody
 }
 
-type AuthLogoutResponseObject interface {
-	VisitAuthLogoutResponse(w http.ResponseWriter) error
+type LogoutUserResponseObject interface {
+	VisitLogoutUserResponse(w http.ResponseWriter) error
 }
 
-type AuthLogout204Response struct {
+type LogoutUser204Response struct {
 }
 
-func (response AuthLogout204Response) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+func (response LogoutUser204Response) VisitLogoutUserResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
 	return nil
 }
 
-type AuthLogout400JSONResponse struct{ BadRequestJSONResponse }
+type LogoutUser400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response AuthLogout400JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+func (response LogoutUser400JSONResponse) VisitLogoutUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3568,9 +4566,9 @@ func (response AuthLogout400JSONResponse) VisitAuthLogoutResponse(w http.Respons
 	return err
 }
 
-type AuthLogout401JSONResponse struct{ UnauthorizedJSONResponse }
+type LogoutUser401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response AuthLogout401JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+func (response LogoutUser401JSONResponse) VisitLogoutUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3582,26 +4580,24 @@ func (response AuthLogout401JSONResponse) VisitAuthLogoutResponse(w http.Respons
 	return err
 }
 
-type AuthLogout429JSONResponse struct{ TooManyRequestsJSONResponse }
+type LogoutUser429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response AuthLogout429JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+func (response LogoutUser429JSONResponse) VisitLogoutUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type AuthLogout500JSONResponse struct{ InternalErrorJSONResponse }
+type LogoutUser500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response AuthLogout500JSONResponse) VisitAuthLogoutResponse(w http.ResponseWriter) error {
+func (response LogoutUser500JSONResponse) VisitLogoutUserResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3613,17 +4609,17 @@ func (response AuthLogout500JSONResponse) VisitAuthLogoutResponse(w http.Respons
 	return err
 }
 
-type AuthOAuthGetURLRequestObject struct {
-	Provider Provider `json:"provider"`
+type RefreshTokensRequestObject struct {
+	Body *RefreshTokensJSONRequestBody
 }
 
-type AuthOAuthGetURLResponseObject interface {
-	VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error
+type RefreshTokensResponseObject interface {
+	VisitRefreshTokensResponse(w http.ResponseWriter) error
 }
 
-type AuthOAuthGetURL200JSONResponse OAuthAuthorizationURL
+type RefreshTokens200JSONResponse AuthTokens
 
-func (response AuthOAuthGetURL200JSONResponse) VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error {
+func (response RefreshTokens200JSONResponse) VisitRefreshTokensResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3635,77 +4631,9 @@ func (response AuthOAuthGetURL200JSONResponse) VisitAuthOAuthGetURLResponse(w ht
 	return err
 }
 
-type AuthOAuthGetURL400JSONResponse struct{ BadRequestJSONResponse }
+type RefreshTokens400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response AuthOAuthGetURL400JSONResponse) VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthOAuthGetURL429JSONResponse struct{ TooManyRequestsJSONResponse }
-
-func (response AuthOAuthGetURL429JSONResponse) VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
-	w.WriteHeader(429)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthOAuthGetURL500JSONResponse struct{ InternalErrorJSONResponse }
-
-func (response AuthOAuthGetURL500JSONResponse) VisitAuthOAuthGetURLResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthOAuthCallbackRequestObject struct {
-	Provider Provider `json:"provider"`
-	Params   AuthOAuthCallbackParams
-}
-
-type AuthOAuthCallbackResponseObject interface {
-	VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error
-}
-
-type AuthOAuthCallback200JSONResponse AuthTokens
-
-func (response AuthOAuthCallback200JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthOAuthCallback400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response AuthOAuthCallback400JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+func (response RefreshTokens400JSONResponse) VisitRefreshTokensResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3717,9 +4645,9 @@ func (response AuthOAuthCallback400JSONResponse) VisitAuthOAuthCallbackResponse(
 	return err
 }
 
-type AuthOAuthCallback401JSONResponse struct{ UnauthorizedJSONResponse }
+type RefreshTokens401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response AuthOAuthCallback401JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+func (response RefreshTokens401JSONResponse) VisitRefreshTokensResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3731,26 +4659,24 @@ func (response AuthOAuthCallback401JSONResponse) VisitAuthOAuthCallbackResponse(
 	return err
 }
 
-type AuthOAuthCallback429JSONResponse struct{ TooManyRequestsJSONResponse }
+type RefreshTokens429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response AuthOAuthCallback429JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+func (response RefreshTokens429JSONResponse) VisitRefreshTokensResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type AuthOAuthCallback500JSONResponse struct{ InternalErrorJSONResponse }
+type RefreshTokens500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response AuthOAuthCallback500JSONResponse) VisitAuthOAuthCallbackResponse(w http.ResponseWriter) error {
+func (response RefreshTokens500JSONResponse) VisitRefreshTokensResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3762,17 +4688,16 @@ func (response AuthOAuthCallback500JSONResponse) VisitAuthOAuthCallbackResponse(
 	return err
 }
 
-type AuthRefreshRequestObject struct {
-	Body *AuthRefreshJSONRequestBody
+type GetVKIDAuthorizationURLRequestObject struct {
 }
 
-type AuthRefreshResponseObject interface {
-	VisitAuthRefreshResponse(w http.ResponseWriter) error
+type GetVKIDAuthorizationURLResponseObject interface {
+	VisitGetVKIDAuthorizationURLResponse(w http.ResponseWriter) error
 }
 
-type AuthRefresh200JSONResponse AuthTokens
+type GetVKIDAuthorizationURL200JSONResponse VKIDAuthorization
 
-func (response AuthRefresh200JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+func (response GetVKIDAuthorizationURL200JSONResponse) VisitGetVKIDAuthorizationURLResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3784,9 +4709,9 @@ func (response AuthRefresh200JSONResponse) VisitAuthRefreshResponse(w http.Respo
 	return err
 }
 
-type AuthRefresh400JSONResponse struct{ BadRequestJSONResponse }
+type GetVKIDAuthorizationURL400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response AuthRefresh400JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+func (response GetVKIDAuthorizationURL400JSONResponse) VisitGetVKIDAuthorizationURLResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3798,40 +4723,24 @@ func (response AuthRefresh400JSONResponse) VisitAuthRefreshResponse(w http.Respo
 	return err
 }
 
-type AuthRefresh401JSONResponse struct{ UnauthorizedJSONResponse }
+type GetVKIDAuthorizationURL429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response AuthRefresh401JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type AuthRefresh429JSONResponse struct{ TooManyRequestsJSONResponse }
-
-func (response AuthRefresh429JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+func (response GetVKIDAuthorizationURL429JSONResponse) VisitGetVKIDAuthorizationURLResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type AuthRefresh500JSONResponse struct{ InternalErrorJSONResponse }
+type GetVKIDAuthorizationURL500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response AuthRefresh500JSONResponse) VisitAuthRefreshResponse(w http.ResponseWriter) error {
+func (response GetVKIDAuthorizationURL500JSONResponse) VisitGetVKIDAuthorizationURLResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3843,17 +4752,17 @@ func (response AuthRefresh500JSONResponse) VisitAuthRefreshResponse(w http.Respo
 	return err
 }
 
-type GetFontsRequestObject struct {
-	Params GetFontsParams
+type HandleVKIDCallbackRequestObject struct {
+	Params HandleVKIDCallbackParams
 }
 
-type GetFontsResponseObject interface {
-	VisitGetFontsResponse(w http.ResponseWriter) error
+type HandleVKIDCallbackResponseObject interface {
+	VisitHandleVKIDCallbackResponse(w http.ResponseWriter) error
 }
 
-type GetFonts200JSONResponse FontList
+type HandleVKIDCallback200JSONResponse AuthTokens
 
-func (response GetFonts200JSONResponse) VisitGetFontsResponse(w http.ResponseWriter) error {
+func (response HandleVKIDCallback200JSONResponse) VisitHandleVKIDCallbackResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3865,9 +4774,9 @@ func (response GetFonts200JSONResponse) VisitGetFontsResponse(w http.ResponseWri
 	return err
 }
 
-type GetFonts400JSONResponse struct{ BadRequestJSONResponse }
+type HandleVKIDCallback400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response GetFonts400JSONResponse) VisitGetFontsResponse(w http.ResponseWriter) error {
+func (response HandleVKIDCallback400JSONResponse) VisitHandleVKIDCallbackResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3879,9 +4788,9 @@ func (response GetFonts400JSONResponse) VisitGetFontsResponse(w http.ResponseWri
 	return err
 }
 
-type GetFonts401JSONResponse struct{ UnauthorizedJSONResponse }
+type HandleVKIDCallback401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response GetFonts401JSONResponse) VisitGetFontsResponse(w http.ResponseWriter) error {
+func (response HandleVKIDCallback401JSONResponse) VisitHandleVKIDCallbackResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3893,26 +4802,24 @@ func (response GetFonts401JSONResponse) VisitGetFontsResponse(w http.ResponseWri
 	return err
 }
 
-type GetFonts429JSONResponse struct{ TooManyRequestsJSONResponse }
+type HandleVKIDCallback429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response GetFonts429JSONResponse) VisitGetFontsResponse(w http.ResponseWriter) error {
+func (response HandleVKIDCallback429JSONResponse) VisitHandleVKIDCallbackResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetFonts500JSONResponse struct{ InternalErrorJSONResponse }
+type HandleVKIDCallback500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response GetFonts500JSONResponse) VisitGetFontsResponse(w http.ResponseWriter) error {
+func (response HandleVKIDCallback500JSONResponse) VisitHandleVKIDCallbackResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3924,17 +4831,17 @@ func (response GetFonts500JSONResponse) VisitGetFontsResponse(w http.ResponseWri
 	return err
 }
 
-type GetGroupsRequestObject struct {
-	Params GetGroupsParams
+type ListFontsRequestObject struct {
+	Params ListFontsParams
 }
 
-type GetGroupsResponseObject interface {
-	VisitGetGroupsResponse(w http.ResponseWriter) error
+type ListFontsResponseObject interface {
+	VisitListFontsResponse(w http.ResponseWriter) error
 }
 
-type GetGroups200JSONResponse GroupList
+type ListFonts200JSONResponse FontList
 
-func (response GetGroups200JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+func (response ListFonts200JSONResponse) VisitListFontsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3946,9 +4853,9 @@ func (response GetGroups200JSONResponse) VisitGetGroupsResponse(w http.ResponseW
 	return err
 }
 
-type GetGroups400JSONResponse struct{ BadRequestJSONResponse }
+type ListFonts400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response GetGroups400JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+func (response ListFonts400JSONResponse) VisitListFontsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3960,9 +4867,9 @@ func (response GetGroups400JSONResponse) VisitGetGroupsResponse(w http.ResponseW
 	return err
 }
 
-type GetGroups401JSONResponse struct{ UnauthorizedJSONResponse }
+type ListFonts401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response GetGroups401JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+func (response ListFonts401JSONResponse) VisitListFontsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3974,26 +4881,24 @@ func (response GetGroups401JSONResponse) VisitGetGroupsResponse(w http.ResponseW
 	return err
 }
 
-type GetGroups429JSONResponse struct{ TooManyRequestsJSONResponse }
+type ListFonts429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response GetGroups429JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+func (response ListFonts429JSONResponse) VisitListFontsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetGroups500JSONResponse struct{ InternalErrorJSONResponse }
+type ListFonts500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response GetGroups500JSONResponse) VisitGetGroupsResponse(w http.ResponseWriter) error {
+func (response ListFonts500JSONResponse) VisitListFontsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4005,17 +4910,17 @@ func (response GetGroups500JSONResponse) VisitGetGroupsResponse(w http.ResponseW
 	return err
 }
 
-type GetImagesRequestObject struct {
-	Params GetImagesParams
+type ListGroupsRequestObject struct {
+	Params ListGroupsParams
 }
 
-type GetImagesResponseObject interface {
-	VisitGetImagesResponse(w http.ResponseWriter) error
+type ListGroupsResponseObject interface {
+	VisitListGroupsResponse(w http.ResponseWriter) error
 }
 
-type GetImages200JSONResponse ImageList
+type ListGroups200JSONResponse GroupList
 
-func (response GetImages200JSONResponse) VisitGetImagesResponse(w http.ResponseWriter) error {
+func (response ListGroups200JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4027,9 +4932,9 @@ func (response GetImages200JSONResponse) VisitGetImagesResponse(w http.ResponseW
 	return err
 }
 
-type GetImages400JSONResponse struct{ BadRequestJSONResponse }
+type ListGroups400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response GetImages400JSONResponse) VisitGetImagesResponse(w http.ResponseWriter) error {
+func (response ListGroups400JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4041,9 +4946,9 @@ func (response GetImages400JSONResponse) VisitGetImagesResponse(w http.ResponseW
 	return err
 }
 
-type GetImages401JSONResponse struct{ UnauthorizedJSONResponse }
+type ListGroups401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response GetImages401JSONResponse) VisitGetImagesResponse(w http.ResponseWriter) error {
+func (response ListGroups401JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4055,26 +4960,296 @@ func (response GetImages401JSONResponse) VisitGetImagesResponse(w http.ResponseW
 	return err
 }
 
-type GetImages429JSONResponse struct{ TooManyRequestsJSONResponse }
+type ListGroups429JSONResponse struct{ TooManyRequestsJSONResponse }
 
-func (response GetImages429JSONResponse) VisitGetImagesResponse(w http.ResponseWriter) error {
+func (response ListGroups429JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type GetImages500JSONResponse struct{ InternalErrorJSONResponse }
+type ListGroups500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response GetImages500JSONResponse) VisitGetImagesResponse(w http.ResponseWriter) error {
+func (response ListGroups500JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HandleGroupCallbackRequestObject struct {
+	Params HandleGroupCallbackParams
+}
+
+type HandleGroupCallbackResponseObject interface {
+	VisitHandleGroupCallbackResponse(w http.ResponseWriter) error
+}
+
+type HandleGroupCallback200JSONResponse Group
+
+func (response HandleGroupCallback200JSONResponse) VisitHandleGroupCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HandleGroupCallback400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response HandleGroupCallback400JSONResponse) VisitHandleGroupCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HandleGroupCallback401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response HandleGroupCallback401JSONResponse) VisitHandleGroupCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HandleGroupCallback429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response HandleGroupCallback429JSONResponse) VisitHandleGroupCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HandleGroupCallback500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response HandleGroupCallback500JSONResponse) VisitHandleGroupCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGroupConnectionURLRequestObject struct {
+	Params GetGroupConnectionURLParams
+}
+
+type GetGroupConnectionURLResponseObject interface {
+	VisitGetGroupConnectionURLResponse(w http.ResponseWriter) error
+}
+
+type GetGroupConnectionURL200JSONResponse GroupAuthorization
+
+func (response GetGroupConnectionURL200JSONResponse) VisitGetGroupConnectionURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGroupConnectionURL400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetGroupConnectionURL400JSONResponse) VisitGetGroupConnectionURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGroupConnectionURL401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetGroupConnectionURL401JSONResponse) VisitGetGroupConnectionURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGroupConnectionURL429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response GetGroupConnectionURL429JSONResponse) VisitGetGroupConnectionURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetGroupConnectionURL500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetGroupConnectionURL500JSONResponse) VisitGetGroupConnectionURLResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HealthCheckRequestObject struct {
+}
+
+type HealthCheckResponseObject interface {
+	VisitHealthCheckResponse(w http.ResponseWriter) error
+}
+
+type HealthCheck200JSONResponse HealthStatus
+
+func (response HealthCheck200JSONResponse) VisitHealthCheckResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HealthCheck503JSONResponse HealthStatus
+
+func (response HealthCheck503JSONResponse) VisitHealthCheckResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListImagesRequestObject struct {
+	Params ListImagesParams
+}
+
+type ListImagesResponseObject interface {
+	VisitListImagesResponse(w http.ResponseWriter) error
+}
+
+type ListImages200JSONResponse ImageList
+
+func (response ListImages200JSONResponse) VisitListImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListImages400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListImages400JSONResponse) VisitListImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListImages401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListImages401JSONResponse) VisitListImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListImages429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response ListImages429JSONResponse) VisitListImagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListImages500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ListImages500JSONResponse) VisitListImagesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4136,16 +5311,32 @@ func (response UploadImage401JSONResponse) VisitUploadImageResponse(w http.Respo
 	return err
 }
 
-type UploadImage409JSONResponse struct{ ConflictJSONResponse }
+type UploadImage413JSONResponse struct{ PayloadTooLargeJSONResponse }
 
-func (response UploadImage409JSONResponse) VisitUploadImageResponse(w http.ResponseWriter) error {
+func (response UploadImage413JSONResponse) VisitUploadImageResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(409)
+	w.WriteHeader(413)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadImage415JSONResponse struct {
+	UnsupportedMediaTypeJSONResponse
+}
+
+func (response UploadImage415JSONResponse) VisitUploadImageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(415)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -4159,9 +5350,7 @@ func (response UploadImage429JSONResponse) VisitUploadImageResponse(w http.Respo
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
@@ -4181,25 +5370,25 @@ func (response UploadImage500JSONResponse) VisitUploadImageResponse(w http.Respo
 	return err
 }
 
-type DeleteImageByNameRequestObject struct {
-	Name string `json:"name"`
+type DeleteImageRequestObject struct {
+	ImageID int64 `json:"image_id"`
 }
 
-type DeleteImageByNameResponseObject interface {
-	VisitDeleteImageByNameResponse(w http.ResponseWriter) error
+type DeleteImageResponseObject interface {
+	VisitDeleteImageResponse(w http.ResponseWriter) error
 }
 
-type DeleteImageByName204Response struct {
+type DeleteImage204Response struct {
 }
 
-func (response DeleteImageByName204Response) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
+func (response DeleteImage204Response) VisitDeleteImageResponse(w http.ResponseWriter) error {
 	w.WriteHeader(204)
 	return nil
 }
 
-type DeleteImageByName400JSONResponse struct{ BadRequestJSONResponse }
+type DeleteImage400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response DeleteImageByName400JSONResponse) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
+func (response DeleteImage400JSONResponse) VisitDeleteImageResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4211,9 +5400,9 @@ func (response DeleteImageByName400JSONResponse) VisitDeleteImageByNameResponse(
 	return err
 }
 
-type DeleteImageByName401JSONResponse struct{ UnauthorizedJSONResponse }
+type DeleteImage401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response DeleteImageByName401JSONResponse) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
+func (response DeleteImage401JSONResponse) VisitDeleteImageResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4225,26 +5414,38 @@ func (response DeleteImageByName401JSONResponse) VisitDeleteImageByNameResponse(
 	return err
 }
 
-type DeleteImageByName429JSONResponse struct{ TooManyRequestsJSONResponse }
+type DeleteImage404JSONResponse struct{ NotFoundJSONResponse }
 
-func (response DeleteImageByName429JSONResponse) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
+func (response DeleteImage404JSONResponse) VisitDeleteImageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteImage429JSONResponse struct{ TooManyRequestsJSONResponse }
+
+func (response DeleteImage429JSONResponse) VisitDeleteImageResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.RetryAfter != nil {
-		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
-	}
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
 	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
-type DeleteImageByName500JSONResponse struct{ InternalErrorJSONResponse }
+type DeleteImage500JSONResponse struct{ InternalErrorJSONResponse }
 
-func (response DeleteImageByName500JSONResponse) VisitDeleteImageByNameResponse(w http.ResponseWriter) error {
+func (response DeleteImage500JSONResponse) VisitDeleteImageResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -4258,36 +5459,45 @@ func (response DeleteImageByName500JSONResponse) VisitDeleteImageByNameResponse(
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// AuthLogin Login user
+	// LoginUser Login user
 	// (POST /api/v1/auth/login)
-	AuthLogin(ctx context.Context, request AuthLoginRequestObject) (AuthLoginResponseObject, error)
-	// AuthLogout Logout user
+	LoginUser(ctx context.Context, request LoginUserRequestObject) (LoginUserResponseObject, error)
+	// LogoutUser Logout user
 	// (POST /api/v1/auth/logout)
-	AuthLogout(ctx context.Context, request AuthLogoutRequestObject) (AuthLogoutResponseObject, error)
-	// AuthOAuthGetURL Get OAuth authorization URL
-	// (GET /api/v1/auth/oauth/{provider})
-	AuthOAuthGetURL(ctx context.Context, request AuthOAuthGetURLRequestObject) (AuthOAuthGetURLResponseObject, error)
-	// AuthOAuthCallback OAuth callback
-	// (GET /api/v1/auth/oauth/{provider}/callback)
-	AuthOAuthCallback(ctx context.Context, request AuthOAuthCallbackRequestObject) (AuthOAuthCallbackResponseObject, error)
-	// AuthRefresh Refresh auth tokens
+	LogoutUser(ctx context.Context, request LogoutUserRequestObject) (LogoutUserResponseObject, error)
+	// RefreshTokens Refresh auth tokens
 	// (POST /api/v1/auth/refresh)
-	AuthRefresh(ctx context.Context, request AuthRefreshRequestObject) (AuthRefreshResponseObject, error)
-	// GetFonts Get list of fonts
+	RefreshTokens(ctx context.Context, request RefreshTokensRequestObject) (RefreshTokensResponseObject, error)
+	// GetVKIDAuthorizationURL Get VK ID authorization URL
+	// (GET /api/v1/auth/vkid/authorize)
+	GetVKIDAuthorizationURL(ctx context.Context, request GetVKIDAuthorizationURLRequestObject) (GetVKIDAuthorizationURLResponseObject, error)
+	// HandleVKIDCallback Exchange VK ID authorization code
+	// (GET /api/v1/auth/vkid/callback)
+	HandleVKIDCallback(ctx context.Context, request HandleVKIDCallbackRequestObject) (HandleVKIDCallbackResponseObject, error)
+	// ListFonts Get list of fonts
 	// (GET /api/v1/fonts)
-	GetFonts(ctx context.Context, request GetFontsRequestObject) (GetFontsResponseObject, error)
-	// GetGroups Get list of groups
+	ListFonts(ctx context.Context, request ListFontsRequestObject) (ListFontsResponseObject, error)
+	// ListGroups Get list of groups
 	// (GET /api/v1/groups)
-	GetGroups(ctx context.Context, request GetGroupsRequestObject) (GetGroupsResponseObject, error)
-	// GetImages Get list of user images
+	ListGroups(ctx context.Context, request ListGroupsRequestObject) (ListGroupsResponseObject, error)
+	// HandleGroupCallback Exchange group authorization code
+	// (GET /api/v1/groups/callback)
+	HandleGroupCallback(ctx context.Context, request HandleGroupCallbackRequestObject) (HandleGroupCallbackResponseObject, error)
+	// GetGroupConnectionURL Get URL to connect group
+	// (GET /api/v1/groups/connect)
+	GetGroupConnectionURL(ctx context.Context, request GetGroupConnectionURLRequestObject) (GetGroupConnectionURLResponseObject, error)
+	// HealthCheck Health check
+	// (GET /api/v1/health)
+	HealthCheck(ctx context.Context, request HealthCheckRequestObject) (HealthCheckResponseObject, error)
+	// ListImages Get list of user images
 	// (GET /api/v1/images)
-	GetImages(ctx context.Context, request GetImagesRequestObject) (GetImagesResponseObject, error)
+	ListImages(ctx context.Context, request ListImagesRequestObject) (ListImagesResponseObject, error)
 	// UploadImage Upload image file
 	// (POST /api/v1/images)
 	UploadImage(ctx context.Context, request UploadImageRequestObject) (UploadImageResponseObject, error)
-	// DeleteImageByName Delete image by name
-	// (DELETE /api/v1/images/{name})
-	DeleteImageByName(ctx context.Context, request DeleteImageByNameRequestObject) (DeleteImageByNameResponseObject, error)
+	// DeleteImage Delete image
+	// (DELETE /api/v1/images/{image_id})
+	DeleteImage(ctx context.Context, request DeleteImageRequestObject) (DeleteImageResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -4329,11 +5539,11 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
-// AuthLogin operation middleware
-func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request) {
-	var request AuthLoginRequestObject
+// LoginUser operation middleware
+func (sh *strictHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
+	var request LoginUserRequestObject
 
-	var body AuthLoginJSONRequestBody
+	var body LoginUserJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -4341,18 +5551,18 @@ func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthLogin(ctx, request.(AuthLoginRequestObject))
+		return sh.ssi.LoginUser(ctx, request.(LoginUserRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthLogin")
+		handler = middleware(handler, "LoginUser")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthLoginResponseObject); ok {
-		if err := validResponse.VisitAuthLoginResponse(w); err != nil {
+	} else if validResponse, ok := response.(LoginUserResponseObject); ok {
+		if err := validResponse.VisitLoginUserResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4360,11 +5570,45 @@ func (sh *strictHandler) AuthLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AuthLogout operation middleware
-func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
-	var request AuthLogoutRequestObject
+// LogoutUser operation middleware
+func (sh *strictHandler) LogoutUser(w http.ResponseWriter, r *http.Request) {
+	var request LogoutUserRequestObject
 
-	var body AuthLogoutJSONRequestBody
+	var body LogoutUserJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.LogoutUser(ctx, request.(LogoutUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "LogoutUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LogoutUserResponseObject); ok {
+		if err := validResponse.VisitLogoutUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RefreshTokens operation middleware
+func (sh *strictHandler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
+	var request RefreshTokensRequestObject
+
+	var body RefreshTokensJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -4372,18 +5616,18 @@ func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthLogout(ctx, request.(AuthLogoutRequestObject))
+		return sh.ssi.RefreshTokens(ctx, request.(RefreshTokensRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthLogout")
+		handler = middleware(handler, "RefreshTokens")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthLogoutResponseObject); ok {
-		if err := validResponse.VisitAuthLogoutResponse(w); err != nil {
+	} else if validResponse, ok := response.(RefreshTokensResponseObject); ok {
+		if err := validResponse.VisitRefreshTokensResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4391,25 +5635,23 @@ func (sh *strictHandler) AuthLogout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AuthOAuthGetURL operation middleware
-func (sh *strictHandler) AuthOAuthGetURL(w http.ResponseWriter, r *http.Request, provider Provider) {
-	var request AuthOAuthGetURLRequestObject
-
-	request.Provider = provider
+// GetVKIDAuthorizationURL operation middleware
+func (sh *strictHandler) GetVKIDAuthorizationURL(w http.ResponseWriter, r *http.Request) {
+	var request GetVKIDAuthorizationURLRequestObject
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthOAuthGetURL(ctx, request.(AuthOAuthGetURLRequestObject))
+		return sh.ssi.GetVKIDAuthorizationURL(ctx, request.(GetVKIDAuthorizationURLRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthOAuthGetURL")
+		handler = middleware(handler, "GetVKIDAuthorizationURL")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthOAuthGetURLResponseObject); ok {
-		if err := validResponse.VisitAuthOAuthGetURLResponse(w); err != nil {
+	} else if validResponse, ok := response.(GetVKIDAuthorizationURLResponseObject); ok {
+		if err := validResponse.VisitGetVKIDAuthorizationURLResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4417,83 +5659,25 @@ func (sh *strictHandler) AuthOAuthGetURL(w http.ResponseWriter, r *http.Request,
 	}
 }
 
-// AuthOAuthCallback operation middleware
-func (sh *strictHandler) AuthOAuthCallback(w http.ResponseWriter, r *http.Request, provider Provider, params AuthOAuthCallbackParams) {
-	var request AuthOAuthCallbackRequestObject
-
-	request.Provider = provider
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthOAuthCallback(ctx, request.(AuthOAuthCallbackRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthOAuthCallback")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthOAuthCallbackResponseObject); ok {
-		if err := validResponse.VisitAuthOAuthCallbackResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// AuthRefresh operation middleware
-func (sh *strictHandler) AuthRefresh(w http.ResponseWriter, r *http.Request) {
-	var request AuthRefreshRequestObject
-
-	var body AuthRefreshJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.AuthRefresh(ctx, request.(AuthRefreshRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "AuthRefresh")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(AuthRefreshResponseObject); ok {
-		if err := validResponse.VisitAuthRefreshResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetFonts operation middleware
-func (sh *strictHandler) GetFonts(w http.ResponseWriter, r *http.Request, params GetFontsParams) {
-	var request GetFontsRequestObject
+// HandleVKIDCallback operation middleware
+func (sh *strictHandler) HandleVKIDCallback(w http.ResponseWriter, r *http.Request, params HandleVKIDCallbackParams) {
+	var request HandleVKIDCallbackRequestObject
 
 	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetFonts(ctx, request.(GetFontsRequestObject))
+		return sh.ssi.HandleVKIDCallback(ctx, request.(HandleVKIDCallbackRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetFonts")
+		handler = middleware(handler, "HandleVKIDCallback")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetFontsResponseObject); ok {
-		if err := validResponse.VisitGetFontsResponse(w); err != nil {
+	} else if validResponse, ok := response.(HandleVKIDCallbackResponseObject); ok {
+		if err := validResponse.VisitHandleVKIDCallbackResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4501,25 +5685,25 @@ func (sh *strictHandler) GetFonts(w http.ResponseWriter, r *http.Request, params
 	}
 }
 
-// GetGroups operation middleware
-func (sh *strictHandler) GetGroups(w http.ResponseWriter, r *http.Request, params GetGroupsParams) {
-	var request GetGroupsRequestObject
+// ListFonts operation middleware
+func (sh *strictHandler) ListFonts(w http.ResponseWriter, r *http.Request, params ListFontsParams) {
+	var request ListFontsRequestObject
 
 	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetGroups(ctx, request.(GetGroupsRequestObject))
+		return sh.ssi.ListFonts(ctx, request.(ListFontsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetGroups")
+		handler = middleware(handler, "ListFonts")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetGroupsResponseObject); ok {
-		if err := validResponse.VisitGetGroupsResponse(w); err != nil {
+	} else if validResponse, ok := response.(ListFontsResponseObject); ok {
+		if err := validResponse.VisitListFontsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4527,25 +5711,127 @@ func (sh *strictHandler) GetGroups(w http.ResponseWriter, r *http.Request, param
 	}
 }
 
-// GetImages operation middleware
-func (sh *strictHandler) GetImages(w http.ResponseWriter, r *http.Request, params GetImagesParams) {
-	var request GetImagesRequestObject
+// ListGroups operation middleware
+func (sh *strictHandler) ListGroups(w http.ResponseWriter, r *http.Request, params ListGroupsParams) {
+	var request ListGroupsRequestObject
 
 	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetImages(ctx, request.(GetImagesRequestObject))
+		return sh.ssi.ListGroups(ctx, request.(ListGroupsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetImages")
+		handler = middleware(handler, "ListGroups")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetImagesResponseObject); ok {
-		if err := validResponse.VisitGetImagesResponse(w); err != nil {
+	} else if validResponse, ok := response.(ListGroupsResponseObject); ok {
+		if err := validResponse.VisitListGroupsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// HandleGroupCallback operation middleware
+func (sh *strictHandler) HandleGroupCallback(w http.ResponseWriter, r *http.Request, params HandleGroupCallbackParams) {
+	var request HandleGroupCallbackRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.HandleGroupCallback(ctx, request.(HandleGroupCallbackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "HandleGroupCallback")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(HandleGroupCallbackResponseObject); ok {
+		if err := validResponse.VisitHandleGroupCallbackResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetGroupConnectionURL operation middleware
+func (sh *strictHandler) GetGroupConnectionURL(w http.ResponseWriter, r *http.Request, params GetGroupConnectionURLParams) {
+	var request GetGroupConnectionURLRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetGroupConnectionURL(ctx, request.(GetGroupConnectionURLRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetGroupConnectionURL")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetGroupConnectionURLResponseObject); ok {
+		if err := validResponse.VisitGetGroupConnectionURLResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// HealthCheck operation middleware
+func (sh *strictHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	var request HealthCheckRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.HealthCheck(ctx, request.(HealthCheckRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "HealthCheck")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(HealthCheckResponseObject); ok {
+		if err := validResponse.VisitHealthCheckResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListImages operation middleware
+func (sh *strictHandler) ListImages(w http.ResponseWriter, r *http.Request, params ListImagesParams) {
+	var request ListImagesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListImages(ctx, request.(ListImagesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListImages")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListImagesResponseObject); ok {
+		if err := validResponse.VisitListImagesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -4584,25 +5870,25 @@ func (sh *strictHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DeleteImageByName operation middleware
-func (sh *strictHandler) DeleteImageByName(w http.ResponseWriter, r *http.Request, name string) {
-	var request DeleteImageByNameRequestObject
+// DeleteImage operation middleware
+func (sh *strictHandler) DeleteImage(w http.ResponseWriter, r *http.Request, imageID int64) {
+	var request DeleteImageRequestObject
 
-	request.Name = name
+	request.ImageID = imageID
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteImageByName(ctx, request.(DeleteImageByNameRequestObject))
+		return sh.ssi.DeleteImage(ctx, request.(DeleteImageRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteImageByName")
+		handler = middleware(handler, "DeleteImage")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DeleteImageByNameResponseObject); ok {
-		if err := validResponse.VisitDeleteImageByNameResponse(w); err != nil {
+	} else if validResponse, ok := response.(DeleteImageResponseObject); ok {
+		if err := validResponse.VisitDeleteImageResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

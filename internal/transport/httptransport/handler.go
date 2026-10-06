@@ -41,6 +41,7 @@ func NewHandler(
 			middleware.RequestLogger(logger),
 			middleware.BearerAuth(authService),
 		},
+		ErrorHandlerFunc: errorHandlerFunc,
 	}
 
 	server := &strictServer{
