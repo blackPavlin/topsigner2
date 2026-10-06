@@ -82,17 +82,17 @@ func (c *MockRepositoryCreateCall) DoAndReturn(f func(context.Context, *model.Im
 }
 
 // Delete mocks base method.
-func (m *MockRepository) Delete(ctx context.Context, userID int64, name string) error {
+func (m *MockRepository) Delete(ctx context.Context, imageID, userID int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, userID, name)
+	ret := m.ctrl.Call(m, "Delete", ctx, imageID, userID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockRepositoryMockRecorder) Delete(ctx, userID, name any) *MockRepositoryDeleteCall {
+func (mr *MockRepositoryMockRecorder) Delete(ctx, imageID, userID any) *MockRepositoryDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockRepository)(nil).Delete), ctx, userID, name)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockRepository)(nil).Delete), ctx, imageID, userID)
 	return &MockRepositoryDeleteCall{Call: call}
 }
 
@@ -108,13 +108,13 @@ func (c *MockRepositoryDeleteCall) Return(arg0 error) *MockRepositoryDeleteCall 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRepositoryDeleteCall) Do(f func(context.Context, int64, string) error) *MockRepositoryDeleteCall {
+func (c *MockRepositoryDeleteCall) Do(f func(context.Context, int64, int64) error) *MockRepositoryDeleteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRepositoryDeleteCall) DoAndReturn(f func(context.Context, int64, string) error) *MockRepositoryDeleteCall {
+func (c *MockRepositoryDeleteCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockRepositoryDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

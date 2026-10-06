@@ -742,80 +742,80 @@ func (m *MockVKIDClient) EXPECT() *MockVKIDClientMockRecorder {
 	return m.recorder
 }
 
-// ExchangeOAuthToken mocks base method.
-func (m *MockVKIDClient) ExchangeOAuthToken(ctx context.Context, params *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error) {
+// Exchange mocks base method.
+func (m *MockVKIDClient) Exchange(ctx context.Context, params *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExchangeOAuthToken", ctx, params)
+	ret := m.ctrl.Call(m, "Exchange", ctx, params)
 	ret0, _ := ret[0].(*auth.OAuthToken)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ExchangeOAuthToken indicates an expected call of ExchangeOAuthToken.
-func (mr *MockVKIDClientMockRecorder) ExchangeOAuthToken(ctx, params any) *MockVKIDClientExchangeOAuthTokenCall {
+// Exchange indicates an expected call of Exchange.
+func (mr *MockVKIDClientMockRecorder) Exchange(ctx, params any) *MockVKIDClientExchangeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExchangeOAuthToken", reflect.TypeOf((*MockVKIDClient)(nil).ExchangeOAuthToken), ctx, params)
-	return &MockVKIDClientExchangeOAuthTokenCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exchange", reflect.TypeOf((*MockVKIDClient)(nil).Exchange), ctx, params)
+	return &MockVKIDClientExchangeCall{Call: call}
 }
 
-// MockVKIDClientExchangeOAuthTokenCall wrap *gomock.Call
-type MockVKIDClientExchangeOAuthTokenCall struct {
+// MockVKIDClientExchangeCall wrap *gomock.Call
+type MockVKIDClientExchangeCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockVKIDClientExchangeOAuthTokenCall) Return(arg0 *auth.OAuthToken, arg1 error) *MockVKIDClientExchangeOAuthTokenCall {
+func (c *MockVKIDClientExchangeCall) Return(arg0 *auth.OAuthToken, arg1 error) *MockVKIDClientExchangeCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockVKIDClientExchangeOAuthTokenCall) Do(f func(context.Context, *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientExchangeOAuthTokenCall {
+func (c *MockVKIDClientExchangeCall) Do(f func(context.Context, *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientExchangeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockVKIDClientExchangeOAuthTokenCall) DoAndReturn(f func(context.Context, *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientExchangeOAuthTokenCall {
+func (c *MockVKIDClientExchangeCall) DoAndReturn(f func(context.Context, *auth.OAuthExchangeTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientExchangeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
-// GenerateOAuthURL mocks base method.
-func (m *MockVKIDClient) GenerateOAuthURL(challenge, state string) (string, error) {
+// GetAuthorizationURL mocks base method.
+func (m *MockVKIDClient) GetAuthorizationURL(codeChallenge, state string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateOAuthURL", challenge, state)
+	ret := m.ctrl.Call(m, "GetAuthorizationURL", codeChallenge, state)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GenerateOAuthURL indicates an expected call of GenerateOAuthURL.
-func (mr *MockVKIDClientMockRecorder) GenerateOAuthURL(challenge, state any) *MockVKIDClientGenerateOAuthURLCall {
+// GetAuthorizationURL indicates an expected call of GetAuthorizationURL.
+func (mr *MockVKIDClientMockRecorder) GetAuthorizationURL(codeChallenge, state any) *MockVKIDClientGetAuthorizationURLCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateOAuthURL", reflect.TypeOf((*MockVKIDClient)(nil).GenerateOAuthURL), challenge, state)
-	return &MockVKIDClientGenerateOAuthURLCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAuthorizationURL", reflect.TypeOf((*MockVKIDClient)(nil).GetAuthorizationURL), codeChallenge, state)
+	return &MockVKIDClientGetAuthorizationURLCall{Call: call}
 }
 
-// MockVKIDClientGenerateOAuthURLCall wrap *gomock.Call
-type MockVKIDClientGenerateOAuthURLCall struct {
+// MockVKIDClientGetAuthorizationURLCall wrap *gomock.Call
+type MockVKIDClientGetAuthorizationURLCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockVKIDClientGenerateOAuthURLCall) Return(arg0 string, arg1 error) *MockVKIDClientGenerateOAuthURLCall {
+func (c *MockVKIDClientGetAuthorizationURLCall) Return(arg0 string, arg1 error) *MockVKIDClientGetAuthorizationURLCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockVKIDClientGenerateOAuthURLCall) Do(f func(string, string) (string, error)) *MockVKIDClientGenerateOAuthURLCall {
+func (c *MockVKIDClientGetAuthorizationURLCall) Do(f func(string, string) (string, error)) *MockVKIDClientGetAuthorizationURLCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockVKIDClientGenerateOAuthURLCall) DoAndReturn(f func(string, string) (string, error)) *MockVKIDClientGenerateOAuthURLCall {
+func (c *MockVKIDClientGetAuthorizationURLCall) DoAndReturn(f func(string, string) (string, error)) *MockVKIDClientGetAuthorizationURLCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -858,41 +858,41 @@ func (c *MockVKIDClientLogoutCall) DoAndReturn(f func(context.Context, string) e
 	return c
 }
 
-// RefreshOAuthToken mocks base method.
-func (m *MockVKIDClient) RefreshOAuthToken(ctx context.Context, params *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error) {
+// Refresh mocks base method.
+func (m *MockVKIDClient) Refresh(ctx context.Context, params *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RefreshOAuthToken", ctx, params)
+	ret := m.ctrl.Call(m, "Refresh", ctx, params)
 	ret0, _ := ret[0].(*auth.OAuthToken)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// RefreshOAuthToken indicates an expected call of RefreshOAuthToken.
-func (mr *MockVKIDClientMockRecorder) RefreshOAuthToken(ctx, params any) *MockVKIDClientRefreshOAuthTokenCall {
+// Refresh indicates an expected call of Refresh.
+func (mr *MockVKIDClientMockRecorder) Refresh(ctx, params any) *MockVKIDClientRefreshCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshOAuthToken", reflect.TypeOf((*MockVKIDClient)(nil).RefreshOAuthToken), ctx, params)
-	return &MockVKIDClientRefreshOAuthTokenCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Refresh", reflect.TypeOf((*MockVKIDClient)(nil).Refresh), ctx, params)
+	return &MockVKIDClientRefreshCall{Call: call}
 }
 
-// MockVKIDClientRefreshOAuthTokenCall wrap *gomock.Call
-type MockVKIDClientRefreshOAuthTokenCall struct {
+// MockVKIDClientRefreshCall wrap *gomock.Call
+type MockVKIDClientRefreshCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockVKIDClientRefreshOAuthTokenCall) Return(arg0 *auth.OAuthToken, arg1 error) *MockVKIDClientRefreshOAuthTokenCall {
+func (c *MockVKIDClientRefreshCall) Return(arg0 *auth.OAuthToken, arg1 error) *MockVKIDClientRefreshCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockVKIDClientRefreshOAuthTokenCall) Do(f func(context.Context, *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientRefreshOAuthTokenCall {
+func (c *MockVKIDClientRefreshCall) Do(f func(context.Context, *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientRefreshCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockVKIDClientRefreshOAuthTokenCall) DoAndReturn(f func(context.Context, *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientRefreshOAuthTokenCall {
+func (c *MockVKIDClientRefreshCall) DoAndReturn(f func(context.Context, *auth.OAuthRefreshTokenParams) (*auth.OAuthToken, error)) *MockVKIDClientRefreshCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

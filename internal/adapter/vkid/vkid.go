@@ -24,7 +24,10 @@ type Client struct {
 // todo: добавить логгирование
 // todo: добавить метрики
 func NewClient(config *config.Config) (*Client, error) {
-	client, err := httpclient.NewClientWithResponses(config.VKID.BaseURL)
+	client, err := httpclient.NewClientWithResponses(
+		config.VKID.BaseURL,
+		httpclient.WithHTTPClient(&http.Client{Timeout: config.VKID.Timeout}),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create new vkid client with responses: %w", err)
 	}

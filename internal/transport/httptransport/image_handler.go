@@ -18,15 +18,15 @@ func NewImageHandler(imageService *image.Service) *ImageHandler {
 	return &ImageHandler{imageService: imageService}
 }
 
-// Get list of user images
+// ListImages Get list of user images
 // (GET /api/v1/images)
-func (h *ImageHandler) GetImages(
+func (h *ImageHandler) ListImages(
 	ctx context.Context,
-	r httpserver.GetImagesRequestObject,
-) (httpserver.GetImagesResponseObject, error) {
+	r httpserver.ListImagesRequestObject,
+) (httpserver.ListImagesResponseObject, error) {
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
-		return httpserver.GetImages401JSONResponse{
+		return httpserver.ListImages401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
@@ -39,7 +39,7 @@ func (h *ImageHandler) GetImages(
 	if r.Params.Cursor != nil {
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
 		if err != nil {
-			return httpserver.GetImages400JSONResponse{
+			return httpserver.ListImages400JSONResponse{
 				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
 		}
@@ -57,7 +57,7 @@ func (h *ImageHandler) GetImages(
 
 	list, err := h.imageService.List(ctx, query)
 	if err != nil {
-		return httpserver.GetImages500JSONResponse{
+		return httpserver.ListImages500JSONResponse{
 			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
@@ -73,16 +73,15 @@ func (h *ImageHandler) GetImages(
 		})
 	}
 
-	return httpserver.GetImages200JSONResponse{
+	return httpserver.ListImages200JSONResponse{
 		Items: images,
 		Pagination: httpserver.Pagination{
 			NextCursor: list.NextCursor,
-			HasNext:    list.HasNext,
 		},
 	}, nil
 }
 
-// Upload image file
+// UploadImage Upload image file
 // (POST /api/v1/images)
 func (h *ImageHandler) UploadImage(
 	ctx context.Context,
@@ -138,24 +137,24 @@ func (h *ImageHandler) UploadImage(
 	}, nil
 }
 
-// Delete
-// (DELETE /api/v1/images/{name})
-func (h *ImageHandler) DeleteImageByName(
+// DeleteImage Delete image
+// (DELETE /api/v1/images/{image_id})
+func (h *ImageHandler) DeleteImage(
 	ctx context.Context,
-	r httpserver.DeleteImageByNameRequestObject,
-) (httpserver.DeleteImageByNameResponseObject, error) {
+	r httpserver.DeleteImageRequestObject,
+) (httpserver.DeleteImageResponseObject, error) {
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
-		return httpserver.DeleteImageByName401JSONResponse{
+		return httpserver.DeleteImage401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
-	if err := h.imageService.Delete(ctx, user.ID, r.Name); err != nil {
-		return httpserver.DeleteImageByName500JSONResponse{
+	if err := h.imageService.Delete(ctx, user.ID, r.ImageID); err != nil {
+		return httpserver.DeleteImage500JSONResponse{
 			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 
-	return httpserver.DeleteImageByName204Response{}, nil
+	return httpserver.DeleteImage204Response{}, nil
 }

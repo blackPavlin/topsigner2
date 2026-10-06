@@ -24,7 +24,7 @@ func (r *FontRepository) List(
 ) ([]*model.Font, error) {
 	builder := psql.Select("id", "name", "created_at", "updated_at").
 		From(fontsTableName).
-		OrderBy("created_at DESC", "id DESC").
+		OrderBy("id DESC", "created_at DESC").
 		Limit(uint64(query.Pagination.Limit))
 
 	builder = applyFilter(builder, "name", query.Filter.Name)

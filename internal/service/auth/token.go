@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -22,7 +21,7 @@ type AccessTokenClaims struct {
 type TokenPair struct {
 	AccessToken  string
 	RefreshToken string
-	ExpiresAt    time.Time
+	ExpiresIn    int64
 }
 
 func generateRefreshToken() (string, error) {

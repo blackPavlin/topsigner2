@@ -40,8 +40,8 @@ type SessionCacheRepository interface {
 }
 
 type VKIDClient interface {
-	GenerateOAuthURL(challenge, state string) (string, error)
-	ExchangeOAuthToken(ctx context.Context, params *OAuthExchangeTokenParams) (*OAuthToken, error)
-	RefreshOAuthToken(ctx context.Context, params *OAuthRefreshTokenParams) (*OAuthToken, error)
+	GetAuthorizationURL(codeChallenge, state string) (string, error)
+	Exchange(ctx context.Context, params *OAuthExchangeTokenParams) (*OAuthToken, error)
+	Refresh(ctx context.Context, params *OAuthRefreshTokenParams) (*OAuthToken, error)
 	Logout(ctx context.Context, token string) error
 }

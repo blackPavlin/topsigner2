@@ -17,14 +17,14 @@ func NewFontHandler(fontService *font.Service) *FontHandler {
 	return &FontHandler{fontService: fontService}
 }
 
-// Get list of fonts
+// ListFonts Get list of fonts
 // (GET /api/v1/fonts)
-func (h *FontHandler) GetFonts(
+func (h *FontHandler) ListFonts(
 	ctx context.Context,
-	r httpserver.GetFontsRequestObject,
-) (httpserver.GetFontsResponseObject, error) {
+	r httpserver.ListFontsRequestObject,
+) (httpserver.ListFontsResponseObject, error) {
 	if _, ok := auth.GetUserFromContext(ctx); !ok {
-		return httpserver.GetFonts401JSONResponse{
+		return httpserver.ListFonts401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
@@ -36,7 +36,7 @@ func (h *FontHandler) GetFonts(
 	if r.Params.Cursor != nil {
 		cursor, err := model.DecodeCursor(*r.Params.Cursor)
 		if err != nil {
-			return httpserver.GetFonts400JSONResponse{
+			return httpserver.ListFonts400JSONResponse{
 				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
 		}
@@ -54,7 +54,7 @@ func (h *FontHandler) GetFonts(
 
 	list, err := h.fontService.List(ctx, query)
 	if err != nil {
-		return httpserver.GetFonts500JSONResponse{
+		return httpserver.ListFonts500JSONResponse{
 			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
@@ -70,11 +70,10 @@ func (h *FontHandler) GetFonts(
 		})
 	}
 
-	return httpserver.GetFonts200JSONResponse{
+	return httpserver.ListFonts200JSONResponse{
 		Items: fonts,
 		Pagination: httpserver.Pagination{
 			NextCursor: list.NextCursor,
-			HasNext:    list.HasNext,
 		},
 	}, nil
 }

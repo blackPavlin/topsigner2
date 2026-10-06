@@ -17,20 +17,16 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
+	"github.com/bboykiv/topsigner/internal/adapter/s3"
+	"github.com/bboykiv/topsigner/internal/adapter/vk"
+	"github.com/bboykiv/topsigner/internal/adapter/vkid"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/crypto"
-	"github.com/bboykiv/topsigner/internal/database"
-	"github.com/bboykiv/topsigner/internal/database/repository"
-	"github.com/bboykiv/topsigner/internal/keyvalue"
-	"github.com/bboykiv/topsigner/internal/s3"
-	"github.com/bboykiv/topsigner/internal/s3/storage"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/group"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport"
-	"github.com/bboykiv/topsigner/internal/vk"
-	"github.com/bboykiv/topsigner/internal/vkid"
 )
 
 var (

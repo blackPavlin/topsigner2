@@ -114,7 +114,7 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		ExpiresAt:    time.Now().Add(s.config.Auth.AccessTokenTTL),
+		ExpiresIn:    int64(s.config.Auth.AccessTokenTTL / time.Second),
 	}, nil
 }
 
@@ -232,7 +232,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 			return nil, fmt.Errorf("generate state: %w", err)
 		}
 
-		token, err := s.vkidClient.RefreshOAuthToken(ctx, &OAuthRefreshTokenParams{
+		token, err := s.vkidClient.Refresh(ctx, &OAuthRefreshTokenParams{
 			RefreshToken: oAuthRefreshToken,
 			DeviceID:     *session.OAuthDeviceID,
 			State:        state,
@@ -291,7 +291,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		ExpiresAt:    time.Now().Add(accessTokenExpiresIn),
+		ExpiresIn:    int64(accessTokenExpiresIn / time.Second),
 	}, nil
 }
 
@@ -435,7 +435,7 @@ func (s *Service) GenerateVKIDOAuthURL(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("code verifier repository set: %w", err)
 	}
 
-	authURL, err := s.vkidClient.GenerateOAuthURL(codeChallengeS256(codeVerifier), state)
+	authURL, err := s.vkidClient.GetAuthorizationURL(codeChallengeS256(codeVerifier), state)
 	if err != nil {
 		s.logger.Error("generate oauth url", zap.Error(err))
 
@@ -462,7 +462,7 @@ func (s *Service) ExchangeVKIDOAuthToken(
 
 	params.CodeVerifier = codeVerifier
 
-	oAuthToken, err := s.vkidClient.ExchangeOAuthToken(ctx, params)
+	oAuthToken, err := s.vkidClient.Exchange(ctx, params)
 	if err != nil {
 		s.logger.Error("exchane oauth token", zap.Error(err))
 
@@ -550,6 +550,6 @@ func (s *Service) ExchangeVKIDOAuthToken(
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		ExpiresAt:    time.Now().Add(accessTokenTTL),
+		ExpiresIn:    int64(accessTokenTTL / time.Second),
 	}, nil
 }

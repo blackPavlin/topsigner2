@@ -20,6 +20,7 @@ type Image struct {
 }
 
 type ImageFilter struct {
+	ID     IDFilter
 	UserID IDFilter
 	Name   TextFilter
 }

@@ -28,12 +28,12 @@ func NewAuthHandler(authService *auth.Service) *AuthHandler {
 
 // Login user
 // (POST /api/v1/auth/login)
-func (h *AuthHandler) AuthLogin(
+func (h *AuthHandler) LoginUser(
 	ctx context.Context,
-	r httpserver.AuthLoginRequestObject,
-) (httpserver.AuthLoginResponseObject, error) {
+	r httpserver.LoginUserRequestObject,
+) (httpserver.LoginUserResponseObject, error) {
 	if err := h.validate.Struct(r.Body); err != nil {
-		return httpserver.AuthLogin400JSONResponse{
+		return httpserver.LoginUser400JSONResponse{
 			BadRequestJSONResponse: NewBadRequestError(err),
 		}, nil
 	}
@@ -47,152 +47,125 @@ func (h *AuthHandler) AuthLogin(
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrUserNotFound):
-			return httpserver.AuthLogin401JSONResponse{
+			return httpserver.LoginUser401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
 		case errors.Is(err, auth.ErrPasswordLoginNotAvailable):
-			return httpserver.AuthLogin401JSONResponse{
+			return httpserver.LoginUser401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
 		default:
-			return httpserver.AuthLogin500JSONResponse{
+			return httpserver.LoginUser500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
 	}
 
-	return httpserver.AuthLogin200JSONResponse{
+	return httpserver.LoginUser200JSONResponse{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
-		ExpiresAt:    token.ExpiresAt,
+		TokenType:    httpserver.Bearer,
+		ExpiresIn:    token.ExpiresIn,
 	}, nil
 }
 
 // Logout user
 // (POST /api/v1/auth/logout)
-func (h *AuthHandler) AuthLogout(
+func (h *AuthHandler) LogoutUser(
 	ctx context.Context,
-	r httpserver.AuthLogoutRequestObject,
-) (httpserver.AuthLogoutResponseObject, error) {
+	r httpserver.LogoutUserRequestObject,
+) (httpserver.LogoutUserResponseObject, error) {
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
-		return httpserver.AuthLogout401JSONResponse{
+		return httpserver.LogoutUser401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
-	var refreshToken *string
-
-	if r.Body != nil && r.Body.RefreshToken != nil {
-		refreshToken = r.Body.RefreshToken
-	}
-
-	if err := h.authService.Logout(ctx, user.ID, refreshToken); err != nil {
-		return httpserver.AuthLogout500JSONResponse{
+	if err := h.authService.Logout(ctx, user.ID, nil); err != nil {
+		return httpserver.LogoutUser500JSONResponse{
 			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 
-	return httpserver.AuthLogout204Response{}, nil
+	return httpserver.LogoutUser204Response{}, nil
 }
 
 // Refresh auth tokens
 // (POST /api/v1/auth/refresh)
-func (h *AuthHandler) AuthRefresh(
+func (h *AuthHandler) RefreshTokens(
 	ctx context.Context,
-	r httpserver.AuthRefreshRequestObject,
-) (httpserver.AuthRefreshResponseObject, error) {
+	r httpserver.RefreshTokensRequestObject,
+) (httpserver.RefreshTokensResponseObject, error) {
 	token, err := h.authService.Refresh(ctx, r.Body.RefreshToken)
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrSessionNotFound):
-			return httpserver.AuthRefresh401JSONResponse{
+			return httpserver.RefreshTokens401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
 		case errors.Is(err, auth.ErrTokenIsExpired):
-			return httpserver.AuthRefresh401JSONResponse{
+			return httpserver.RefreshTokens401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
 		default:
-			return httpserver.AuthRefresh500JSONResponse{
+			return httpserver.RefreshTokens500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
 	}
 
-	return httpserver.AuthRefresh200JSONResponse{
+	return httpserver.RefreshTokens200JSONResponse{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
-		ExpiresAt:    token.ExpiresAt,
+		TokenType:    httpserver.Bearer,
+		ExpiresIn:    token.ExpiresIn,
 	}, nil
 }
 
-// Get OAuth authorization URL
-// (GET /api/v1/auth/oauth/{provider})
-func (h *AuthHandler) AuthOAuthGetURL(
+// GetVKIDAuthorizationURL Get VK ID authorization URL
+// (GET /api/v1/auth/vkid/authorize)
+func (h *AuthHandler) GetVKIDAuthorizationURL(
 	ctx context.Context,
-	r httpserver.AuthOAuthGetURLRequestObject,
-) (httpserver.AuthOAuthGetURLResponseObject, error) {
-	var (
-		authorizationURL string
-		err              error
-	)
-
-	switch r.Provider {
-	case httpserver.Vkontakte:
-		authorizationURL, err = h.authService.GenerateVKIDOAuthURL(ctx)
-		if err != nil {
-			return httpserver.AuthOAuthGetURL500JSONResponse{
-				InternalErrorJSONResponse: NewInternalError(),
-			}, nil
-		}
-	default:
-		return httpserver.AuthOAuthGetURL400JSONResponse{
-			BadRequestJSONResponse: NewBadRequestError(ErrInvalidOAuthProvider),
+	r httpserver.GetVKIDAuthorizationURLRequestObject,
+) (httpserver.GetVKIDAuthorizationURLResponseObject, error) {
+	authorizationURL, err := h.authService.GenerateVKIDOAuthURL(ctx)
+	if err != nil {
+		return httpserver.GetVKIDAuthorizationURL500JSONResponse{
+			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 
-	return httpserver.AuthOAuthGetURL200JSONResponse{
+	return httpserver.GetVKIDAuthorizationURL200JSONResponse{
 		URL: authorizationURL,
 	}, nil
 }
 
-// AuthOAuthCallback OAuth callback
-// (GET /api/v1/auth/oauth/{provider}/callback)
-func (h *AuthHandler) AuthOAuthCallback(
+// HandleVKIDCallback Exchange VK ID authorization code
+// (GET /api/v1/auth/vkid/callback)
+func (h *AuthHandler) HandleVKIDCallback(
 	ctx context.Context,
-	r httpserver.AuthOAuthCallbackRequestObject,
-) (httpserver.AuthOAuthCallbackResponseObject, error) {
-	var (
-		token *auth.TokenPair
-		err   error
-	)
-
+	r httpserver.HandleVKIDCallbackRequestObject,
+) (httpserver.HandleVKIDCallbackResponseObject, error) {
 	// todo: валидация входных параметров
 
-	switch r.Provider {
-	case httpserver.Vkontakte:
-		token, err = h.authService.ExchangeVKIDOAuthToken(ctx, &auth.OAuthExchangeTokenParams{
-			Code:      r.Params.Code,
-			DeviceID:  r.Params.DeviceID,
-			State:     r.Params.State,
-			IP:        middleware.GetClientIP(ctx),
-			UserAgent: mw.GetUserAgentFromContext(ctx),
-		})
-		if err != nil {
-			return httpserver.AuthOAuthCallback401JSONResponse{
-				UnauthorizedJSONResponse: NewUnauthorizedError(),
-			}, nil
-		}
-	default:
-		return httpserver.AuthOAuthCallback400JSONResponse{
-			BadRequestJSONResponse: NewBadRequestError(ErrInvalidOAuthProvider),
+	token, err := h.authService.ExchangeVKIDOAuthToken(ctx, &auth.OAuthExchangeTokenParams{
+		Code:      *r.Params.Code,
+		DeviceID:  *r.Params.DeviceID,
+		State:     *r.Params.State,
+		IP:        middleware.GetClientIP(ctx),
+		UserAgent: mw.GetUserAgentFromContext(ctx),
+	})
+	if err != nil {
+		return httpserver.HandleVKIDCallback401JSONResponse{
+			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
-	return httpserver.AuthOAuthCallback200JSONResponse{
+	return httpserver.HandleVKIDCallback200JSONResponse{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
-		ExpiresAt:    token.ExpiresAt,
+		TokenType:    httpserver.Bearer,
+		ExpiresIn:    token.ExpiresIn,
 	}, nil
 }

@@ -120,21 +120,35 @@ func (s *Service) Create(
 	return image, nil
 }
 
-func (s *Service) Delete(ctx context.Context, userID int64, name string) error {
-	if err := s.repository.Delete(ctx, userID, name); err != nil {
+func (s *Service) Delete(ctx context.Context, imageID, userID int64) error {
+	image, err := s.repository.Get(ctx, &model.ImageFilter{
+		ID:     model.IDFilter{Eq: new(imageID)},
+		UserID: model.IDFilter{Eq: new(userID)},
+	})
+	if err != nil {
 		if errors.Is(err, model.ErrImageNotFound) {
-			return nil
+			return model.ErrImageNotFound
 		}
 
-		s.logger.Error("delete image error", zap.Error(err))
+		s.logger.Error("get user image", zap.Error(err))
 
-		return fmt.Errorf("delete image: %w", err)
+		return fmt.Errorf("get user image: %w", err)
 	}
 
-	if err := s.storage.Delete(ctx, name); err != nil {
-		s.logger.Error("delete image from storage error", zap.Error(err))
+	if err = s.repository.Delete(ctx, imageID, userID); err != nil {
+		if errors.Is(err, model.ErrImageNotFound) {
+			return model.ErrImageNotFound
+		}
 
-		return fmt.Errorf("delete image from storage: %w", err)
+		s.logger.Error("delete user image", zap.Error(err))
+
+		return fmt.Errorf("delete user image: %w", err)
+	}
+
+	if err = s.storage.Delete(ctx, image.Name); err != nil {
+		s.logger.Error("delete user image from storage", zap.Error(err))
+
+		return fmt.Errorf("delete user image from storage: %w", err)
 	}
 
 	return nil

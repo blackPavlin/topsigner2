@@ -22,15 +22,53 @@ func NewImageRepository(pool *pgxpool.Pool) *ImageRepository {
 	return &ImageRepository{pool: pool}
 }
 
+func (r *ImageRepository) Get(
+	ctx context.Context,
+	filter *model.ImageFilter,
+) (*model.Image, error) {
+	builder := psql.Select("id", "user_id", "name", "created_at", "updated_at").
+		From(imageTableName).
+		Limit(1)
+
+	builder = applyFilter(builder, "id", filter.ID)
+	builder = applyFilter(builder, "user_id", filter.UserID)
+	builder = applyFilter(builder, "name", filter.Name)
+
+	sql, args, err := builder.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build sql query: %w", err)
+	}
+
+	image := &model.Image{}
+
+	err = r.pool.QueryRow(ctx, sql, args...).Scan(
+		&image.ID,
+		&image.UserID,
+		&image.Name,
+		&image.CreatedAt,
+		&image.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrImageNotFound
+		}
+
+		return nil, fmt.Errorf("get image: %w", err)
+	}
+
+	return image, nil
+}
+
 func (r *ImageRepository) List(
 	ctx context.Context,
 	query *model.ImageQuery,
 ) ([]*model.Image, error) {
 	builder := psql.Select("id", "user_id", "name", "created_at", "updated_at").
 		From(imageTableName).
-		OrderBy("created_at DESC", "id DESC").
+		OrderBy("id DESC", "created_at DESC").
 		Limit(uint64(query.Pagination.Limit))
 
+	builder = applyFilter(builder, "id", query.Filter.ID)
 	builder = applyFilter(builder, "user_id", query.Filter.UserID)
 	builder = applyFilter(builder, "name", query.Filter.Name)
 
@@ -104,9 +142,9 @@ func (r *ImageRepository) Create(ctx context.Context, image *model.Image) (*mode
 	return image, nil
 }
 
-func (r *ImageRepository) Delete(ctx context.Context, userID int64, name string) error {
+func (r *ImageRepository) Delete(ctx context.Context, imageID, userID int64) error {
 	sql, args, err := psql.Delete(imageTableName).
-		Where(squirrel.Eq{"user_id": userID, "name": name}).
+		Where(squirrel.Eq{"id": imageID, "user_id": userID}).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("build sql query: %w", err)

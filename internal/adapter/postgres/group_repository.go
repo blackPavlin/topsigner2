@@ -78,7 +78,7 @@ func (r *GroupRepository) List(
 		"updated_at",
 	).
 		From(groupTableName).
-		OrderBy("created_at DESC", "id DESC").
+		OrderBy("id DESC", "created_at DESC").
 		Limit(uint64(query.Pagination.Limit))
 
 	builder = applyFilter(builder, "user_id", query.Filter.UserID)

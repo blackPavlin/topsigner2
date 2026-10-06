@@ -10,9 +10,10 @@ import (
 )
 
 type Repository interface {
+	Get(ctx context.Context, filter *model.ImageFilter) (*model.Image, error)
 	List(ctx context.Context, query *model.ImageQuery) ([]*model.Image, error)
 	Create(ctx context.Context, image *model.Image) (*model.Image, error)
-	Delete(ctx context.Context, userID int64, name string) error
+	Delete(ctx context.Context, imageID, userID int64) error
 }
 
 type Storage interface {

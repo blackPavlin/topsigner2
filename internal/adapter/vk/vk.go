@@ -2,14 +2,19 @@ package vk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 
 	"github.com/bboykiv/topsigner/gen/external/vk/httpclient"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/service/group"
+)
+
+var (
+	ErrInvalidAuthCode = errors.New("invalid authorization code")
+	ErrUpstream        = errors.New("upstream provider error")
 )
 
 type Client struct {
@@ -18,16 +23,21 @@ type Client struct {
 	oauthClient *httpclient.ClientWithResponses
 }
 
+// todo: добавить логгирование
+// todo: добавить метрики
 func NewClient(config *config.Config) (*Client, error) {
-	// todo: добавить логгирование
-	// todo: добавить метрики
-
-	client, err := httpclient.NewClientWithResponses(config.VK.BaseURL)
+	client, err := httpclient.NewClientWithResponses(
+		config.VK.BaseURL,
+		httpclient.WithHTTPClient(&http.Client{Timeout: config.VKID.Timeout}),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create new vk client with responses: %w", err)
 	}
 
-	oauthClient, err := httpclient.NewClientWithResponses(config.VK.OAuthBaseURL)
+	oauthClient, err := httpclient.NewClientWithResponses(
+		config.VK.OAuthBaseURL,
+		httpclient.WithHTTPClient(&http.Client{Timeout: config.VKID.Timeout}),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create new vk oauth client with responses: %w", err)
 	}
@@ -40,27 +50,46 @@ func NewClient(config *config.Config) (*Client, error) {
 }
 
 func (c *Client) GenerateConnectGroupURL(groupID int64, state string) (string, error) {
-	u, err := url.Parse(c.config.VK.OAuthBaseURL)
-	if err != nil {
-		return "", fmt.Errorf("parse vk oauth base url: %w", err)
+	params := &httpclient.AuthorizeParams{
+		ClientID:     c.config.VKID.ClientID,
+		RedirectURI:  c.config.VK.OAuthRedirectURL,
+		GroupIds:     strconv.FormatInt(groupID, 10),
+		Scope:        c.config.VK.OAuthScope,
+		ResponseType: httpclient.Code,
+		Display:      new(httpclient.Page),
+		State:        new(state),
+		V:            httpclient.AuthorizeParamsVN5199,
 	}
 
-	u = u.JoinPath("authorize")
+	req, err := httpclient.NewAuthorizeRequest(c.config.VKID.BaseURL, params)
+	if err != nil {
+		return "", fmt.Errorf("create authorization request: %w", err)
+	}
 
-	q := u.Query()
+	return req.URL.String(), nil
+}
 
-	q.Set("client_id", c.config.VKID.ClientID)
-	q.Set("redirect_uri", c.config.VK.OAuthRedirectURL)
-	q.Set("group_ids", strconv.FormatInt(groupID, 10))
-	q.Set("display", "page")
-	q.Set("scope", c.config.VK.OAuthScope)
-	q.Set("response_type", "code")
-	q.Set("v", string(httpclient.GetGroupsParamsVN5199))
-	q.Set("state", state)
+func (c *Client) ExchangGroupCode(ctx context.Context, code string) (int64, string, error) {
+	params := &httpclient.ExchangeGroupCodeParams{
+		ClientID:     c.config.VKID.ClientID,
+		ClientSecret: c.config.VKID.SecretKey,
+		RedirectURI:  c.config.VK.OAuthRedirectURL,
+		Code:         code,
+	}
 
-	u.RawQuery = q.Encode()
+	resp, err := c.oauthClient.ExchangeGroupCodeWithResponse(ctx, params)
+	if err != nil {
+		return 0, "", fmt.Errorf("exchange group code: %w", err)
+	}
 
-	return u.String(), nil
+	switch {
+	case resp.JSON200 != nil && len(resp.JSON200.Groups) != 0:
+		return resp.JSON200.Groups[0].GroupID, resp.JSON200.Groups[0].AccessToken, nil
+	case resp.JSON200 != nil && resp.JSON200.Error != nil:
+		return 0, "", fmt.Errorf("%w: %s", ErrInvalidAuthCode, resp.JSON200.Error.ErrorMsg)
+	default:
+		return 0, "", ErrUpstream
+	}
 }
 
 func (c *Client) GetGroups(ctx context.Context, token string) ([]*group.Group, error) {
@@ -91,26 +120,6 @@ func (c *Client) GetGroups(ctx context.Context, token string) ([]*group.Group, e
 	}
 
 	return groups, nil
-}
-
-func (c *Client) ExchangGroupCode(ctx context.Context, code string) (int64, string, error) {
-	params := &httpclient.ExchangeGroupCodeParams{
-		ClientID:     c.config.VKID.ClientID,
-		ClientSecret: c.config.VKID.SecretKey,
-		RedirectURI:  c.config.VK.OAuthRedirectURL,
-		Code:         code,
-	}
-
-	resp, err := c.oauthClient.ExchangeGroupCodeWithResponse(ctx, params)
-	if err != nil {
-		return 0, "", fmt.Errorf("exchange group code: %w", err)
-	}
-
-	if resp.JSON200.Error != nil {
-		return 0, "", fmt.Errorf("exchange group token: %s", resp.JSON200.Error.ErrorMsg)
-	}
-
-	return resp.JSON200.Groups[0].GroupID, resp.JSON200.Groups[0].AccessToken, nil
 }
 
 func setAccessToken(token string) httpclient.RequestEditorFn {

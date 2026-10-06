@@ -9,14 +9,14 @@ import (
 	"github.com/bboykiv/topsigner/gen/httpserver"
 )
 
-func TestFontHandler_GetFonts_Unauthorized(t *testing.T) {
+func TestFontHandler_ListFonts_Unauthorized(t *testing.T) {
 	t.Parallel()
 
 	message := &httpserver.Unauthorized{
 		Message: "unauthorized",
 	}
 
-	resp, err := client.GetFontsWithResponse(t.Context(), &httpserver.GetFontsParams{})
+	resp, err := client.ListFontsWithResponse(t.Context(), &httpserver.ListFontsParams{})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode())
 	require.Equal(t, message, resp.JSON401)

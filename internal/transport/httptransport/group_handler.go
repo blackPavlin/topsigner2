@@ -20,15 +20,15 @@ func NewGroupHandler(groupService *group.Service) *GroupHandler {
 	return &GroupHandler{groupService: groupService}
 }
 
-// GetGroups Get list of groups
+// ListGroups Get list of groups
 // (GET /api/v1/groups)
-func (h *GroupHandler) GetGroups(
+func (h *GroupHandler) ListGroups(
 	ctx context.Context,
-	r httpserver.GetGroupsRequestObject,
-) (httpserver.GetGroupsResponseObject, error) {
+	r httpserver.ListGroupsRequestObject,
+) (httpserver.ListGroupsResponseObject, error) {
 	session, ok := auth.GetSessionFromContext(ctx)
 	if !ok {
-		return httpserver.GetGroups401JSONResponse{
+		return httpserver.ListGroups401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
@@ -37,7 +37,7 @@ func (h *GroupHandler) GetGroups(
 	if err != nil {
 		switch {
 		default:
-			return httpserver.GetGroups500JSONResponse{
+			return httpserver.ListGroups500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
@@ -54,54 +54,56 @@ func (h *GroupHandler) GetGroups(
 		})
 	}
 
-	return httpserver.GetGroups200JSONResponse{
+	return httpserver.ListGroups200JSONResponse{
 		Items: items,
 	}, nil
 }
 
-// GetGroupsConnectURL Get URL to connect group(s)
+// GetGroupConnectionURL Get URL to connect group
 // (GET /api/v1/groups/connect)
-func (h *GroupHandler) GetGroupsConnectURL(
+func (h *GroupHandler) GetGroupConnectionURL(
 	ctx context.Context,
-	r httpserver.GetGroupsConnectURLRequestObject,
-) (httpserver.GetGroupsConnectURLResponseObject, error) {
+	r httpserver.GetGroupConnectionURLRequestObject,
+) (httpserver.GetGroupConnectionURLResponseObject, error) {
 	user, ok := auth.GetUserFromContext(ctx)
 	if !ok {
-		return httpserver.GetGroupsConnectURL401JSONResponse{
+		return httpserver.GetGroupConnectionURL401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
 	connectionURL, err := h.groupService.GenerateConnectionURL(ctx, user.ID, r.Params.GroupID)
 	if err != nil {
-		return httpserver.GetGroupsConnectURL500JSONResponse{
+		return httpserver.GetGroupConnectionURL500JSONResponse{
 			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
 	}
 
-	return httpserver.GetGroupsConnectURL200JSONResponse{
+	return httpserver.GetGroupConnectionURL200JSONResponse{
 		URL: connectionURL,
 	}, nil
 }
 
-// ConnectGroupCallback Connection group callback
-// (GET /api/v1/groups/connect/callback)
-func (h *GroupHandler) ConnectGroupCallback(
+// HandleGroupCallback Exchange group authorization code
+// (GET /api/v1/groups/callback)
+func (h *GroupHandler) HandleGroupCallback(
 	ctx context.Context,
-	r httpserver.ConnectGroupCallbackRequestObject,
-) (httpserver.ConnectGroupCallbackResponseObject, error) {
-	if _, err := h.groupService.Connect(ctx, r.Params.Code, r.Params.State); err != nil {
+	r httpserver.HandleGroupCallbackRequestObject,
+) (httpserver.HandleGroupCallbackResponseObject, error) {
+	// todo: валидация входных параметров
+
+	if _, err := h.groupService.Connect(ctx, *r.Params.Code, *r.Params.State); err != nil {
 		switch {
 		case errors.Is(err, model.ErrGroupStateNotFound):
-			return httpserver.ConnectGroupCallback400JSONResponse{
+			return httpserver.HandleGroupCallback400JSONResponse{
 				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
 		default:
-			return httpserver.ConnectGroupCallback500JSONResponse{
+			return httpserver.HandleGroupCallback500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
 	}
 
-	return httpserver.ConnectGroupCallback201Response{}, nil
+	return httpserver.HandleGroupCallback200JSONResponse{}, nil
 }
