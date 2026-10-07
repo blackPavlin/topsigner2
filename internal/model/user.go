@@ -19,13 +19,13 @@ const (
 )
 
 type User struct {
-	ID           int64     `json:"id"`
-	VKUserID     *int64    `json:"vk_user_id,omitempty"`
-	Email        *string   `json:"email,omitempty"`
-	PasswordHash *string   `json:"-"`
-	Role         Role      `json:"role"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           int64
+	VKUserID     *int64
+	Email        *string
+	PasswordHash *string
+	Role         Role
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type UserFilter struct {

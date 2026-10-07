@@ -8,22 +8,20 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/bboykiv/topsigner/internal/adapter/crypto"
 	"github.com/bboykiv/topsigner/internal/config"
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
-// todo: решить на какое время кэшировать user и session (refresh_token_ttl = слишком долго)
+// todo: решить на какое время кэшировать user
 // todo: добавить прогрев кэша при промахе в Authorize
-// todo: решить нужно ли кэшировать сессию или достаточно кэшировать пользователя
 // todo: решить, нужно ли ориентороваться на user-agent при обновлении сессии и необходим ли он в принципе
 // todo: придумать механизм удаления сессий с истекшим ExpiresAt
 // todo: заменить реализацию crypto.Encryptor на интерфейс TokenEncryptor
 // todo: заменить реализацию хэширования паролей на интерфейс TokenHasher
 // todo: заменить реализацию генерации токенов на интерфейс TokenGenerator
-// todo: заменить реализацию подписи токенов на интерфейс TokenIssuer 
+// todo: заменить реализацию подписи токенов на интерфейс TokenIssuer
 
 type Service struct {
 	logger              *zap.Logger
@@ -33,7 +31,6 @@ type Service struct {
 	userRepository      UserRepository
 	sessionRepository   SessionRepository
 	userCache           UserCache
-	sessionCache        SessionCache
 	codeVerifierStorage CodeVerifierStorage
 }
 
@@ -45,7 +42,6 @@ func New(
 	userRepository UserRepository,
 	sessionRepository SessionRepository,
 	userCache UserCache,
-	sessionCache SessionCache,
 	codeVerifierStorage CodeVerifierStorage,
 ) *Service {
 	return &Service{
@@ -56,7 +52,6 @@ func New(
 		userRepository:      userRepository,
 		sessionRepository:   sessionRepository,
 		userCache:           userCache,
-		sessionCache:        sessionCache,
 		codeVerifierStorage: codeVerifierStorage,
 	}
 }
@@ -117,10 +112,6 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 		s.logger.Error("set user to cache", zap.Error(err))
 	}
 
-	if err = s.sessionCache.Set(ctx, session, s.config.Auth.RefreshTokenTTL); err != nil {
-		s.logger.Error("set session to cache", zap.Error(err))
-	}
-
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -128,19 +119,24 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 	}, nil
 }
 
-func (s *Service) Logout(ctx context.Context, session *model.Session, allSessions bool) error {
-	if err := s.userCache.Delete(ctx, session.UserID); err != nil {
+func (s *Service) Logout(
+	ctx context.Context,
+	userID int64,
+	sessionID string,
+	allSessions bool,
+) error {
+	if err := s.userCache.Delete(ctx, userID); err != nil {
 		s.logger.Error("delete user cache", zap.Error(err))
 	}
 
 	query := &model.SessionQuery{
 		Filter: model.SessionFilter{
-			UserID: model.IDFilter{Eq: new(session.UserID)},
+			UserID: model.IDFilter{Eq: new(userID)},
 		},
 	}
 
 	if !allSessions {
-		query.Filter.ID = model.TextFilter{Eq: new(session.ID)}
+		query.Filter.ID = model.TextFilter{Eq: new(sessionID)}
 	}
 
 	sessions, err := s.sessionRepository.List(ctx, query)
@@ -151,11 +147,6 @@ func (s *Service) Logout(ctx context.Context, session *model.Session, allSession
 	}
 
 	for _, session := range sessions {
-		// todo: инвалидация кэша без N+1
-		if err = s.sessionCache.Delete(ctx, session.ID); err != nil {
-			s.logger.Error("delete session cache", zap.Error(err))
-		}
-
 		if session.AuthType == model.AuthTypeVKOAuth {
 			oauthAccessToken, err := s.encryptor.Decrypt(*session.OAuthAccessTokenEnc)
 			if err != nil {
@@ -166,8 +157,6 @@ func (s *Service) Logout(ctx context.Context, session *model.Session, allSession
 
 			if err = s.vkidClient.Logout(ctx, oauthAccessToken); err != nil {
 				s.logger.Error("vkid logout", zap.Error(err))
-
-				continue
 			}
 		}
 	}
@@ -202,10 +191,6 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	}
 
 	if session.ExpiresAt.Before(time.Now()) {
-		if err = s.sessionCache.Delete(ctx, session.ID); err != nil {
-			s.logger.Error("delete session cache", zap.Error(err))
-		}
-
 		err = s.sessionRepository.Delete(ctx, &model.SessionFilter{
 			ID:     model.TextFilter{Eq: new(session.ID)},
 			UserID: model.IDFilter{Eq: new(session.UserID)},
@@ -299,10 +284,6 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		return nil, fmt.Errorf("update session: %w", err)
 	}
 
-	if err = s.sessionCache.Set(ctx, session, refreshTokenExpiresIn); err != nil {
-		s.logger.Error("set session to cache", zap.Error(err))
-	}
-
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -313,78 +294,35 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 func (s *Service) Authorize(
 	ctx context.Context,
 	token string,
-) (*model.User, *model.Session, error) {
+) (*model.User, string, error) {
 	claims, err := s.ParseAndValidateAccessToken(token)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parse and validate auth token: %w", err)
+		return nil, "", fmt.Errorf("parse and validate auth token: %w", err)
 	}
 
-	var (
-		user    *model.User
-		session *model.Session
-	)
-
-	group, ctx := errgroup.WithContext(ctx)
-
-	group.Go(func() error {
-		user, err = s.userCache.Get(ctx, claims.UserID)
-		if err != nil {
-			if !errors.Is(err, model.ErrUserNotFound) {
-				s.logger.Error("get user from cache", zap.Error(err))
-			}
+	user, err := s.userCache.Get(ctx, claims.UserID)
+	if err != nil {
+		if !errors.Is(err, model.ErrUserNotFound) {
+			s.logger.Error("get user from cache", zap.Error(err))
 		}
-
-		if user != nil {
-			return nil
-		}
-
-		user, err = s.userRepository.Get(ctx, &model.UserFilter{
-			ID: model.IDFilter{Eq: new(claims.UserID)},
-		})
-		if err != nil {
-			if errors.Is(err, model.ErrUserNotFound) {
-				return model.ErrUserNotFound
-			}
-
-			return fmt.Errorf("get user: %w", err)
-		}
-
-		return nil
-	})
-
-	group.Go(func() error {
-		session, err = s.sessionCache.Get(ctx, claims.SessionID)
-		if err != nil {
-			if !errors.Is(err, model.ErrSessionNotFound) {
-				s.logger.Error("get session from cache", zap.Error(err))
-			}
-		}
-
-		if session != nil {
-			return nil
-		}
-
-		session, err = s.sessionRepository.Get(ctx, &model.SessionFilter{
-			ID: model.TextFilter{Eq: new(claims.SessionID)},
-		})
-		if err != nil {
-			if errors.Is(err, model.ErrSessionNotFound) {
-				return model.ErrSessionNotFound
-			}
-
-			return fmt.Errorf("get session: %w", err)
-		}
-
-		return nil
-	})
-
-	if err = group.Wait(); err != nil {
-		s.logger.Error("authorize user", zap.Error(err))
-
-		return nil, nil, fmt.Errorf("authorize user: %w", err)
 	}
 
-	return user, session, nil
+	if user != nil {
+		return user, claims.SessionID, nil
+	}
+
+	user, err = s.userRepository.Get(ctx, &model.UserFilter{
+		ID: model.IDFilter{Eq: new(claims.UserID)},
+	})
+	if err != nil {
+		if errors.Is(err, model.ErrUserNotFound) {
+			return nil, "", model.ErrUserNotFound
+		}
+
+		return nil, "", fmt.Errorf("get user: %w", err)
+	}
+
+	return user, claims.SessionID, nil
 }
 
 func (s *Service) SignAccessToken(
@@ -556,10 +494,6 @@ func (s *Service) ExchangeVKIDOAuthToken(
 
 	if err = s.userCache.Set(ctx, user, accessTokenTTL); err != nil {
 		s.logger.Error("set user to cache", zap.Error(err))
-	}
-
-	if err = s.sessionCache.Set(ctx, session, s.config.VKID.RefreshTokenTTL); err != nil {
-		s.logger.Error("set session to cache", zap.Error(err))
 	}
 
 	return &TokenPair{

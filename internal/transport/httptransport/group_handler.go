@@ -26,16 +26,33 @@ func (h *GroupHandler) ListGroups(
 	ctx context.Context,
 	r httpserver.ListGroupsRequestObject,
 ) (httpserver.ListGroupsResponseObject, error) {
-	session, ok := middleware.GetSessionFromContext(ctx)
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.ListGroups401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
-	list, err := h.groupService.List(ctx, session)
+	sessionID, ok := middleware.GetSessionIDFromContext(ctx)
+	if !ok {
+		return httpserver.ListGroups401JSONResponse{
+			UnauthorizedJSONResponse: NewUnauthorizedError(),
+		}, nil
+	}
+
+	query := &model.GroupQuery{
+		Filter: model.GroupFilter{
+			UserID: model.IDFilter{Eq: new(user.ID)},
+		},
+	}
+
+	list, err := h.groupService.List(ctx, sessionID, query)
 	if err != nil {
 		switch {
+		case errors.Is(err, model.ErrSessionNotFound):
+			return httpserver.ListGroups401JSONResponse{
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
 		default:
 			return httpserver.ListGroups500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),

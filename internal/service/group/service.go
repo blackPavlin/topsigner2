@@ -13,12 +13,13 @@ import (
 )
 
 type Service struct {
-	logger          *zap.Logger
-	config          *config.Config
-	encryptor       *crypto.Encryptor
-	groupRepository Repository
-	stateRepository StateRepository
-	vkClient        VKClient
+	logger            *zap.Logger
+	config            *config.Config
+	encryptor         *crypto.Encryptor
+	groupRepository   Repository
+	sessionRepository SessionRepository
+	stateRepository   StateRepository
+	vkClient          VKClient
 }
 
 func New(
@@ -26,21 +27,42 @@ func New(
 	config *config.Config,
 	encryptor *crypto.Encryptor,
 	groupRepository Repository,
+	sessionRepository SessionRepository,
 	stateRepository StateRepository,
 	vkClient VKClient,
 ) *Service {
 	return &Service{
-		logger:          logger.Named("group-service"),
-		config:          config,
-		encryptor:       encryptor,
-		groupRepository: groupRepository,
-		stateRepository: stateRepository,
-		vkClient:        vkClient,
+		logger:            logger.Named("group-service"),
+		config:            config,
+		encryptor:         encryptor,
+		groupRepository:   groupRepository,
+		sessionRepository: sessionRepository,
+		stateRepository:   stateRepository,
+		vkClient:          vkClient,
 	}
 }
 
 // todo: переделать метод на полноценную пагинацию
-func (s *Service) List(ctx context.Context, session *model.Session) (*model.List[*Group], error) {
+func (s *Service) List(
+	ctx context.Context,
+	sessionID string,
+	query *model.GroupQuery,
+) (*model.List[*Group], error) {
+	session, err := s.sessionRepository.Get(ctx, &model.SessionFilter{
+		ID: model.TextFilter{Eq: new(sessionID)},
+	})
+	if err != nil {
+		if errors.Is(err, model.ErrSessionNotFound) {
+			return nil, model.ErrSessionNotFound
+		}
+
+		s.logger.Error("get user session", zap.Error(err))
+
+		return nil, fmt.Errorf("get user session: %w", err)
+	}
+
+	// todo: добавить проверку, что OAuthAccessTokenEnc != nil и AuthType = VK_OAUTH
+
 	token, err := s.encryptor.Decrypt(*session.OAuthAccessTokenEnc)
 	if err != nil {
 		s.logger.Error("decode access token", zap.Error(err))

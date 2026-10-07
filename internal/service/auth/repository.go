@@ -33,12 +33,6 @@ type UserCache interface {
 	Delete(ctx context.Context, userID int64) error
 }
 
-type SessionCache interface {
-	Get(ctx context.Context, sessionID string) (*model.Session, error)
-	Set(ctx context.Context, session *model.Session, ttl time.Duration) error
-	Delete(ctx context.Context, sessionID string) error
-}
-
 type VKIDClient interface {
 	GetAuthorizationURL(codeChallenge, state string) (string, error)
 	Exchange(ctx context.Context, params *OAuthExchangeTokenParams) (*OAuthToken, error)

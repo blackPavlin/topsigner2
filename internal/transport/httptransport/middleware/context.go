@@ -12,7 +12,7 @@ type contextKey string
 
 const (
 	userContextKey      contextKey = "user"
-	sessionContextKey   contextKey = "session"
+	sessionIDContextKey contextKey = "session_id"
 	userAgentContextKey contextKey = "user-agent"
 )
 
@@ -26,14 +26,14 @@ func SetUserToContext(ctx context.Context, user *model.User) context.Context {
 	return context.WithValue(ctx, userContextKey, user)
 }
 
-func GetSessionFromContext(ctx context.Context) (*model.Session, bool) {
-	session, ok := ctx.Value(sessionContextKey).(*model.Session)
+func GetSessionIDFromContext(ctx context.Context) (string, bool) {
+	sessionID, ok := ctx.Value(sessionIDContextKey).(string)
 
-	return session, ok
+	return sessionID, ok
 }
 
-func SetSessionToContext(ctx context.Context, session *model.Session) context.Context {
-	return context.WithValue(ctx, sessionContextKey, session)
+func SetSessionIDToContext(ctx context.Context, sessionID string) context.Context {
+	return context.WithValue(ctx, sessionIDContextKey, sessionID)
 }
 
 func GetUserAgentFromContext(ctx context.Context) string {

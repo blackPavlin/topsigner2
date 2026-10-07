@@ -73,14 +73,11 @@ func New() fx.Option {
 			fx.Annotate(
 				postgres.NewSessionRepository,
 				fx.As(new(auth.SessionRepository)),
+				fx.As(new(group.SessionRepository)),
 			),
 			fx.Annotate(
 				redis.NewUserCache,
 				fx.As(new(auth.UserCache)),
-			),
-			fx.Annotate(
-				redis.NewSessionCache,
-				fx.As(new(auth.SessionCache)),
 			),
 			fx.Annotate(
 				redis.NewCodeVerifierStore,

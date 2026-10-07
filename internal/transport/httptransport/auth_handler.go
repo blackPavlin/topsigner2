@@ -78,7 +78,14 @@ func (h *AuthHandler) LogoutUser(
 	ctx context.Context,
 	r httpserver.LogoutUserRequestObject,
 ) (httpserver.LogoutUserResponseObject, error) {
-	session, ok := middleware.GetSessionFromContext(ctx)
+	sessionID, ok := middleware.GetSessionIDFromContext(ctx)
+	if !ok {
+		return httpserver.LogoutUser401JSONResponse{
+			UnauthorizedJSONResponse: NewUnauthorizedError(),
+		}, nil
+	}
+
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.LogoutUser401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
@@ -91,7 +98,7 @@ func (h *AuthHandler) LogoutUser(
 		allSessions = *r.Body.AllSessions
 	}
 
-	if err := h.authService.Logout(ctx, session, allSessions); err != nil {
+	if err := h.authService.Logout(ctx, user.ID, sessionID, allSessions); err != nil {
 		return httpserver.LogoutUser500JSONResponse{
 			InternalErrorJSONResponse: NewInternalError(),
 		}, nil

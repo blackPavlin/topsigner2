@@ -16,6 +16,10 @@ type Repository interface {
 	Delete(ctx context.Context, filter *model.GroupFilter) error
 }
 
+type SessionRepository interface {
+	Get(ctx context.Context, filter *model.SessionFilter) (*model.Session, error)
+}
+
 type VKClient interface {
 	GetGroups(ctx context.Context, token string) ([]*Group, error)
 	GenerateConnectGroupURL(groupID int64, state string) (string, error)

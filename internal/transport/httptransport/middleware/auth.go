@@ -29,7 +29,7 @@ func BearerAuth(authService *auth.Service) func(next http.Handler) http.Handler 
 
 			ctx := r.Context()
 
-			user, session, err := authService.Authorize(ctx, token)
+			user, sessionID, err := authService.Authorize(ctx, token)
 			if err != nil {
 				render.Status(r, http.StatusUnauthorized)
 				render.Respond(w, r, httpserver.UnauthorizedJSONResponse{Message: "unauthorized"})
@@ -38,7 +38,7 @@ func BearerAuth(authService *auth.Service) func(next http.Handler) http.Handler 
 			}
 
 			ctx = SetUserToContext(ctx, user)
-			ctx = SetSessionToContext(ctx, session)
+			ctx = SetSessionIDToContext(ctx, sessionID)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
