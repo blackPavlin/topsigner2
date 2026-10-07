@@ -39,6 +39,14 @@ func NewBadRequestError(err error) httpserver.BadRequestJSONResponse {
 	return httpserver.BadRequestJSONResponse{Message: message}
 }
 
+func NewNotFoundError(err error) httpserver.NotFoundJSONResponse {
+	return httpserver.NotFoundJSONResponse{Message: err.Error()}
+}
+
+func NewConflictError(err error) httpserver.ConflictJSONResponse {
+	return httpserver.ConflictJSONResponse{Message: err.Error()}
+}
+
 func errorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
 	render.Status(r, http.StatusBadRequest)
 	render.Respond(w, r, NewBadRequestError(err))

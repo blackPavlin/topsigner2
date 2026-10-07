@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/bboykiv/topsigner/internal/crypto"
+	"github.com/bboykiv/topsigner/internal/adapter/crypto"
 )
 
 const refreshTokenBytes = 32

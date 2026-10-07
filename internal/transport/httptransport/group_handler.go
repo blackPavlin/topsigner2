@@ -6,8 +6,8 @@ import (
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/model"
-	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/group"
+	"github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 )
 
 // todo: добавить проверку прав доступа (для доступа к списку групп нужен тип авторизации VK_OAUTH)
@@ -26,7 +26,7 @@ func (h *GroupHandler) ListGroups(
 	ctx context.Context,
 	r httpserver.ListGroupsRequestObject,
 ) (httpserver.ListGroupsResponseObject, error) {
-	session, ok := auth.GetSessionFromContext(ctx)
+	session, ok := middleware.GetSessionFromContext(ctx)
 	if !ok {
 		return httpserver.ListGroups401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
@@ -43,10 +43,10 @@ func (h *GroupHandler) ListGroups(
 		}
 	}
 
-	items := make([]httpserver.Group, 0, len(list))
+	groups := make([]httpserver.Group, 0, len(list.Items))
 
-	for _, item := range list {
-		items = append(items, httpserver.Group{
+	for _, item := range list.Items {
+		groups = append(groups, httpserver.Group{
 			ID:          item.ID,
 			Name:        item.Name,
 			ScreenName:  item.ScreenName,
@@ -55,7 +55,7 @@ func (h *GroupHandler) ListGroups(
 	}
 
 	return httpserver.ListGroups200JSONResponse{
-		Items: items,
+		Items: groups,
 	}, nil
 }
 
@@ -65,7 +65,7 @@ func (h *GroupHandler) GetGroupConnectionURL(
 	ctx context.Context,
 	r httpserver.GetGroupConnectionURLRequestObject,
 ) (httpserver.GetGroupConnectionURLResponseObject, error) {
-	user, ok := auth.GetUserFromContext(ctx)
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.GetGroupConnectionURL401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
@@ -97,6 +97,10 @@ func (h *GroupHandler) HandleGroupCallback(
 		case errors.Is(err, model.ErrGroupStateNotFound):
 			return httpserver.HandleGroupCallback400JSONResponse{
 				BadRequestJSONResponse: NewBadRequestError(err),
+			}, nil
+		case errors.Is(err, model.ErrGroupAlreadyExists):
+			return httpserver.HandleGroupCallback409JSONResponse{
+				ConflictJSONResponse: NewConflictError(err),
 			}, nil
 		default:
 			return httpserver.HandleGroupCallback500JSONResponse{

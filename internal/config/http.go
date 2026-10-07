@@ -2,7 +2,7 @@ package config
 
 import "time"
 
-type HttpConfig struct {
+type HTTPConfig struct {
 	Port              int           `envconfig:"PORT"                default:"8080"`
 	ReadTimeout       time.Duration `envconfig:"READ_TIMEOUT"        default:"5s"`
 	ReadHeaderTimeout time.Duration `envconfig:"READ_HEADER_TIMEOUT" default:"5s"`

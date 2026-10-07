@@ -17,11 +17,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
+	"github.com/bboykiv/topsigner/internal/adapter/crypto"
 	"github.com/bboykiv/topsigner/internal/adapter/s3"
 	"github.com/bboykiv/topsigner/internal/adapter/vk"
 	"github.com/bboykiv/topsigner/internal/adapter/vkid"
 	"github.com/bboykiv/topsigner/internal/config"
-	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/group"

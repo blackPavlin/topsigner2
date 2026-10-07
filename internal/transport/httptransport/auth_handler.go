@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-playground/validator/v10"
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/auth"
-	mw "github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
+	"github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport/validation"
 )
 
@@ -41,8 +40,8 @@ func (h *AuthHandler) LoginUser(
 	token, err := h.authService.Login(ctx, &auth.LoginInput{
 		Email:     r.Body.Email,
 		Password:  r.Body.Password,
-		IP:        middleware.GetClientIP(ctx),
-		UserAgent: mw.GetUserAgentFromContext(ctx),
+		IP:        middleware.GetClientIPFromContext(ctx),
+		UserAgent: middleware.GetUserAgentFromContext(ctx),
 	})
 	if err != nil {
 		switch {
@@ -51,6 +50,10 @@ func (h *AuthHandler) LoginUser(
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
 		case errors.Is(err, auth.ErrPasswordLoginNotAvailable):
+			return httpserver.LoginUser401JSONResponse{
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
+		case errors.Is(err, auth.ErrInvalidPassword):
 			return httpserver.LoginUser401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
@@ -75,14 +78,20 @@ func (h *AuthHandler) LogoutUser(
 	ctx context.Context,
 	r httpserver.LogoutUserRequestObject,
 ) (httpserver.LogoutUserResponseObject, error) {
-	user, ok := auth.GetUserFromContext(ctx)
+	session, ok := middleware.GetSessionFromContext(ctx)
 	if !ok {
 		return httpserver.LogoutUser401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
-	if err := h.authService.Logout(ctx, user.ID, nil); err != nil {
+	var allSessions = false
+
+	if r.Body != nil && r.Body.AllSessions != nil {
+		allSessions = *r.Body.AllSessions
+	}
+
+	if err := h.authService.Logout(ctx, session, allSessions); err != nil {
 		return httpserver.LogoutUser500JSONResponse{
 			InternalErrorJSONResponse: NewInternalError(),
 		}, nil
@@ -97,6 +106,12 @@ func (h *AuthHandler) RefreshTokens(
 	ctx context.Context,
 	r httpserver.RefreshTokensRequestObject,
 ) (httpserver.RefreshTokensResponseObject, error) {
+	if err := h.validate.Struct(r.Body); err != nil {
+		return httpserver.RefreshTokens400JSONResponse{
+			BadRequestJSONResponse: NewBadRequestError(err),
+		}, nil
+	}
+
 	token, err := h.authService.Refresh(ctx, r.Body.RefreshToken)
 	if err != nil {
 		switch {
@@ -153,8 +168,8 @@ func (h *AuthHandler) HandleVKIDCallback(
 		Code:      *r.Params.Code,
 		DeviceID:  *r.Params.DeviceID,
 		State:     *r.Params.State,
-		IP:        middleware.GetClientIP(ctx),
-		UserAgent: mw.GetUserAgentFromContext(ctx),
+		IP:        middleware.GetClientIPFromContext(ctx),
+		UserAgent: middleware.GetUserAgentFromContext(ctx),
 	})
 	if err != nil {
 		return httpserver.HandleVKIDCallback401JSONResponse{

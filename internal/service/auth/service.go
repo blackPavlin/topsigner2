@@ -10,21 +10,31 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/bboykiv/topsigner/internal/adapter/crypto"
 	"github.com/bboykiv/topsigner/internal/config"
-	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
+// todo: решить на какое время кэшировать user и session (refresh_token_ttl = слишком долго)
+// todo: добавить прогрев кэша при промахе в Authorize
+// todo: решить нужно ли кэшировать сессию или достаточно кэшировать пользователя
+// todo: решить, нужно ли ориентороваться на user-agent при обновлении сессии и необходим ли он в принципе
+// todo: придумать механизм удаления сессий с истекшим ExpiresAt
+// todo: заменить реализацию crypto.Encryptor на интерфейс TokenEncryptor
+// todo: заменить реализацию хэширования паролей на интерфейс TokenHasher
+// todo: заменить реализацию генерации токенов на интерфейс TokenGenerator
+// todo: заменить реализацию подписи токенов на интерфейс TokenIssuer 
+
 type Service struct {
-	logger                 *zap.Logger
-	config                 *config.Config
-	encryptor              *crypto.Encryptor
-	vkidClient             VKIDClient
-	userRepository         UserRepository
-	sessionRepository      SessionRepository
-	userCacheRepository    UserCacheRepository
-	sessionCacheRepository SessionCacheRepository
-	codeVerifierRepository CodeVerifierRepository
+	logger              *zap.Logger
+	config              *config.Config
+	encryptor           *crypto.Encryptor
+	vkidClient          VKIDClient
+	userRepository      UserRepository
+	sessionRepository   SessionRepository
+	userCache           UserCache
+	sessionCache        SessionCache
+	codeVerifierStorage CodeVerifierStorage
 }
 
 func New(
@@ -34,20 +44,20 @@ func New(
 	vkidClient VKIDClient,
 	userRepository UserRepository,
 	sessionRepository SessionRepository,
-	userCacheRepository UserCacheRepository,
-	sessionCacheRepository SessionCacheRepository,
-	codeVerifierRepository CodeVerifierRepository,
+	userCache UserCache,
+	sessionCache SessionCache,
+	codeVerifierStorage CodeVerifierStorage,
 ) *Service {
 	return &Service{
-		logger:                 logger.Named("auth-service"),
-		config:                 config,
-		encryptor:              encryptor,
-		vkidClient:             vkidClient,
-		userRepository:         userRepository,
-		sessionRepository:      sessionRepository,
-		userCacheRepository:    userCacheRepository,
-		sessionCacheRepository: sessionCacheRepository,
-		codeVerifierRepository: codeVerifierRepository,
+		logger:              logger.Named("auth-service"),
+		config:              config,
+		encryptor:           encryptor,
+		vkidClient:          vkidClient,
+		userRepository:      userRepository,
+		sessionRepository:   sessionRepository,
+		userCache:           userCache,
+		sessionCache:        sessionCache,
+		codeVerifierStorage: codeVerifierStorage,
 	}
 }
 
@@ -103,11 +113,11 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 		return nil, fmt.Errorf("sign access token: %w", err)
 	}
 
-	if err = s.userCacheRepository.Set(ctx, user, s.config.Auth.AccessTokenTTL); err != nil {
+	if err = s.userCache.Set(ctx, user, s.config.Auth.AccessTokenTTL); err != nil {
 		s.logger.Error("set user to cache", zap.Error(err))
 	}
 
-	if err = s.sessionCacheRepository.Set(ctx, session, s.config.Auth.RefreshTokenTTL); err != nil {
+	if err = s.sessionCache.Set(ctx, session, s.config.Auth.RefreshTokenTTL); err != nil {
 		s.logger.Error("set session to cache", zap.Error(err))
 	}
 
@@ -118,19 +128,19 @@ func (s *Service) Login(ctx context.Context, input *LoginInput) (*TokenPair, err
 	}, nil
 }
 
-func (s *Service) Logout(ctx context.Context, userID int64, sessionID *string) error {
-	if err := s.userCacheRepository.Delete(ctx, userID); err != nil {
+func (s *Service) Logout(ctx context.Context, session *model.Session, allSessions bool) error {
+	if err := s.userCache.Delete(ctx, session.UserID); err != nil {
 		s.logger.Error("delete user cache", zap.Error(err))
 	}
 
 	query := &model.SessionQuery{
 		Filter: model.SessionFilter{
-			UserID: model.IDFilter{Eq: new(userID)},
+			UserID: model.IDFilter{Eq: new(session.UserID)},
 		},
 	}
 
-	if sessionID != nil {
-		query.Filter.ID = model.TextFilter{Eq: sessionID}
+	if !allSessions {
+		query.Filter.ID = model.TextFilter{Eq: new(session.ID)}
 	}
 
 	sessions, err := s.sessionRepository.List(ctx, query)
@@ -141,7 +151,8 @@ func (s *Service) Logout(ctx context.Context, userID int64, sessionID *string) e
 	}
 
 	for _, session := range sessions {
-		if err = s.sessionCacheRepository.Delete(ctx, session.ID); err != nil {
+		// todo: инвалидация кэша без N+1
+		if err = s.sessionCache.Delete(ctx, session.ID); err != nil {
 			s.logger.Error("delete session cache", zap.Error(err))
 		}
 
@@ -150,13 +161,13 @@ func (s *Service) Logout(ctx context.Context, userID int64, sessionID *string) e
 			if err != nil {
 				s.logger.Error("decrypt oauth access token", zap.Error(err))
 
-				return fmt.Errorf("decrypt oauth access token: %w", err)
+				continue
 			}
 
 			if err = s.vkidClient.Logout(ctx, oauthAccessToken); err != nil {
 				s.logger.Error("vkid logout", zap.Error(err))
 
-				return fmt.Errorf("vkid logout: %w", err)
+				continue
 			}
 		}
 	}
@@ -191,7 +202,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	}
 
 	if session.ExpiresAt.Before(time.Now()) {
-		if err = s.sessionCacheRepository.Delete(ctx, session.ID); err != nil {
+		if err = s.sessionCache.Delete(ctx, session.ID); err != nil {
 			s.logger.Error("delete session cache", zap.Error(err))
 		}
 
@@ -240,7 +251,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		if err != nil {
 			s.logger.Error("refresh oauth token", zap.Error(err))
 
-			return nil, fmt.Errorf("refresh oauth toke: %w", err)
+			return nil, fmt.Errorf("refresh oauth token: %w", err)
 		}
 
 		accessTokenExpiresIn = time.Duration(token.ExpiresIn) * time.Second
@@ -288,6 +299,10 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 		return nil, fmt.Errorf("update session: %w", err)
 	}
 
+	if err = s.sessionCache.Set(ctx, session, refreshTokenExpiresIn); err != nil {
+		s.logger.Error("set session to cache", zap.Error(err))
+	}
+
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -312,7 +327,7 @@ func (s *Service) Authorize(
 	group, ctx := errgroup.WithContext(ctx)
 
 	group.Go(func() error {
-		user, err = s.userCacheRepository.Get(ctx, claims.UserID)
+		user, err = s.userCache.Get(ctx, claims.UserID)
 		if err != nil {
 			if !errors.Is(err, model.ErrUserNotFound) {
 				s.logger.Error("get user from cache", zap.Error(err))
@@ -338,7 +353,7 @@ func (s *Service) Authorize(
 	})
 
 	group.Go(func() error {
-		session, err = s.sessionCacheRepository.Get(ctx, claims.SessionID)
+		session, err = s.sessionCache.Get(ctx, claims.SessionID)
 		if err != nil {
 			if !errors.Is(err, model.ErrSessionNotFound) {
 				s.logger.Error("get session from cache", zap.Error(err))
@@ -429,10 +444,10 @@ func (s *Service) GenerateVKIDOAuthURL(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("generate state: %w", err)
 	}
 
-	if err = s.codeVerifierRepository.Set(ctx, state, codeVerifier, codeVerifierTTL); err != nil {
+	if err = s.codeVerifierStorage.Set(ctx, state, codeVerifier, codeVerifierTTL); err != nil {
 		s.logger.Error("set code verifier", zap.Error(err))
 
-		return "", fmt.Errorf("code verifier repository set: %w", err)
+		return "", fmt.Errorf("code verifier storage set: %w", err)
 	}
 
 	authURL, err := s.vkidClient.GetAuthorizationURL(codeChallengeS256(codeVerifier), state)
@@ -449,7 +464,7 @@ func (s *Service) ExchangeVKIDOAuthToken(
 	ctx context.Context,
 	params *OAuthExchangeTokenParams,
 ) (*TokenPair, error) {
-	codeVerifier, err := s.codeVerifierRepository.Pop(ctx, params.State)
+	codeVerifier, err := s.codeVerifierStorage.Pop(ctx, params.State)
 	if err != nil {
 		if errors.Is(err, model.ErrCodeVerifierNotFound) {
 			return nil, model.ErrCodeVerifierNotFound
@@ -539,11 +554,11 @@ func (s *Service) ExchangeVKIDOAuthToken(
 		return nil, fmt.Errorf("sign access token: %w", err)
 	}
 
-	if err = s.userCacheRepository.Set(ctx, user, accessTokenTTL); err != nil {
+	if err = s.userCache.Set(ctx, user, accessTokenTTL); err != nil {
 		s.logger.Error("set user to cache", zap.Error(err))
 	}
 
-	if err = s.sessionCacheRepository.Set(ctx, session, s.config.VKID.RefreshTokenTTL); err != nil {
+	if err = s.sessionCache.Set(ctx, session, s.config.VKID.RefreshTokenTTL); err != nil {
 		s.logger.Error("set session to cache", zap.Error(err))
 	}
 

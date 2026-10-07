@@ -5,8 +5,8 @@ import (
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/model"
-	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
+	"github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 )
 
 type FontHandler struct {
@@ -23,7 +23,7 @@ func (h *FontHandler) ListFonts(
 	ctx context.Context,
 	r httpserver.ListFontsRequestObject,
 ) (httpserver.ListFontsResponseObject, error) {
-	if _, ok := auth.GetUserFromContext(ctx); !ok {
+	if _, ok := middleware.GetUserFromContext(ctx); !ok {
 		return httpserver.ListFonts401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil

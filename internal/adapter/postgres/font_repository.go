@@ -42,7 +42,7 @@ func (r *FontRepository) List(
 
 	rows, err := r.pool.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, fmt.Errorf("query images: %w", err)
+		return nil, fmt.Errorf("query fonts: %w", err)
 	}
 	defer rows.Close()
 

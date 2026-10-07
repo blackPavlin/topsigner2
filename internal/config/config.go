@@ -11,7 +11,7 @@ type Config struct {
 	User     UserConfig     `envconfig:"USER"`
 	VKID     VKIDConfig     `envconfig:"VKID"`
 	VK       VKConfig       `envconfig:"VK"`
-	Http     HttpConfig     `envconfig:"HTTP"`
+	HTTP     HTTPConfig     `envconfig:"HTTP"`
 	Cors     CorsConfig     `envconfig:"CORS"`
 	S3       S3Config       `envconfig:"S3"`
 	Redis    RedisConfig    `envconfig:"REDIS"`

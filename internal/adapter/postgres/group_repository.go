@@ -158,7 +158,7 @@ func (r *GroupRepository) Create(ctx context.Context, group *model.Group) (*mode
 		return nil, fmt.Errorf("create group: %w", err)
 	}
 
-	return nil, nil
+	return group, nil
 }
 
 func (r *GroupRepository) Delete(ctx context.Context, filter *model.GroupFilter) error {

@@ -12,21 +12,21 @@ import (
 	"github.com/bboykiv/topsigner/internal/config"
 )
 
-func NewHttpServer(
+func NewHTTPServer(
 	lc fx.Lifecycle,
 	logger *zap.Logger,
 	config *config.Config,
 	handler http.Handler,
 ) *http.Server {
-	addr := fmt.Sprintf(":%d", config.Http.Port)
+	addr := fmt.Sprintf(":%d", config.HTTP.Port)
 
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           handler,
-		ReadTimeout:       config.Http.ReadTimeout,
-		ReadHeaderTimeout: config.Http.ReadHeaderTimeout,
-		WriteTimeout:      config.Http.WriteTimeout,
-		IdleTimeout:       config.Http.IdleTimeout,
+		ReadTimeout:       config.HTTP.ReadTimeout,
+		ReadHeaderTimeout: config.HTTP.ReadHeaderTimeout,
+		WriteTimeout:      config.HTTP.WriteTimeout,
+		IdleTimeout:       config.HTTP.IdleTimeout,
 	}
 
 	lc.Append(fx.Hook{

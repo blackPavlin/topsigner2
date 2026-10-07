@@ -175,6 +175,9 @@ type Limit = int
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
+// Conflict defines model for Conflict.
+type Conflict = Error
+
 // InternalError defines model for InternalError.
 type InternalError = Error
 
@@ -2155,6 +2158,8 @@ type HandleGroupCallbackResponse struct {
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
 	JSON401 *Unauthorized
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *TooManyRequests
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -2176,6 +2181,11 @@ func (r HandleGroupCallbackResponse) GetJSON400() *BadRequest {
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r HandleGroupCallbackResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r HandleGroupCallbackResponse) GetJSON409() *Conflict {
+	return r.JSON409
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -3316,6 +3326,13 @@ func ParseHandleGroupCallbackResponse(rsp *http.Response) (*HandleGroupCallbackR
 		}
 		response.JSON401 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest TooManyRequests
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -4438,6 +4455,8 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 type BadRequestJSONResponse Error
 
+type ConflictJSONResponse Error
+
 type InternalErrorJSONResponse Error
 
 type NotFoundJSONResponse Error
@@ -5035,6 +5054,20 @@ func (response HandleGroupCallback401JSONResponse) VisitHandleGroupCallbackRespo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HandleGroupCallback409JSONResponse struct{ ConflictJSONResponse }
+
+func (response HandleGroupCallback409JSONResponse) VisitHandleGroupCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }

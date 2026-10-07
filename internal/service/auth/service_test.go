@@ -8,8 +8,8 @@ import (
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 
+	"github.com/bboykiv/topsigner/internal/adapter/crypto"
 	"github.com/bboykiv/topsigner/internal/config"
-	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/auth/mock"
@@ -17,13 +17,13 @@ import (
 
 func TestService_Login_Success(t *testing.T) {
 	var (
-		ctrl                   = gomock.NewController(t)
-		userRepository         = mock.NewMockUserRepository(ctrl)
-		sessionRepository      = mock.NewMockSessionRepository(ctrl)
-		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
-		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
-		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
-		vkidClient             = mock.NewMockVKIDClient(ctrl)
+		ctrl                = gomock.NewController(t)
+		userRepository      = mock.NewMockUserRepository(ctrl)
+		sessionRepository   = mock.NewMockSessionRepository(ctrl)
+		codeVerifierStorage = mock.NewMockCodeVerifierStorage(ctrl)
+		userCache           = mock.NewMockUserCache(ctrl)
+		sessionCache        = mock.NewMockSessionCache(ctrl)
+		vkidClient          = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
@@ -59,11 +59,11 @@ func TestService_Login_Success(t *testing.T) {
 		Create(t.Context(), gomock.Any()).
 		Return(session, nil)
 
-	userCacheRepository.EXPECT().
+	userCache.EXPECT().
 		Set(t.Context(), gomock.Any(), gomock.Any()).
 		Return(nil)
 
-	sessionCacheRepository.EXPECT().
+	sessionCache.EXPECT().
 		Set(t.Context(), gomock.Any(), gomock.Any()).
 		Return(nil)
 
@@ -77,9 +77,9 @@ func TestService_Login_Success(t *testing.T) {
 		vkidClient,
 		userRepository,
 		sessionRepository,
-		userCacheRepository,
-		sessionCacheRepository,
-		codeVerifierRepository,
+		userCache,
+		sessionCache,
+		codeVerifierStorage,
 	)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
@@ -97,13 +97,13 @@ func TestService_Login_Success(t *testing.T) {
 
 func TestService_Login_UserNotFound(t *testing.T) {
 	var (
-		ctrl                   = gomock.NewController(t)
-		userRepository         = mock.NewMockUserRepository(ctrl)
-		sessionRepository      = mock.NewMockSessionRepository(ctrl)
-		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
-		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
-		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
-		vkidClient             = mock.NewMockVKIDClient(ctrl)
+		ctrl                = gomock.NewController(t)
+		userRepository      = mock.NewMockUserRepository(ctrl)
+		sessionRepository   = mock.NewMockSessionRepository(ctrl)
+		codeVerifierStorage = mock.NewMockCodeVerifierStorage(ctrl)
+		userCache           = mock.NewMockUserCache(ctrl)
+		sessionCache        = mock.NewMockSessionCache(ctrl)
+		vkidClient          = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
@@ -129,9 +129,9 @@ func TestService_Login_UserNotFound(t *testing.T) {
 		vkidClient,
 		userRepository,
 		sessionRepository,
-		userCacheRepository,
-		sessionCacheRepository,
-		codeVerifierRepository,
+		userCache,
+		sessionCache,
+		codeVerifierStorage,
 	)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
@@ -144,13 +144,13 @@ func TestService_Login_UserNotFound(t *testing.T) {
 
 func TestService_Login_InvalidPassword(t *testing.T) {
 	var (
-		ctrl                   = gomock.NewController(t)
-		userRepository         = mock.NewMockUserRepository(ctrl)
-		sessionRepository      = mock.NewMockSessionRepository(ctrl)
-		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
-		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
-		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
-		vkidClient             = mock.NewMockVKIDClient(ctrl)
+		ctrl                = gomock.NewController(t)
+		userRepository      = mock.NewMockUserRepository(ctrl)
+		sessionRepository   = mock.NewMockSessionRepository(ctrl)
+		codeVerifierStorage = mock.NewMockCodeVerifierStorage(ctrl)
+		userCache           = mock.NewMockUserCache(ctrl)
+		sessionCache        = mock.NewMockSessionCache(ctrl)
+		vkidClient          = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
@@ -182,9 +182,9 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 		vkidClient,
 		userRepository,
 		sessionRepository,
-		userCacheRepository,
-		sessionCacheRepository,
-		codeVerifierRepository,
+		userCache,
+		sessionCache,
+		codeVerifierStorage,
 	)
 
 	tokens, err := service.Login(t.Context(), &auth.LoginInput{
@@ -197,13 +197,13 @@ func TestService_Login_InvalidPassword(t *testing.T) {
 
 func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 	var (
-		ctrl                   = gomock.NewController(t)
-		userRepository         = mock.NewMockUserRepository(ctrl)
-		sessionRepository      = mock.NewMockSessionRepository(ctrl)
-		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
-		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
-		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
-		vkidClient             = mock.NewMockVKIDClient(ctrl)
+		ctrl                = gomock.NewController(t)
+		userRepository      = mock.NewMockUserRepository(ctrl)
+		sessionRepository   = mock.NewMockSessionRepository(ctrl)
+		codeVerifierStorage = mock.NewMockCodeVerifierStorage(ctrl)
+		userCache           = mock.NewMockUserCache(ctrl)
+		sessionCache        = mock.NewMockSessionCache(ctrl)
+		vkidClient          = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
@@ -225,7 +225,7 @@ func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 		AuthType: model.AuthTypePassword,
 	}
 
-	userCacheRepository.EXPECT().
+	userCache.EXPECT().
 		Get(gomock.Any(), user.ID).
 		Return(nil, model.ErrUserNotFound)
 
@@ -233,7 +233,7 @@ func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 		Get(gomock.Any(), gomock.Any()).
 		Return(user, nil)
 
-	sessionCacheRepository.EXPECT().
+	sessionCache.EXPECT().
 		Get(gomock.Any(), session.ID).
 		Return(nil, model.ErrSessionNotFound)
 
@@ -251,9 +251,9 @@ func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 		vkidClient,
 		userRepository,
 		sessionRepository,
-		userCacheRepository,
-		sessionCacheRepository,
-		codeVerifierRepository,
+		userCache,
+		sessionCache,
+		codeVerifierStorage,
 	)
 
 	token, err := service.SignAccessToken(user.ID, session.ID, config.Auth.AccessTokenTTL)
@@ -269,13 +269,13 @@ func TestService_Authorize_Success_EmptyCache(t *testing.T) {
 
 func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
 	var (
-		ctrl                   = gomock.NewController(t)
-		userRepository         = mock.NewMockUserRepository(ctrl)
-		sessionRepository      = mock.NewMockSessionRepository(ctrl)
-		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
-		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
-		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
-		vkidClient             = mock.NewMockVKIDClient(ctrl)
+		ctrl                = gomock.NewController(t)
+		userRepository      = mock.NewMockUserRepository(ctrl)
+		sessionRepository   = mock.NewMockSessionRepository(ctrl)
+		codeVerifierStorage = mock.NewMockCodeVerifierStorage(ctrl)
+		userCache           = mock.NewMockUserCache(ctrl)
+		sessionCache        = mock.NewMockSessionCache(ctrl)
+		vkidClient          = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
@@ -297,11 +297,11 @@ func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
 		AuthType: model.AuthTypePassword,
 	}
 
-	userCacheRepository.EXPECT().
+	userCache.EXPECT().
 		Get(gomock.Any(), user.ID).
 		Return(user, nil)
 
-	sessionCacheRepository.EXPECT().
+	sessionCache.EXPECT().
 		Get(gomock.Any(), session.ID).
 		Return(session, nil)
 
@@ -315,9 +315,9 @@ func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
 		vkidClient,
 		userRepository,
 		sessionRepository,
-		userCacheRepository,
-		sessionCacheRepository,
-		codeVerifierRepository,
+		userCache,
+		sessionCache,
+		codeVerifierStorage,
 	)
 
 	token, err := service.SignAccessToken(user.ID, session.ID, config.Auth.AccessTokenTTL)
@@ -333,13 +333,13 @@ func TestService_Authorize_Success_NotEmptyCache(t *testing.T) {
 
 func TestService_Authorize_InvatidToken(t *testing.T) {
 	var (
-		ctrl                   = gomock.NewController(t)
-		userRepository         = mock.NewMockUserRepository(ctrl)
-		sessionRepository      = mock.NewMockSessionRepository(ctrl)
-		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
-		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
-		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
-		vkidClient             = mock.NewMockVKIDClient(ctrl)
+		ctrl                = gomock.NewController(t)
+		userRepository      = mock.NewMockUserRepository(ctrl)
+		sessionRepository   = mock.NewMockSessionRepository(ctrl)
+		codeVerifierStorage = mock.NewMockCodeVerifierStorage(ctrl)
+		userCache           = mock.NewMockUserCache(ctrl)
+		sessionCache        = mock.NewMockSessionCache(ctrl)
+		vkidClient          = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
@@ -361,9 +361,9 @@ func TestService_Authorize_InvatidToken(t *testing.T) {
 		vkidClient,
 		userRepository,
 		sessionRepository,
-		userCacheRepository,
-		sessionCacheRepository,
-		codeVerifierRepository,
+		userCache,
+		sessionCache,
+		codeVerifierStorage,
 	)
 
 	user, session, err := service.Authorize(t.Context(), "invalid token")
@@ -374,13 +374,13 @@ func TestService_Authorize_InvatidToken(t *testing.T) {
 
 func TestService_Authorize_UserNotFound(t *testing.T) {
 	var (
-		ctrl                   = gomock.NewController(t)
-		userRepository         = mock.NewMockUserRepository(ctrl)
-		sessionRepository      = mock.NewMockSessionRepository(ctrl)
-		codeVerifierRepository = mock.NewMockCodeVerifierRepository(ctrl)
-		userCacheRepository    = mock.NewMockUserCacheRepository(ctrl)
-		sessionCacheRepository = mock.NewMockSessionCacheRepository(ctrl)
-		vkidClient             = mock.NewMockVKIDClient(ctrl)
+		ctrl                = gomock.NewController(t)
+		userRepository      = mock.NewMockUserRepository(ctrl)
+		sessionRepository   = mock.NewMockSessionRepository(ctrl)
+		codeVerifierStorage = mock.NewMockCodeVerifierStorage(ctrl)
+		userCache           = mock.NewMockUserCache(ctrl)
+		sessionCache        = mock.NewMockSessionCache(ctrl)
+		vkidClient          = mock.NewMockVKIDClient(ctrl)
 	)
 
 	config := &config.Config{
@@ -397,7 +397,7 @@ func TestService_Authorize_UserNotFound(t *testing.T) {
 		sessionID       = "session-id"
 	)
 
-	userCacheRepository.EXPECT().
+	userCache.EXPECT().
 		Get(gomock.Any(), userID).
 		Return(nil, model.ErrUserNotFound)
 
@@ -405,7 +405,7 @@ func TestService_Authorize_UserNotFound(t *testing.T) {
 		Get(gomock.Any(), gomock.Any()).
 		Return(nil, model.ErrUserNotFound)
 
-	sessionCacheRepository.EXPECT().
+	sessionCache.EXPECT().
 		Get(gomock.Any(), sessionID).
 		Return(&model.Session{}, nil)
 
@@ -419,9 +419,9 @@ func TestService_Authorize_UserNotFound(t *testing.T) {
 		vkidClient,
 		userRepository,
 		sessionRepository,
-		userCacheRepository,
-		sessionCacheRepository,
-		codeVerifierRepository,
+		userCache,
+		sessionCache,
+		codeVerifierStorage,
 	)
 
 	token, err := service.SignAccessToken(userID, sessionID, config.Auth.AccessTokenTTL)

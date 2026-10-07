@@ -8,13 +8,13 @@ import (
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
 
+	"github.com/bboykiv/topsigner/internal/adapter/crypto"
 	"github.com/bboykiv/topsigner/internal/adapter/postgres"
 	"github.com/bboykiv/topsigner/internal/adapter/redis"
 	"github.com/bboykiv/topsigner/internal/adapter/s3"
 	"github.com/bboykiv/topsigner/internal/adapter/vk"
 	"github.com/bboykiv/topsigner/internal/adapter/vkid"
 	"github.com/bboykiv/topsigner/internal/config"
-	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/font"
 	"github.com/bboykiv/topsigner/internal/service/group"
@@ -76,21 +76,21 @@ func New() fx.Option {
 			),
 			fx.Annotate(
 				redis.NewUserCache,
-				fx.As(new(auth.UserCacheRepository)),
+				fx.As(new(auth.UserCache)),
 			),
 			fx.Annotate(
 				redis.NewSessionCache,
-				fx.As(new(auth.SessionCacheRepository)),
+				fx.As(new(auth.SessionCache)),
 			),
 			fx.Annotate(
 				redis.NewCodeVerifierStore,
-				fx.As(new(auth.CodeVerifierRepository)),
+				fx.As(new(auth.CodeVerifierStorage)),
 			),
 			fx.Annotate(
 				redis.NewGroupStateStore,
 				fx.As(new(group.StateRepository)),
 			),
-			NewHttpServer,
+			NewHTTPServer,
 			httptransport.NewHandler,
 		),
 		fx.Invoke(func(userService *user.Service) error {

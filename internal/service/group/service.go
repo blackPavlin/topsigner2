@@ -7,8 +7,8 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/bboykiv/topsigner/internal/adapter/crypto"
 	"github.com/bboykiv/topsigner/internal/config"
-	"github.com/bboykiv/topsigner/internal/crypto"
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
@@ -39,8 +39,8 @@ func New(
 	}
 }
 
-// todo: переделать возвращаемое значение на pagination.Result
-func (s *Service) List(ctx context.Context, session *model.Session) ([]*Group, error) {
+// todo: переделать метод на полноценную пагинацию
+func (s *Service) List(ctx context.Context, session *model.Session) (*model.List[*Group], error) {
 	token, err := s.encryptor.Decrypt(*session.OAuthAccessTokenEnc)
 	if err != nil {
 		s.logger.Error("decode access token", zap.Error(err))
@@ -58,6 +58,9 @@ func (s *Service) List(ctx context.Context, session *model.Session) ([]*Group, e
 	connectedGroups, err := s.groupRepository.List(ctx, &model.GroupQuery{
 		Filter: model.GroupFilter{
 			UserID: model.IDFilter{Eq: new(session.UserID)},
+		},
+		Pagination: model.Pagination{
+			Limit: model.DefaultPaginationLimit,
 		},
 	})
 	if err != nil {
@@ -78,7 +81,11 @@ func (s *Service) List(ctx context.Context, session *model.Session) ([]*Group, e
 		}
 	}
 
-	return groups, nil
+	result := &model.List[*Group]{
+		Items: groups,
+	}
+
+	return result, nil
 }
 
 func (s *Service) Connect(ctx context.Context, code, state string) (*model.Group, error) {

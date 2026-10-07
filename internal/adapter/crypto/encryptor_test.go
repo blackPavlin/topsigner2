@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bboykiv/topsigner/internal/crypto"
+	"github.com/bboykiv/topsigner/internal/adapter/crypto"
 )
 
 func generateBase64Key(t *testing.T, keyLen int) string {

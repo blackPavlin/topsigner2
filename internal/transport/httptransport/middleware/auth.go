@@ -37,8 +37,8 @@ func BearerAuth(authService *auth.Service) func(next http.Handler) http.Handler 
 				return
 			}
 
-			ctx = auth.SetUserToContext(ctx, user)
-			ctx = auth.SetSessionToContext(ctx, session)
+			ctx = SetUserToContext(ctx, user)
+			ctx = SetSessionToContext(ctx, session)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

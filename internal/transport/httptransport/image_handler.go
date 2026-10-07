@@ -6,8 +6,8 @@ import (
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/model"
-	"github.com/bboykiv/topsigner/internal/service/auth"
 	"github.com/bboykiv/topsigner/internal/service/image"
+	"github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 )
 
 type ImageHandler struct {
@@ -24,7 +24,7 @@ func (h *ImageHandler) ListImages(
 	ctx context.Context,
 	r httpserver.ListImagesRequestObject,
 ) (httpserver.ListImagesResponseObject, error) {
-	user, ok := auth.GetUserFromContext(ctx)
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.ListImages401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
@@ -87,7 +87,7 @@ func (h *ImageHandler) UploadImage(
 	ctx context.Context,
 	r httpserver.UploadImageRequestObject,
 ) (httpserver.UploadImageResponseObject, error) {
-	user, ok := auth.GetUserFromContext(ctx)
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.UploadImage401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
@@ -143,17 +143,24 @@ func (h *ImageHandler) DeleteImage(
 	ctx context.Context,
 	r httpserver.DeleteImageRequestObject,
 ) (httpserver.DeleteImageResponseObject, error) {
-	user, ok := auth.GetUserFromContext(ctx)
+	user, ok := middleware.GetUserFromContext(ctx)
 	if !ok {
 		return httpserver.DeleteImage401JSONResponse{
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
 
-	if err := h.imageService.Delete(ctx, user.ID, r.ImageID); err != nil {
-		return httpserver.DeleteImage500JSONResponse{
-			InternalErrorJSONResponse: NewInternalError(),
-		}, nil
+	if err := h.imageService.Delete(ctx, r.ImageID, user.ID); err != nil {
+		switch {
+		case errors.Is(err, model.ErrImageNotFound):
+			return httpserver.DeleteImage404JSONResponse{
+				NotFoundJSONResponse: NewNotFoundError(err),
+			}, nil
+		default:
+			return httpserver.DeleteImage500JSONResponse{
+				InternalErrorJSONResponse: NewInternalError(),
+			}, nil
+		}
 	}
 
 	return httpserver.DeleteImage204Response{}, nil

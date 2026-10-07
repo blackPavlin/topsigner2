@@ -22,18 +22,18 @@ type SessionRepository interface {
 	Delete(ctx context.Context, filter *model.SessionFilter) error
 }
 
-type CodeVerifierRepository interface {
+type CodeVerifierStorage interface {
 	Set(ctx context.Context, state, verifier string, ttl time.Duration) error
 	Pop(ctx context.Context, state string) (string, error)
 }
 
-type UserCacheRepository interface {
+type UserCache interface {
 	Get(ctx context.Context, userID int64) (*model.User, error)
 	Set(ctx context.Context, user *model.User, ttl time.Duration) error
 	Delete(ctx context.Context, userID int64) error
 }
 
-type SessionCacheRepository interface {
+type SessionCache interface {
 	Get(ctx context.Context, sessionID string) (*model.Session, error)
 	Set(ctx context.Context, session *model.Session, ttl time.Duration) error
 	Delete(ctx context.Context, sessionID string) error

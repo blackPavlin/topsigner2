@@ -339,32 +339,32 @@ func (c *MockSessionRepositoryUpdateCall) DoAndReturn(f func(context.Context, *m
 	return c
 }
 
-// MockCodeVerifierRepository is a mock of CodeVerifierRepository interface.
-type MockCodeVerifierRepository struct {
+// MockCodeVerifierStorage is a mock of CodeVerifierStorage interface.
+type MockCodeVerifierStorage struct {
 	ctrl     *gomock.Controller
-	recorder *MockCodeVerifierRepositoryMockRecorder
+	recorder *MockCodeVerifierStorageMockRecorder
 	isgomock struct{}
 }
 
-// MockCodeVerifierRepositoryMockRecorder is the mock recorder for MockCodeVerifierRepository.
-type MockCodeVerifierRepositoryMockRecorder struct {
-	mock *MockCodeVerifierRepository
+// MockCodeVerifierStorageMockRecorder is the mock recorder for MockCodeVerifierStorage.
+type MockCodeVerifierStorageMockRecorder struct {
+	mock *MockCodeVerifierStorage
 }
 
-// NewMockCodeVerifierRepository creates a new mock instance.
-func NewMockCodeVerifierRepository(ctrl *gomock.Controller) *MockCodeVerifierRepository {
-	mock := &MockCodeVerifierRepository{ctrl: ctrl}
-	mock.recorder = &MockCodeVerifierRepositoryMockRecorder{mock}
+// NewMockCodeVerifierStorage creates a new mock instance.
+func NewMockCodeVerifierStorage(ctrl *gomock.Controller) *MockCodeVerifierStorage {
+	mock := &MockCodeVerifierStorage{ctrl: ctrl}
+	mock.recorder = &MockCodeVerifierStorageMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockCodeVerifierRepository) EXPECT() *MockCodeVerifierRepositoryMockRecorder {
+func (m *MockCodeVerifierStorage) EXPECT() *MockCodeVerifierStorageMockRecorder {
 	return m.recorder
 }
 
 // Pop mocks base method.
-func (m *MockCodeVerifierRepository) Pop(ctx context.Context, state string) (string, error) {
+func (m *MockCodeVerifierStorage) Pop(ctx context.Context, state string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Pop", ctx, state)
 	ret0, _ := ret[0].(string)
@@ -373,37 +373,37 @@ func (m *MockCodeVerifierRepository) Pop(ctx context.Context, state string) (str
 }
 
 // Pop indicates an expected call of Pop.
-func (mr *MockCodeVerifierRepositoryMockRecorder) Pop(ctx, state any) *MockCodeVerifierRepositoryPopCall {
+func (mr *MockCodeVerifierStorageMockRecorder) Pop(ctx, state any) *MockCodeVerifierStoragePopCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pop", reflect.TypeOf((*MockCodeVerifierRepository)(nil).Pop), ctx, state)
-	return &MockCodeVerifierRepositoryPopCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pop", reflect.TypeOf((*MockCodeVerifierStorage)(nil).Pop), ctx, state)
+	return &MockCodeVerifierStoragePopCall{Call: call}
 }
 
-// MockCodeVerifierRepositoryPopCall wrap *gomock.Call
-type MockCodeVerifierRepositoryPopCall struct {
+// MockCodeVerifierStoragePopCall wrap *gomock.Call
+type MockCodeVerifierStoragePopCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCodeVerifierRepositoryPopCall) Return(arg0 string, arg1 error) *MockCodeVerifierRepositoryPopCall {
+func (c *MockCodeVerifierStoragePopCall) Return(arg0 string, arg1 error) *MockCodeVerifierStoragePopCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCodeVerifierRepositoryPopCall) Do(f func(context.Context, string) (string, error)) *MockCodeVerifierRepositoryPopCall {
+func (c *MockCodeVerifierStoragePopCall) Do(f func(context.Context, string) (string, error)) *MockCodeVerifierStoragePopCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCodeVerifierRepositoryPopCall) DoAndReturn(f func(context.Context, string) (string, error)) *MockCodeVerifierRepositoryPopCall {
+func (c *MockCodeVerifierStoragePopCall) DoAndReturn(f func(context.Context, string) (string, error)) *MockCodeVerifierStoragePopCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Set mocks base method.
-func (m *MockCodeVerifierRepository) Set(ctx context.Context, state, verifier string, ttl time.Duration) error {
+func (m *MockCodeVerifierStorage) Set(ctx context.Context, state, verifier string, ttl time.Duration) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", ctx, state, verifier, ttl)
 	ret0, _ := ret[0].(error)
@@ -411,61 +411,61 @@ func (m *MockCodeVerifierRepository) Set(ctx context.Context, state, verifier st
 }
 
 // Set indicates an expected call of Set.
-func (mr *MockCodeVerifierRepositoryMockRecorder) Set(ctx, state, verifier, ttl any) *MockCodeVerifierRepositorySetCall {
+func (mr *MockCodeVerifierStorageMockRecorder) Set(ctx, state, verifier, ttl any) *MockCodeVerifierStorageSetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockCodeVerifierRepository)(nil).Set), ctx, state, verifier, ttl)
-	return &MockCodeVerifierRepositorySetCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockCodeVerifierStorage)(nil).Set), ctx, state, verifier, ttl)
+	return &MockCodeVerifierStorageSetCall{Call: call}
 }
 
-// MockCodeVerifierRepositorySetCall wrap *gomock.Call
-type MockCodeVerifierRepositorySetCall struct {
+// MockCodeVerifierStorageSetCall wrap *gomock.Call
+type MockCodeVerifierStorageSetCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCodeVerifierRepositorySetCall) Return(arg0 error) *MockCodeVerifierRepositorySetCall {
+func (c *MockCodeVerifierStorageSetCall) Return(arg0 error) *MockCodeVerifierStorageSetCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCodeVerifierRepositorySetCall) Do(f func(context.Context, string, string, time.Duration) error) *MockCodeVerifierRepositorySetCall {
+func (c *MockCodeVerifierStorageSetCall) Do(f func(context.Context, string, string, time.Duration) error) *MockCodeVerifierStorageSetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCodeVerifierRepositorySetCall) DoAndReturn(f func(context.Context, string, string, time.Duration) error) *MockCodeVerifierRepositorySetCall {
+func (c *MockCodeVerifierStorageSetCall) DoAndReturn(f func(context.Context, string, string, time.Duration) error) *MockCodeVerifierStorageSetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
-// MockUserCacheRepository is a mock of UserCacheRepository interface.
-type MockUserCacheRepository struct {
+// MockUserCache is a mock of UserCache interface.
+type MockUserCache struct {
 	ctrl     *gomock.Controller
-	recorder *MockUserCacheRepositoryMockRecorder
+	recorder *MockUserCacheMockRecorder
 	isgomock struct{}
 }
 
-// MockUserCacheRepositoryMockRecorder is the mock recorder for MockUserCacheRepository.
-type MockUserCacheRepositoryMockRecorder struct {
-	mock *MockUserCacheRepository
+// MockUserCacheMockRecorder is the mock recorder for MockUserCache.
+type MockUserCacheMockRecorder struct {
+	mock *MockUserCache
 }
 
-// NewMockUserCacheRepository creates a new mock instance.
-func NewMockUserCacheRepository(ctrl *gomock.Controller) *MockUserCacheRepository {
-	mock := &MockUserCacheRepository{ctrl: ctrl}
-	mock.recorder = &MockUserCacheRepositoryMockRecorder{mock}
+// NewMockUserCache creates a new mock instance.
+func NewMockUserCache(ctrl *gomock.Controller) *MockUserCache {
+	mock := &MockUserCache{ctrl: ctrl}
+	mock.recorder = &MockUserCacheMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockUserCacheRepository) EXPECT() *MockUserCacheRepositoryMockRecorder {
+func (m *MockUserCache) EXPECT() *MockUserCacheMockRecorder {
 	return m.recorder
 }
 
 // Delete mocks base method.
-func (m *MockUserCacheRepository) Delete(ctx context.Context, userID int64) error {
+func (m *MockUserCache) Delete(ctx context.Context, userID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", ctx, userID)
 	ret0, _ := ret[0].(error)
@@ -473,37 +473,37 @@ func (m *MockUserCacheRepository) Delete(ctx context.Context, userID int64) erro
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockUserCacheRepositoryMockRecorder) Delete(ctx, userID any) *MockUserCacheRepositoryDeleteCall {
+func (mr *MockUserCacheMockRecorder) Delete(ctx, userID any) *MockUserCacheDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUserCacheRepository)(nil).Delete), ctx, userID)
-	return &MockUserCacheRepositoryDeleteCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUserCache)(nil).Delete), ctx, userID)
+	return &MockUserCacheDeleteCall{Call: call}
 }
 
-// MockUserCacheRepositoryDeleteCall wrap *gomock.Call
-type MockUserCacheRepositoryDeleteCall struct {
+// MockUserCacheDeleteCall wrap *gomock.Call
+type MockUserCacheDeleteCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockUserCacheRepositoryDeleteCall) Return(arg0 error) *MockUserCacheRepositoryDeleteCall {
+func (c *MockUserCacheDeleteCall) Return(arg0 error) *MockUserCacheDeleteCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserCacheRepositoryDeleteCall) Do(f func(context.Context, int64) error) *MockUserCacheRepositoryDeleteCall {
+func (c *MockUserCacheDeleteCall) Do(f func(context.Context, int64) error) *MockUserCacheDeleteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserCacheRepositoryDeleteCall) DoAndReturn(f func(context.Context, int64) error) *MockUserCacheRepositoryDeleteCall {
+func (c *MockUserCacheDeleteCall) DoAndReturn(f func(context.Context, int64) error) *MockUserCacheDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Get mocks base method.
-func (m *MockUserCacheRepository) Get(ctx context.Context, userID int64) (*model.User, error) {
+func (m *MockUserCache) Get(ctx context.Context, userID int64) (*model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", ctx, userID)
 	ret0, _ := ret[0].(*model.User)
@@ -512,37 +512,37 @@ func (m *MockUserCacheRepository) Get(ctx context.Context, userID int64) (*model
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockUserCacheRepositoryMockRecorder) Get(ctx, userID any) *MockUserCacheRepositoryGetCall {
+func (mr *MockUserCacheMockRecorder) Get(ctx, userID any) *MockUserCacheGetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockUserCacheRepository)(nil).Get), ctx, userID)
-	return &MockUserCacheRepositoryGetCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockUserCache)(nil).Get), ctx, userID)
+	return &MockUserCacheGetCall{Call: call}
 }
 
-// MockUserCacheRepositoryGetCall wrap *gomock.Call
-type MockUserCacheRepositoryGetCall struct {
+// MockUserCacheGetCall wrap *gomock.Call
+type MockUserCacheGetCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockUserCacheRepositoryGetCall) Return(arg0 *model.User, arg1 error) *MockUserCacheRepositoryGetCall {
+func (c *MockUserCacheGetCall) Return(arg0 *model.User, arg1 error) *MockUserCacheGetCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserCacheRepositoryGetCall) Do(f func(context.Context, int64) (*model.User, error)) *MockUserCacheRepositoryGetCall {
+func (c *MockUserCacheGetCall) Do(f func(context.Context, int64) (*model.User, error)) *MockUserCacheGetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserCacheRepositoryGetCall) DoAndReturn(f func(context.Context, int64) (*model.User, error)) *MockUserCacheRepositoryGetCall {
+func (c *MockUserCacheGetCall) DoAndReturn(f func(context.Context, int64) (*model.User, error)) *MockUserCacheGetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Set mocks base method.
-func (m *MockUserCacheRepository) Set(ctx context.Context, user *model.User, ttl time.Duration) error {
+func (m *MockUserCache) Set(ctx context.Context, user *model.User, ttl time.Duration) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", ctx, user, ttl)
 	ret0, _ := ret[0].(error)
@@ -550,61 +550,61 @@ func (m *MockUserCacheRepository) Set(ctx context.Context, user *model.User, ttl
 }
 
 // Set indicates an expected call of Set.
-func (mr *MockUserCacheRepositoryMockRecorder) Set(ctx, user, ttl any) *MockUserCacheRepositorySetCall {
+func (mr *MockUserCacheMockRecorder) Set(ctx, user, ttl any) *MockUserCacheSetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockUserCacheRepository)(nil).Set), ctx, user, ttl)
-	return &MockUserCacheRepositorySetCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockUserCache)(nil).Set), ctx, user, ttl)
+	return &MockUserCacheSetCall{Call: call}
 }
 
-// MockUserCacheRepositorySetCall wrap *gomock.Call
-type MockUserCacheRepositorySetCall struct {
+// MockUserCacheSetCall wrap *gomock.Call
+type MockUserCacheSetCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockUserCacheRepositorySetCall) Return(arg0 error) *MockUserCacheRepositorySetCall {
+func (c *MockUserCacheSetCall) Return(arg0 error) *MockUserCacheSetCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserCacheRepositorySetCall) Do(f func(context.Context, *model.User, time.Duration) error) *MockUserCacheRepositorySetCall {
+func (c *MockUserCacheSetCall) Do(f func(context.Context, *model.User, time.Duration) error) *MockUserCacheSetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserCacheRepositorySetCall) DoAndReturn(f func(context.Context, *model.User, time.Duration) error) *MockUserCacheRepositorySetCall {
+func (c *MockUserCacheSetCall) DoAndReturn(f func(context.Context, *model.User, time.Duration) error) *MockUserCacheSetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
-// MockSessionCacheRepository is a mock of SessionCacheRepository interface.
-type MockSessionCacheRepository struct {
+// MockSessionCache is a mock of SessionCache interface.
+type MockSessionCache struct {
 	ctrl     *gomock.Controller
-	recorder *MockSessionCacheRepositoryMockRecorder
+	recorder *MockSessionCacheMockRecorder
 	isgomock struct{}
 }
 
-// MockSessionCacheRepositoryMockRecorder is the mock recorder for MockSessionCacheRepository.
-type MockSessionCacheRepositoryMockRecorder struct {
-	mock *MockSessionCacheRepository
+// MockSessionCacheMockRecorder is the mock recorder for MockSessionCache.
+type MockSessionCacheMockRecorder struct {
+	mock *MockSessionCache
 }
 
-// NewMockSessionCacheRepository creates a new mock instance.
-func NewMockSessionCacheRepository(ctrl *gomock.Controller) *MockSessionCacheRepository {
-	mock := &MockSessionCacheRepository{ctrl: ctrl}
-	mock.recorder = &MockSessionCacheRepositoryMockRecorder{mock}
+// NewMockSessionCache creates a new mock instance.
+func NewMockSessionCache(ctrl *gomock.Controller) *MockSessionCache {
+	mock := &MockSessionCache{ctrl: ctrl}
+	mock.recorder = &MockSessionCacheMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSessionCacheRepository) EXPECT() *MockSessionCacheRepositoryMockRecorder {
+func (m *MockSessionCache) EXPECT() *MockSessionCacheMockRecorder {
 	return m.recorder
 }
 
 // Delete mocks base method.
-func (m *MockSessionCacheRepository) Delete(ctx context.Context, sessionID string) error {
+func (m *MockSessionCache) Delete(ctx context.Context, sessionID string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", ctx, sessionID)
 	ret0, _ := ret[0].(error)
@@ -612,37 +612,37 @@ func (m *MockSessionCacheRepository) Delete(ctx context.Context, sessionID strin
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockSessionCacheRepositoryMockRecorder) Delete(ctx, sessionID any) *MockSessionCacheRepositoryDeleteCall {
+func (mr *MockSessionCacheMockRecorder) Delete(ctx, sessionID any) *MockSessionCacheDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSessionCacheRepository)(nil).Delete), ctx, sessionID)
-	return &MockSessionCacheRepositoryDeleteCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSessionCache)(nil).Delete), ctx, sessionID)
+	return &MockSessionCacheDeleteCall{Call: call}
 }
 
-// MockSessionCacheRepositoryDeleteCall wrap *gomock.Call
-type MockSessionCacheRepositoryDeleteCall struct {
+// MockSessionCacheDeleteCall wrap *gomock.Call
+type MockSessionCacheDeleteCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSessionCacheRepositoryDeleteCall) Return(arg0 error) *MockSessionCacheRepositoryDeleteCall {
+func (c *MockSessionCacheDeleteCall) Return(arg0 error) *MockSessionCacheDeleteCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSessionCacheRepositoryDeleteCall) Do(f func(context.Context, string) error) *MockSessionCacheRepositoryDeleteCall {
+func (c *MockSessionCacheDeleteCall) Do(f func(context.Context, string) error) *MockSessionCacheDeleteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSessionCacheRepositoryDeleteCall) DoAndReturn(f func(context.Context, string) error) *MockSessionCacheRepositoryDeleteCall {
+func (c *MockSessionCacheDeleteCall) DoAndReturn(f func(context.Context, string) error) *MockSessionCacheDeleteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Get mocks base method.
-func (m *MockSessionCacheRepository) Get(ctx context.Context, sessionID string) (*model.Session, error) {
+func (m *MockSessionCache) Get(ctx context.Context, sessionID string) (*model.Session, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", ctx, sessionID)
 	ret0, _ := ret[0].(*model.Session)
@@ -651,37 +651,37 @@ func (m *MockSessionCacheRepository) Get(ctx context.Context, sessionID string) 
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockSessionCacheRepositoryMockRecorder) Get(ctx, sessionID any) *MockSessionCacheRepositoryGetCall {
+func (mr *MockSessionCacheMockRecorder) Get(ctx, sessionID any) *MockSessionCacheGetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSessionCacheRepository)(nil).Get), ctx, sessionID)
-	return &MockSessionCacheRepositoryGetCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSessionCache)(nil).Get), ctx, sessionID)
+	return &MockSessionCacheGetCall{Call: call}
 }
 
-// MockSessionCacheRepositoryGetCall wrap *gomock.Call
-type MockSessionCacheRepositoryGetCall struct {
+// MockSessionCacheGetCall wrap *gomock.Call
+type MockSessionCacheGetCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSessionCacheRepositoryGetCall) Return(arg0 *model.Session, arg1 error) *MockSessionCacheRepositoryGetCall {
+func (c *MockSessionCacheGetCall) Return(arg0 *model.Session, arg1 error) *MockSessionCacheGetCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSessionCacheRepositoryGetCall) Do(f func(context.Context, string) (*model.Session, error)) *MockSessionCacheRepositoryGetCall {
+func (c *MockSessionCacheGetCall) Do(f func(context.Context, string) (*model.Session, error)) *MockSessionCacheGetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSessionCacheRepositoryGetCall) DoAndReturn(f func(context.Context, string) (*model.Session, error)) *MockSessionCacheRepositoryGetCall {
+func (c *MockSessionCacheGetCall) DoAndReturn(f func(context.Context, string) (*model.Session, error)) *MockSessionCacheGetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // Set mocks base method.
-func (m *MockSessionCacheRepository) Set(ctx context.Context, session *model.Session, ttl time.Duration) error {
+func (m *MockSessionCache) Set(ctx context.Context, session *model.Session, ttl time.Duration) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Set", ctx, session, ttl)
 	ret0, _ := ret[0].(error)
@@ -689,31 +689,31 @@ func (m *MockSessionCacheRepository) Set(ctx context.Context, session *model.Ses
 }
 
 // Set indicates an expected call of Set.
-func (mr *MockSessionCacheRepositoryMockRecorder) Set(ctx, session, ttl any) *MockSessionCacheRepositorySetCall {
+func (mr *MockSessionCacheMockRecorder) Set(ctx, session, ttl any) *MockSessionCacheSetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSessionCacheRepository)(nil).Set), ctx, session, ttl)
-	return &MockSessionCacheRepositorySetCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSessionCache)(nil).Set), ctx, session, ttl)
+	return &MockSessionCacheSetCall{Call: call}
 }
 
-// MockSessionCacheRepositorySetCall wrap *gomock.Call
-type MockSessionCacheRepositorySetCall struct {
+// MockSessionCacheSetCall wrap *gomock.Call
+type MockSessionCacheSetCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSessionCacheRepositorySetCall) Return(arg0 error) *MockSessionCacheRepositorySetCall {
+func (c *MockSessionCacheSetCall) Return(arg0 error) *MockSessionCacheSetCall {
 	c.Call = c.Call.Return(arg0)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSessionCacheRepositorySetCall) Do(f func(context.Context, *model.Session, time.Duration) error) *MockSessionCacheRepositorySetCall {
+func (c *MockSessionCacheSetCall) Do(f func(context.Context, *model.Session, time.Duration) error) *MockSessionCacheSetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSessionCacheRepositorySetCall) DoAndReturn(f func(context.Context, *model.Session, time.Duration) error) *MockSessionCacheRepositorySetCall {
+func (c *MockSessionCacheSetCall) DoAndReturn(f func(context.Context, *model.Session, time.Duration) error) *MockSessionCacheSetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
