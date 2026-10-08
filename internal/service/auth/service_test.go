@@ -332,9 +332,9 @@ func TestService_Authorize_InvatidToken(t *testing.T) {
 		codeVerifierStorage,
 	)
 
-	user, session, err := service.Authorize(t.Context(), "invalid token")
+	user, sessionID, err := service.Authorize(t.Context(), "invalid token")
 	require.Nil(t, user)
-	require.Nil(t, session)
+	require.Empty(t, sessionID)
 	require.ErrorIs(t, err, auth.ErrInvalidAuthToken)
 }
 
@@ -388,8 +388,8 @@ func TestService_Authorize_UserNotFound(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	user, session, err := service.Authorize(t.Context(), token)
+	user, sessionID, err := service.Authorize(t.Context(), token)
 	require.ErrorIs(t, err, model.ErrUserNotFound)
 	require.Nil(t, user)
-	require.Nil(t, session)
+	require.Empty(t, sessionID)
 }

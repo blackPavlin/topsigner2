@@ -2,53 +2,106 @@ package httptransport_test
 
 import (
 	"context"
-	"log"
+	"encoding/base64"
+	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/minio"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
-	"github.com/bboykiv/topsigner/internal/adapter/crypto"
-	"github.com/bboykiv/topsigner/internal/adapter/s3"
-	"github.com/bboykiv/topsigner/internal/adapter/vk"
-	"github.com/bboykiv/topsigner/internal/adapter/vkid"
+	"github.com/bboykiv/topsigner/internal/application"
 	"github.com/bboykiv/topsigner/internal/config"
-	"github.com/bboykiv/topsigner/internal/service/auth"
-	"github.com/bboykiv/topsigner/internal/service/font"
-	"github.com/bboykiv/topsigner/internal/service/group"
-	"github.com/bboykiv/topsigner/internal/service/image"
-	"github.com/bboykiv/topsigner/internal/transport/httptransport"
+	"github.com/bboykiv/topsigner/internal/model"
 )
 
-var (
-	server     *httptest.Server
-	vkServer   *httptest.Server
-	vkidServer *httptest.Server
-	client     *httpserver.ClientWithResponses
+const (
+	startTimeout = 2 * time.Minute
+
+	defaultUserEmail    = "admin@topsigner.test"
+	defaultUserPassword = "password1234"
 )
 
-func TestMain(m *testing.M) {
-	os.Exit(run(m))
+type IntegrationSuite struct {
+	suite.Suite
+
+	application *fxtest.App
+	server      *httptest.Server
+	client      *httpserver.ClientWithResponses
 }
 
-func run(m *testing.M) int {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+func TestIntegrationSuite(t *testing.T) {
+	suite.Run(t, new(IntegrationSuite))
+}
+
+func (s *IntegrationSuite) SetupSuite() {
+	ctx, cancel := context.WithTimeout(s.T().Context(), startTimeout)
 	defer cancel()
 
-	cfg := &config.Config{
+	config := s.newConfig()
+
+	s.startPostgres(ctx, config)
+	s.startMinio(ctx, config)
+	s.startRedis(ctx, config)
+
+	// todo: описать тестовый сервер vk
+	vkServer := httptest.NewServer(http.NewServeMux())
+	s.T().Cleanup(vkServer.Close)
+
+	// todo: описать тестовый сервер vkid
+	vkidServer := httptest.NewServer(http.NewServeMux())
+	s.T().Cleanup(vkidServer.Close)
+
+	config.VK.BaseURL = vkServer.URL
+	config.VK.OAuthBaseURL = vkServer.URL
+	config.VKID.BaseURL = vkidServer.URL
+
+	var handler http.Handler
+
+	s.application = fxtest.New(
+		s.T(),
+		application.New(),
+		fx.Replace(
+			config,
+			zaptest.NewLogger(s.T(), zaptest.Level(zap.WarnLevel)),
+		),
+		fx.Populate(&handler),
+	)
+	s.application.RequireStart()
+
+	s.server = httptest.NewServer(handler)
+	s.T().Cleanup(s.server.Close)
+
+	client, err := httpserver.NewClientWithResponses(s.server.URL)
+	s.Require().NoError(err)
+
+	s.client = client
+}
+
+func (s *IntegrationSuite) newConfig() *config.Config {
+	return &config.Config{
 		Auth: config.AuthConfig{
 			AccessTokenTTL:  15 * time.Minute,
 			RefreshTokenTTL: 30 * 24 * time.Hour,
 			SigningKey:      "test-signing-key",
+			EncryptionKey:   base64.StdEncoding.EncodeToString(make([]byte, 32)),
+		},
+		User: config.UserConfig{
+			Default: config.DefaultUserConfig{
+				Email:    defaultUserEmail,
+				Password: defaultUserPassword,
+				Role:     model.RoleAdmin,
+			},
 		},
 		Cors: config.CorsConfig{
 			AllowedOrigins: []string{"*"},
@@ -75,196 +128,61 @@ func run(m *testing.M) int {
 			FontBucket:  "fonts-test",
 			Secure:      false,
 		},
+		Redis: config.RedisConfig{
+			DialTimeout: 5 * time.Second,
+		},
 	}
+}
 
-	pgContainer, err := postgres.Run(ctx,
+func (s *IntegrationSuite) startPostgres(ctx context.Context, config *config.Config) {
+	container, err := postgres.Run(ctx,
 		"postgres:18.4-alpine",
-		postgres.WithDatabase(cfg.Postgres.Database),
-		postgres.WithUsername(cfg.Postgres.User),
-		postgres.WithPassword(cfg.Postgres.Password),
-		testcontainers.WithAdditionalWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
-			wait.ForListeningPort("5432/tcp"),
-		),
+		postgres.WithDatabase(config.Postgres.Database),
+		postgres.WithUsername(config.Postgres.User),
+		postgres.WithPassword(config.Postgres.Password),
+		postgres.BasicWaitStrategies(),
 	)
-	if err != nil {
-		log.Printf("start postgres container: %v", err)
+	s.Require().NoError(err, "start postgres container")
 
-		return 1
-	}
-	defer func() {
-		if err = pgContainer.Terminate(ctx); err != nil {
-			log.Printf("terminate postgres container: %v", err)
-		}
-	}()
+	testcontainers.CleanupContainer(s.T(), container)
 
-	cfg.Postgres.Host, err = pgContainer.Host(ctx)
-	if err != nil {
-		log.Printf("get postgres host: %v", err)
+	host, err := container.Host(ctx)
+	s.Require().NoError(err)
 
-		return 1
-	}
+	port, err := container.MappedPort(ctx, "5432/tcp")
+	s.Require().NoError(err)
 
-	port, err := pgContainer.MappedPort(ctx, "5432/tcp")
-	if err != nil {
-		log.Printf("get postgres port: %v", err)
+	config.Postgres.Host = host
+	config.Postgres.Port = int(port.Num())
+}
 
-		return 1
-	}
-
-	cfg.Postgres.Port = int(port.Num())
-
-	pool, err := database.NewPool(cfg)
-	if err != nil {
-		log.Printf("create database pool: %v", err)
-
-		return 1
-	}
-	defer pool.Close()
-
-	if err := database.MakeMigrations(pool, cfg); err != nil {
-		log.Printf("run migrations: %v", err)
-
-		return 1
-	}
-
-	minioContainer, err := minio.Run(ctx,
-		"minio/minio:latest",
-		minio.WithUsername(cfg.S3.AccessKey),
-		minio.WithPassword(cfg.S3.SecretKey),
+func (s *IntegrationSuite) startMinio(ctx context.Context, config *config.Config) {
+	container, err := minio.Run(ctx,
+		"pgsty/silo:RELEASE.2026-09-16T00-00-00Z",
+		minio.WithUsername(config.S3.AccessKey),
+		minio.WithPassword(config.S3.SecretKey),
 	)
-	if err != nil {
-		log.Printf("start minio container: %v", err)
+	s.Require().NoError(err, "start minio container")
 
-		return 1
-	}
-	defer func() {
-		if err := minioContainer.Terminate(ctx); err != nil {
-			log.Printf("terminate minio container: %v", err)
-		}
-	}()
+	testcontainers.CleanupContainer(s.T(), container)
 
-	cfg.S3.Endpoint, err = minioContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Printf("get minio connection string: %v", err)
+	endpoint, err := container.ConnectionString(ctx)
+	s.Require().NoError(err)
 
-		return 1
-	}
+	config.S3.Endpoint = endpoint
+}
 
-	minioClient, err := s3.NewClient(cfg)
-	if err != nil {
-		log.Printf("create minio client: %v", err)
+func (s *IntegrationSuite) startRedis(ctx context.Context, config *config.Config) {
+	container, err := redis.Run(ctx, "redis:8.10-alpine")
+	s.Require().NoError(err, "start redis container")
 
-		return 1
-	}
+	testcontainers.CleanupContainer(s.T(), container)
 
-	if err := s3.CreateBuckets(ctx, minioClient, cfg); err != nil {
-		log.Printf("create buckets: %v", err)
+	host, err := container.Host(ctx)
+	s.Require().NoError(err)
 
-		return 1
-	}
+	port, err := container.MappedPort(ctx, "6379/tcp")
+	s.Require().NoError(err)
 
-	redisContainer, err := redis.Run(ctx, "redis:8.10-alpine")
-	if err != nil {
-		log.Printf("start redis container: %v", err)
-
-		return 1
-	}
-	defer func() {
-		if err := redisContainer.Terminate(ctx); err != nil {
-			log.Printf("terminate redis container: %v", err)
-		}
-	}()
-
-	cfg.Redis.Addr, err = redisContainer.ConnectionString(ctx)
-	if err != nil {
-		log.Printf("get redis connection string: %v", err)
-
-		return 1
-	}
-
-	// todo: описать тестовый сервер vkid
-	vkidServer = httptest.NewServer(http.NewServeMux())
-	defer vkidServer.Close()
-
-	cfg.VKID.BaseURL = vkidServer.URL
-
-	vkidClient, err := vkid.NewClient(cfg)
-	if err != nil {
-		log.Fatalf("create vkid cliet: %v", err)
-
-		return 1
-	}
-
-	// todo: описать тестовый сервер vk
-	vkServer = httptest.NewServer(http.NewServeMux())
-	defer vkServer.Close()
-
-	cfg.VK.BaseURL = vkServer.URL
-
-	vkClient, err := vk.NewClient(cfg)
-	if err != nil {
-		log.Fatalf("create vk cliet: %v", err)
-
-		return 1
-	}
-
-	encryptor, err := crypto.NewEncryptor(cfg.Auth.EncryptionKey)
-	if err != nil {
-		log.Fatalf("create encryptor: %v", err)
-
-		return 1
-	}
-
-	var (
-		logger                 = zap.NewNop()
-		redisClient            = keyvalue.NewClient(cfg)
-		userRepository         = repository.NewUserRepository(pool)
-		sessionRepository      = repository.NewSessionRepository(pool)
-		imageRepository        = repository.NewImageRepository(pool)
-		fontRepository         = repository.NewFontRepository(pool)
-		groupRepository        = repository.NewGroupRepository(pool)
-		codeVerifierRepository = keyvalue.NewCodeVerifierRepository(redisClient)
-		userCacheRepository    = keyvalue.NewUserCacheRepository(redisClient)
-		sessionCacheRepository = keyvalue.NewSessionCacheRepository(redisClient)
-		groupStateRepository   = keyvalue.NewGroupStateRepository(redisClient)
-		imageStorage           = storage.NewImageStorage(cfg, minioClient)
-	)
-
-	authService := auth.New(
-		logger,
-		cfg,
-		encryptor,
-		vkidClient,
-		userRepository,
-		sessionRepository,
-		userCacheRepository,
-		sessionCacheRepository,
-		codeVerifierRepository,
-	)
-
-	imageService := image.New(logger, imageRepository, imageStorage)
-	fontService := font.New(logger, fontRepository)
-	groupService := group.New(logger, cfg, encryptor, groupRepository, groupStateRepository, vkClient)
-
-	server = httptest.NewServer(
-		httptransport.NewHandler(
-			logger,
-			cfg,
-			authService,
-			imageService,
-			fontService,
-			groupService,
-		),
-	)
-	defer server.Close()
-
-	client, err = httpserver.NewClientWithResponses(server.URL)
-	if err != nil {
-		log.Printf("create client with responses: %v", err)
-
-		return 1
-	}
-
-	return m.Run()
+	config.Redis.Addr = net.JoinHostPort(host, port.Port())
 }

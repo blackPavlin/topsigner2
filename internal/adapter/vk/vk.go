@@ -53,7 +53,7 @@ func (c *Client) GenerateConnectGroupURL(groupID int64, state string) (string, e
 	params := &httpclient.AuthorizeParams{
 		ClientID:     c.config.VKID.ClientID,
 		RedirectURI:  c.config.VK.OAuthRedirectURL,
-		GroupIds:     strconv.FormatInt(groupID, 10),
+		GroupIDs:     strconv.FormatInt(groupID, 10),
 		Scope:        c.config.VK.OAuthScope,
 		ResponseType: httpclient.Code,
 		Display:      new(httpclient.Page),
@@ -69,7 +69,7 @@ func (c *Client) GenerateConnectGroupURL(groupID int64, state string) (string, e
 	return req.URL.String(), nil
 }
 
-func (c *Client) ExchangGroupCode(ctx context.Context, code string) (int64, string, error) {
+func (c *Client) ExchangeGroupCode(ctx context.Context, code string) (int64, string, error) {
 	params := &httpclient.ExchangeGroupCodeParams{
 		ClientID:     c.config.VKID.ClientID,
 		ClientSecret: c.config.VKID.SecretKey,
@@ -105,21 +105,24 @@ func (c *Client) GetGroups(ctx context.Context, token string) ([]*group.Group, e
 		return nil, fmt.Errorf("get vk groups: %w", err)
 	}
 
-	if resp.JSON200.Error != nil {
+	switch {
+	case resp.JSON200 != nil && resp.JSON200.Response != nil:
+		groups := make([]*group.Group, 0, resp.JSON200.Response.Count)
+
+		for _, item := range resp.JSON200.Response.Items {
+			groups = append(groups, &group.Group{
+				ID:         item.ID,
+				Name:       item.Name,
+				ScreenName: item.ScreenName,
+			})
+		}
+
+		return groups, nil
+	case resp.JSON200 != nil && resp.JSON200.Error != nil:
 		return nil, fmt.Errorf("get groups: %s", resp.JSON200.Error.ErrorMsg)
+	default:
+		return nil, ErrUpstream
 	}
-
-	groups := make([]*group.Group, 0, resp.JSON200.Response.Count)
-
-	for _, item := range resp.JSON200.Response.Items {
-		groups = append(groups, &group.Group{
-			ID:         item.ID,
-			Name:       item.Name,
-			ScreenName: item.ScreenName,
-		})
-	}
-
-	return groups, nil
 }
 
 func setAccessToken(token string) httpclient.RequestEditorFn {

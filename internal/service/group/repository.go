@@ -23,7 +23,7 @@ type SessionRepository interface {
 type VKClient interface {
 	GetGroups(ctx context.Context, token string) ([]*Group, error)
 	GenerateConnectGroupURL(groupID int64, state string) (string, error)
-	ExchangGroupCode(ctx context.Context, code string) (int64, string, error)
+	ExchangeGroupCode(ctx context.Context, code string) (int64, string, error)
 }
 
 type StateRepository interface {

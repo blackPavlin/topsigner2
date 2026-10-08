@@ -246,7 +246,7 @@ type ExchangeGroupCodeParams struct {
 type AuthorizeParams struct {
 	ClientID     string                      `form:"client_id" json:"client_id"`
 	RedirectURI  string                      `form:"redirect_uri" json:"redirect_uri"`
-	GroupIds     string                      `form:"group_ids" json:"group_ids"`
+	GroupIDs     string                      `form:"group_ids" json:"group_ids"`
 	Scope        string                      `form:"scope" json:"scope"`
 	ResponseType AuthorizeParamsResponseType `form:"response_type" json:"response_type"`
 	Display      *AuthorizeParamsDisplay     `form:"display,omitempty" json:"display,omitempty"`
@@ -560,7 +560,7 @@ func NewAuthorizeRequest(server string, params *AuthorizeParams) (*http.Request,
 			}
 		}
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "group_ids", params.GroupIds, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "group_ids", params.GroupIDs, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {

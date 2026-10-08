@@ -179,9 +179,16 @@ func (h *AuthHandler) HandleVKIDCallback(
 		UserAgent: middleware.GetUserAgentFromContext(ctx),
 	})
 	if err != nil {
-		return httpserver.HandleVKIDCallback401JSONResponse{
-			UnauthorizedJSONResponse: NewUnauthorizedError(),
-		}, nil
+		switch {
+		case errors.Is(err, model.ErrCodeVerifierNotFound):
+			return httpserver.HandleVKIDCallback400JSONResponse{
+				BadRequestJSONResponse: NewBadRequestError(err),
+			}, nil
+		default:
+			return httpserver.HandleVKIDCallback401JSONResponse{
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
+		}
 	}
 
 	return httpserver.HandleVKIDCallback200JSONResponse{

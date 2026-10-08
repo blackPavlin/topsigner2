@@ -198,6 +198,69 @@ func (c *MockRepositoryListCall) DoAndReturn(f func(context.Context, *model.Grou
 	return c
 }
 
+// MockSessionRepository is a mock of SessionRepository interface.
+type MockSessionRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockSessionRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockSessionRepositoryMockRecorder is the mock recorder for MockSessionRepository.
+type MockSessionRepositoryMockRecorder struct {
+	mock *MockSessionRepository
+}
+
+// NewMockSessionRepository creates a new mock instance.
+func NewMockSessionRepository(ctrl *gomock.Controller) *MockSessionRepository {
+	mock := &MockSessionRepository{ctrl: ctrl}
+	mock.recorder = &MockSessionRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSessionRepository) EXPECT() *MockSessionRepositoryMockRecorder {
+	return m.recorder
+}
+
+// Get mocks base method.
+func (m *MockSessionRepository) Get(ctx context.Context, filter *model.SessionFilter) (*model.Session, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, filter)
+	ret0, _ := ret[0].(*model.Session)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockSessionRepositoryMockRecorder) Get(ctx, filter any) *MockSessionRepositoryGetCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSessionRepository)(nil).Get), ctx, filter)
+	return &MockSessionRepositoryGetCall{Call: call}
+}
+
+// MockSessionRepositoryGetCall wrap *gomock.Call
+type MockSessionRepositoryGetCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSessionRepositoryGetCall) Return(arg0 *model.Session, arg1 error) *MockSessionRepositoryGetCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSessionRepositoryGetCall) Do(f func(context.Context, *model.SessionFilter) (*model.Session, error)) *MockSessionRepositoryGetCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSessionRepositoryGetCall) DoAndReturn(f func(context.Context, *model.SessionFilter) (*model.Session, error)) *MockSessionRepositoryGetCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockVKClient is a mock of VKClient interface.
 type MockVKClient struct {
 	ctrl     *gomock.Controller
@@ -222,42 +285,42 @@ func (m *MockVKClient) EXPECT() *MockVKClientMockRecorder {
 	return m.recorder
 }
 
-// ExchangGroupCode mocks base method.
-func (m *MockVKClient) ExchangGroupCode(ctx context.Context, code string) (int64, string, error) {
+// ExchangeGroupCode mocks base method.
+func (m *MockVKClient) ExchangeGroupCode(ctx context.Context, code string) (int64, string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExchangGroupCode", ctx, code)
+	ret := m.ctrl.Call(m, "ExchangeGroupCode", ctx, code)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(string)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// ExchangGroupCode indicates an expected call of ExchangGroupCode.
-func (mr *MockVKClientMockRecorder) ExchangGroupCode(ctx, code any) *MockVKClientExchangGroupCodeCall {
+// ExchangeGroupCode indicates an expected call of ExchangeGroupCode.
+func (mr *MockVKClientMockRecorder) ExchangeGroupCode(ctx, code any) *MockVKClientExchangeGroupCodeCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExchangGroupCode", reflect.TypeOf((*MockVKClient)(nil).ExchangGroupCode), ctx, code)
-	return &MockVKClientExchangGroupCodeCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExchangeGroupCode", reflect.TypeOf((*MockVKClient)(nil).ExchangeGroupCode), ctx, code)
+	return &MockVKClientExchangeGroupCodeCall{Call: call}
 }
 
-// MockVKClientExchangGroupCodeCall wrap *gomock.Call
-type MockVKClientExchangGroupCodeCall struct {
+// MockVKClientExchangeGroupCodeCall wrap *gomock.Call
+type MockVKClientExchangeGroupCodeCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockVKClientExchangGroupCodeCall) Return(arg0 int64, arg1 string, arg2 error) *MockVKClientExchangGroupCodeCall {
+func (c *MockVKClientExchangeGroupCodeCall) Return(arg0 int64, arg1 string, arg2 error) *MockVKClientExchangeGroupCodeCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockVKClientExchangGroupCodeCall) Do(f func(context.Context, string) (int64, string, error)) *MockVKClientExchangGroupCodeCall {
+func (c *MockVKClientExchangeGroupCodeCall) Do(f func(context.Context, string) (int64, string, error)) *MockVKClientExchangeGroupCodeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockVKClientExchangGroupCodeCall) DoAndReturn(f func(context.Context, string) (int64, string, error)) *MockVKClientExchangGroupCodeCall {
+func (c *MockVKClientExchangeGroupCodeCall) DoAndReturn(f func(context.Context, string) (int64, string, error)) *MockVKClientExchangeGroupCodeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

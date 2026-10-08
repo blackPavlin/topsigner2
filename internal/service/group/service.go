@@ -122,7 +122,7 @@ func (s *Service) Connect(ctx context.Context, code, state string) (*model.Group
 		return nil, fmt.Errorf("pop group state: %w", err)
 	}
 
-	groupID, token, err := s.vkClient.ExchangGroupCode(ctx, code)
+	groupID, token, err := s.vkClient.ExchangeGroupCode(ctx, code)
 	if err != nil {
 		s.logger.Error("exchange group code", zap.Error(err))
 
