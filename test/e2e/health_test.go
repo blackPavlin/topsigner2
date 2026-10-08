@@ -1,4 +1,4 @@
-package httptransport_test
+package e2e_test
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 	"github.com/bboykiv/topsigner/gen/httpserver"
 )
 
-func (s *IntegrationSuite) TestHealthCheck_Success() {
+func (s *E2ESuite) TestHealthCheck_Success() {
 	resp, err := s.client.HealthCheckWithResponse(s.T().Context())
 	s.Require().NoError(err)
 	s.Require().Equal(http.StatusOK, resp.StatusCode())

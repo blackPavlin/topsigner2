@@ -13,6 +13,13 @@ reports     := $(target)/reports
 build: $(bin)
 	go build -o $(bin)/$(application_name) ./cmd/$(application_name)
 
+## generate:
+.PHONY: generate
+generate:
+	@go tool oapi-codegen --config api/openapi/oapi-codegen.yaml api/openapi/openapi.yaml
+	@go tool oapi-codegen --config api/openapi/external/vk/oapi-codegen.yaml api/openapi/external/vk/openapi.yaml
+	@go tool oapi-codegen --config api/openapi/external/vkid/oapi-codegen.yaml api/openapi/external/vkid/openapi.yaml	
+
 ## run: Run the application.
 .PHONY: run
 run:

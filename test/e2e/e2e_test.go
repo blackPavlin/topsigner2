@@ -1,4 +1,4 @@
-package httptransport_test
+package e2e_test
 
 import (
 	"context"
@@ -32,7 +32,7 @@ const (
 	defaultUserPassword = "password1234"
 )
 
-type IntegrationSuite struct {
+type E2ESuite struct {
 	suite.Suite
 
 	application *fxtest.App
@@ -40,11 +40,11 @@ type IntegrationSuite struct {
 	client      *httpserver.ClientWithResponses
 }
 
-func TestIntegrationSuite(t *testing.T) {
-	suite.Run(t, new(IntegrationSuite))
+func TestE2ESuite(t *testing.T) {
+	suite.Run(t, new(E2ESuite))
 }
 
-func (s *IntegrationSuite) SetupSuite() {
+func (s *E2ESuite) SetupSuite() {
 	ctx, cancel := context.WithTimeout(s.T().Context(), startTimeout)
 	defer cancel()
 
@@ -78,6 +78,7 @@ func (s *IntegrationSuite) SetupSuite() {
 		fx.Populate(&handler),
 	)
 	s.application.RequireStart()
+	s.T().Cleanup(s.application.RequireStop)
 
 	s.server = httptest.NewServer(handler)
 	s.T().Cleanup(s.server.Close)
@@ -88,7 +89,7 @@ func (s *IntegrationSuite) SetupSuite() {
 	s.client = client
 }
 
-func (s *IntegrationSuite) newConfig() *config.Config {
+func (s *E2ESuite) newConfig() *config.Config {
 	return &config.Config{
 		Auth: config.AuthConfig{
 			AccessTokenTTL:  15 * time.Minute,
@@ -134,7 +135,7 @@ func (s *IntegrationSuite) newConfig() *config.Config {
 	}
 }
 
-func (s *IntegrationSuite) startPostgres(ctx context.Context, config *config.Config) {
+func (s *E2ESuite) startPostgres(ctx context.Context, config *config.Config) {
 	container, err := postgres.Run(ctx,
 		"postgres:18.4-alpine",
 		postgres.WithDatabase(config.Postgres.Database),
@@ -142,9 +143,9 @@ func (s *IntegrationSuite) startPostgres(ctx context.Context, config *config.Con
 		postgres.WithPassword(config.Postgres.Password),
 		postgres.BasicWaitStrategies(),
 	)
-	s.Require().NoError(err, "start postgres container")
-
 	testcontainers.CleanupContainer(s.T(), container)
+
+	s.Require().NoError(err, "start postgres container")
 
 	host, err := container.Host(ctx)
 	s.Require().NoError(err)
@@ -156,15 +157,15 @@ func (s *IntegrationSuite) startPostgres(ctx context.Context, config *config.Con
 	config.Postgres.Port = int(port.Num())
 }
 
-func (s *IntegrationSuite) startMinio(ctx context.Context, config *config.Config) {
+func (s *E2ESuite) startMinio(ctx context.Context, config *config.Config) {
 	container, err := minio.Run(ctx,
 		"pgsty/silo:RELEASE.2026-09-16T00-00-00Z",
 		minio.WithUsername(config.S3.AccessKey),
 		minio.WithPassword(config.S3.SecretKey),
 	)
-	s.Require().NoError(err, "start minio container")
-
 	testcontainers.CleanupContainer(s.T(), container)
+
+	s.Require().NoError(err, "start minio container")
 
 	endpoint, err := container.ConnectionString(ctx)
 	s.Require().NoError(err)
@@ -172,11 +173,11 @@ func (s *IntegrationSuite) startMinio(ctx context.Context, config *config.Config
 	config.S3.Endpoint = endpoint
 }
 
-func (s *IntegrationSuite) startRedis(ctx context.Context, config *config.Config) {
+func (s *E2ESuite) startRedis(ctx context.Context, config *config.Config) {
 	container, err := redis.Run(ctx, "redis:8.10-alpine")
-	s.Require().NoError(err, "start redis container")
-
 	testcontainers.CleanupContainer(s.T(), container)
+
+	s.Require().NoError(err, "start redis container")
 
 	host, err := container.Host(ctx)
 	s.Require().NoError(err)

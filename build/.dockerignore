@@ -15,6 +15,7 @@ Thumbs.db
 
 /api
 /build
+/target
 /configs
 
 # Documentation

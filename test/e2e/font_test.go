@@ -1,4 +1,4 @@
-package httptransport_test
+package e2e_test
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 	"github.com/bboykiv/topsigner/gen/httpserver"
 )
 
-func (s *IntegrationSuite) TestListFonts_Unauthorized() {
+func (s *E2ESuite) TestListFonts_Unauthorized() {
 	resp, err := s.client.ListFontsWithResponse(s.T().Context(), &httpserver.ListFontsParams{})
 	s.Require().NoError(err)
 	s.Require().Equal(http.StatusUnauthorized, resp.StatusCode())
