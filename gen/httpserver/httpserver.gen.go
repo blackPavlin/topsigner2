@@ -44,7 +44,7 @@ func (e AuthTokensTokenType) Valid() bool {
 const (
 	Degraded HealthStatusStatus = "degraded"
 	Down     HealthStatusStatus = "down"
-	Ok       HealthStatusStatus = "ok"
+	OK       HealthStatusStatus = "ok"
 )
 
 // Valid indicates whether the value is a known member of the HealthStatusStatus enum.
@@ -54,7 +54,7 @@ func (e HealthStatusStatus) Valid() bool {
 		return true
 	case Down:
 		return true
-	case Ok:
+	case OK:
 		return true
 	default:
 		return false

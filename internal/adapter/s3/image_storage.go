@@ -13,14 +13,14 @@ import (
 )
 
 type ImageStorage struct {
-	config *config.Config
 	client *minio.Client
+	config *config.Config
 }
 
-func NewImageStorage(config *config.Config, client *minio.Client) *ImageStorage {
+func NewImageStorage(client *minio.Client, config *config.Config) *ImageStorage {
 	return &ImageStorage{
-		config: config,
 		client: client,
+		config: config,
 	}
 }
 

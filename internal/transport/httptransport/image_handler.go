@@ -111,7 +111,19 @@ func (h *ImageHandler) UploadImage(
 		}, nil
 	}
 
-	image, err := h.imageService.Create(ctx, user.ID, files[0])
+	file, err := files[0].Open()
+	if err != nil {
+		return httpserver.UploadImage400JSONResponse{
+			BadRequestJSONResponse: NewBadRequestError(ErrInvalidMultipartForm),
+		}, nil
+	}
+	defer file.Close()
+
+	image, err := h.imageService.Create(ctx, user.ID, &image.Upload{
+		Filename: files[0].Filename,
+		Size:     files[0].Size,
+		File:     file,
+	})
 	if err != nil {
 		switch {
 		case errors.Is(err, model.ErrUnsupportedImageFormat):

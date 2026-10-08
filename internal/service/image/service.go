@@ -8,7 +8,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
-	"mime/multipart"
 	"path/filepath"
 	"uuid"
 
@@ -65,24 +64,8 @@ func (s *Service) List(
 	return result, nil
 }
 
-func (s *Service) Create(
-	ctx context.Context,
-	userID int64,
-	fh *multipart.FileHeader,
-) (*model.Image, error) {
-	file, err := fh.Open()
-	if err != nil {
-		s.logger.Error("open multipart file error", zap.Error(err))
-
-		return nil, fmt.Errorf("open multipart file: %w", err)
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			s.logger.Error("close multipart file error", zap.Error(err))
-		}
-	}()
-
-	if _, _, err := image.DecodeConfig(file); err != nil {
+func (s *Service) Create(ctx context.Context, userID int64, upload *Upload) (*model.Image, error) {
+	if _, _, err := image.DecodeConfig(upload.File); err != nil {
 		if errors.Is(err, image.ErrFormat) {
 			return nil, model.ErrUnsupportedImageFormat
 		}
@@ -92,15 +75,15 @@ func (s *Service) Create(
 		return nil, fmt.Errorf("decode image config: %w", err)
 	}
 
-	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		s.logger.Error("seek multipart file error", zap.Error(err))
+	if _, err := upload.File.Seek(0, io.SeekStart); err != nil {
+		s.logger.Error("seek image file error", zap.Error(err))
 
-		return nil, fmt.Errorf("seek multipart file: %w", err)
+		return nil, fmt.Errorf("seek image file: %w", err)
 	}
 
-	filename := fmt.Sprintf("%s%s", uuid.New().String(), filepath.Ext(fh.Filename))
+	filename := fmt.Sprintf("%s%s", uuid.New().String(), filepath.Ext(upload.Filename))
 
-	if err = s.storage.Upload(ctx, filename, file, fh.Size); err != nil {
+	if err := s.storage.Upload(ctx, filename, upload.File, upload.Size); err != nil {
 		s.logger.Error("upload image to storage error", zap.Error(err))
 
 		return nil, fmt.Errorf("upload image to storage: %w", err)
@@ -111,7 +94,8 @@ func (s *Service) Create(
 		UserID: userID,
 	}
 
-	if image, err = s.repository.Create(ctx, image); err != nil {
+	image, err := s.repository.Create(ctx, image)
+	if err != nil {
 		s.logger.Error("create image error", zap.Error(err))
 
 		return nil, fmt.Errorf("create image: %w", err)

@@ -21,5 +21,15 @@ func (h *HealthHandler) HealthCheck(
 	ctx context.Context,
 	request httpserver.HealthCheckRequestObject,
 ) (httpserver.HealthCheckResponseObject, error) {
-	return httpserver.HealthCheck200JSONResponse{}, nil
+	report := h.service.Check(ctx)
+
+	if report.Status == health.StatusDown {
+		return httpserver.HealthCheck503JSONResponse{
+			Status: httpserver.Down,
+		}, nil
+	}
+
+	return httpserver.HealthCheck200JSONResponse{
+		Status: httpserver.HealthStatusStatus(report.Status),
+	}, nil
 }

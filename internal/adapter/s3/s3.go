@@ -26,6 +26,8 @@ func NewClient(config *config.Config) (*minio.Client, error) {
 func CreateBuckets(ctx context.Context, client *minio.Client, config *config.Config) error {
 	buckets := []string{config.S3.ImageBucket, config.S3.FontBucket}
 
+	// todo: распараллелить проверку и создание бакетов
+
 	for _, bucket := range buckets {
 		exists, err := client.BucketExists(ctx, bucket)
 		if err != nil {

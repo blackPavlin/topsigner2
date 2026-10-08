@@ -13,3 +13,4 @@ output-options:
   name-normalizer: ToCamelCaseWithInitialisms
   additional-initialisms:
     - ID
+    - OK
