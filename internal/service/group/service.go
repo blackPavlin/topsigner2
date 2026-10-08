@@ -126,7 +126,7 @@ func (s *Service) Connect(ctx context.Context, code, state string) (*model.Group
 	if err != nil {
 		s.logger.Error("exchange group code", zap.Error(err))
 
-		return nil, fmt.Errorf("exchane group token: %w", err)
+		return nil, fmt.Errorf("exchange group token: %w", err)
 	}
 
 	accessTokenEnc, err := s.encryptor.Encrypt(token)
@@ -153,7 +153,7 @@ func (s *Service) Connect(ctx context.Context, code, state string) (*model.Group
 func (s *Service) GenerateConnectionURL(ctx context.Context, userID, groupID int64) (string, error) {
 	state, err := crypto.GenerateRandomString(stateSize)
 	if err != nil {
-		s.logger.Error("ganerate state", zap.Error(err))
+		s.logger.Error("generate state", zap.Error(err))
 
 		return "", fmt.Errorf("generate state: %w", err)
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
+// todo: решить проблему с email в разном регистре
 // todo: решить на какое время кэшировать user
 // todo: добавить прогрев кэша при промахе в Authorize
 // todo: решить, нужно ли ориентороваться на user-agent при обновлении сессии и необходим ли он в принципе
@@ -417,30 +418,19 @@ func (s *Service) ExchangeVKIDOAuthToken(
 
 	oAuthToken, err := s.vkidClient.Exchange(ctx, params)
 	if err != nil {
-		s.logger.Error("exchane oauth token", zap.Error(err))
+		s.logger.Error("exchange oauth token", zap.Error(err))
 
-		return nil, fmt.Errorf("exchane vkid oauth token: %w", err)
+		return nil, fmt.Errorf("exchange vkid oauth token: %w", err)
 	}
 
-	user, err := s.userRepository.Get(ctx, &model.UserFilter{
-		VKUserID: model.IDFilter{Eq: new(oAuthToken.UserID)},
+	user, err := s.userRepository.Create(ctx, &model.User{
+		VKUserID: new(oAuthToken.UserID),
+		Role:     model.RoleUser,
 	})
 	if err != nil {
-		if !errors.Is(err, model.ErrUserNotFound) {
-			s.logger.Error("get user by vk user id", zap.Error(err))
+		s.logger.Error("create user with vk user id", zap.Error(err))
 
-			return nil, fmt.Errorf("get user by vk user id: %w", err)
-		}
-
-		user, err = s.userRepository.Create(ctx, &model.User{
-			VKUserID: new(oAuthToken.UserID),
-			Role:     model.RoleUser,
-		})
-		if err != nil {
-			s.logger.Error("create user with vk user id", zap.Error(err))
-
-			return nil, fmt.Errorf("create user with vk user id: %w", err)
-		}
+		return nil, fmt.Errorf("create user with vk user id: %w", err)
 	}
 
 	refreshToken, err := generateRefreshToken()

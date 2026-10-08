@@ -35,7 +35,7 @@ func MakeMigrations(pool *pgxpool.Pool, config *config.Config) error {
 	defer migration.Close()
 
 	if err = migration.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("migratorion up: %w", err)
+		return fmt.Errorf("migration up: %w", err)
 	}
 
 	return nil

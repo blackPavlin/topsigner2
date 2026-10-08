@@ -53,5 +53,5 @@ func (s *Service) Check(ctx context.Context) *Report {
 		return &Report{Status: StatusDegraded}
 	}
 
-	return &Report{Status: StausOK}
+	return &Report{Status: StatusOK}
 }

@@ -70,7 +70,7 @@ func (c *Client) Exchange(
 
 	resp, err := c.client.ExchangeTokenWithFormdataBodyWithResponse(ctx, body)
 	if err != nil {
-		return nil, fmt.Errorf("exchane vkid oauth token: %w", err)
+		return nil, fmt.Errorf("exchange vkid oauth token: %w", err)
 	}
 
 	switch {

@@ -131,8 +131,8 @@ func (h *ImageHandler) UploadImage(
 				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
 		case errors.Is(err, model.ErrImageAlreadyExists):
-			return httpserver.UploadImage400JSONResponse{
-				BadRequestJSONResponse: NewBadRequestError(err),
+			return httpserver.UploadImage409JSONResponse{
+				ConflictJSONResponse: NewConflictError(err),
 			}, nil
 		default:
 			return httpserver.UploadImage500JSONResponse{

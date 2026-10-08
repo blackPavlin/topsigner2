@@ -69,7 +69,11 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.U
 	sql, args, err := psql.Insert(userTableName).
 		Columns("vk_user_id", "email", "password_hash", "role").
 		Values(user.VKUserID, user.Email, user.PasswordHash, user.Role).
-		Suffix("ON CONFLICT DO NOTHING RETURNING id, created_at, updated_at").
+		Suffix(`
+			ON CONFLICT (vk_user_id) DO UPDATE
+			SET vk_user_id = EXCLUDED.vk_user_id
+			RETURNING id, vk_user_id, email, password_hash, role, created_at, updated_at
+		`).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("build sql query: %w", err)
@@ -77,16 +81,18 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.U
 
 	err = r.pool.QueryRow(ctx, sql, args...).Scan(
 		&user.ID,
+		&user.VKUserID,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, model.ErrUserAlreadyExists
-		}
-
 		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 			switch pgErr.Code {
+			case pgerrcode.UniqueViolation:
+				return nil, model.ErrUserAlreadyExists
 			case pgerrcode.CheckViolation:
 				return nil, model.ErrInvalidCredentials
 			}

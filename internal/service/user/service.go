@@ -12,6 +12,8 @@ import (
 	"github.com/bboykiv/topsigner/internal/model"
 )
 
+// todo: решить проблему с email в разном регистре
+
 type Service struct {
 	logger     *zap.Logger
 	config     *config.Config

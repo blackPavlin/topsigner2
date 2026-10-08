@@ -28,7 +28,7 @@ type Client struct {
 func NewClient(config *config.Config) (*Client, error) {
 	client, err := httpclient.NewClientWithResponses(
 		config.VK.BaseURL,
-		httpclient.WithHTTPClient(&http.Client{Timeout: config.VKID.Timeout}),
+		httpclient.WithHTTPClient(&http.Client{Timeout: config.VK.Timeout}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create new vk client with responses: %w", err)
@@ -36,7 +36,7 @@ func NewClient(config *config.Config) (*Client, error) {
 
 	oauthClient, err := httpclient.NewClientWithResponses(
 		config.VK.OAuthBaseURL,
-		httpclient.WithHTTPClient(&http.Client{Timeout: config.VKID.Timeout}),
+		httpclient.WithHTTPClient(&http.Client{Timeout: config.VK.Timeout}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create new vk oauth client with responses: %w", err)
@@ -61,7 +61,7 @@ func (c *Client) GenerateConnectGroupURL(groupID int64, state string) (string, e
 		V:            httpclient.AuthorizeParamsVN5199,
 	}
 
-	req, err := httpclient.NewAuthorizeRequest(c.config.VKID.BaseURL, params)
+	req, err := httpclient.NewAuthorizeRequest(c.config.VK.OAuthBaseURL, params)
 	if err != nil {
 		return "", fmt.Errorf("create authorization request: %w", err)
 	}

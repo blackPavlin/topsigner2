@@ -7,7 +7,7 @@ type UserConfig struct {
 }
 
 type DefaultUserConfig struct {
-	Email    string     `envconfig:"EMAIL"    default:"admin@topsigner.com"`
-	Password string     `envconfig:"PASSWORD" default:"password123$"`
-	Role     model.Role `envconfig:"ROLE"     default:"ADMIN"`
+	Email    string     `envconfig:"EMAIL"    required:"true"`
+	Password string     `envconfig:"PASSWORD" required:"true"`
+	Role     model.Role `envconfig:"ROLE"     required:"true"`
 }

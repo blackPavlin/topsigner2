@@ -239,6 +239,10 @@ func (r *SessionRepository) Update(
 		&session.UpdatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrSessionNotFound
+		}
+
 		return nil, fmt.Errorf("update session: %w", err)
 	}
 

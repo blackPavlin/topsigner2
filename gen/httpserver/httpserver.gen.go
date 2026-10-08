@@ -2441,6 +2441,8 @@ type UploadImageResponse struct {
 	JSON400 *BadRequest
 	// JSON401 the response for an HTTP 401 `application/json` response
 	JSON401 *Unauthorized
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *Conflict
 	// JSON413 the response for an HTTP 413 `application/json` response
 	JSON413 *PayloadTooLarge
 	// JSON415 the response for an HTTP 415 `application/json` response
@@ -2466,6 +2468,11 @@ func (r UploadImageResponse) GetJSON400() *BadRequest {
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r UploadImageResponse) GetJSON401() *Unauthorized {
 	return r.JSON401
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r UploadImageResponse) GetJSON409() *Conflict {
+	return r.JSON409
 }
 
 // GetJSON413 returns the response for an HTTP 413 `application/json` response
@@ -3566,6 +3573,13 @@ func ParseUploadImageResponse(rsp *http.Response) (*UploadImageResponse, error) 
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
 		var dest PayloadTooLarge
@@ -5340,6 +5354,20 @@ func (response UploadImage401JSONResponse) VisitUploadImageResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadImage409JSONResponse struct{ ConflictJSONResponse }
+
+func (response UploadImage409JSONResponse) VisitUploadImageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }
