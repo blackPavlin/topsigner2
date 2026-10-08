@@ -47,7 +47,12 @@ func NewConflictError(err error) httpserver.ConflictJSONResponse {
 	return httpserver.ConflictJSONResponse{Message: err.Error()}
 }
 
-func errorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
+func requestErrorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
 	render.Status(r, http.StatusBadRequest)
 	render.Respond(w, r, NewBadRequestError(err))
+}
+
+func responseErrorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
+	render.Status(r, http.StatusInternalServerError)
+	render.Respond(w, r, NewInternalError())
 }

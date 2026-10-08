@@ -34,17 +34,19 @@ func NewHandler(
 	groupService *group.Service,
 	healthService *health.Service,
 ) http.Handler {
+	middlewares := []httpserver.MiddlewareFunc{
+		middleware.RequestLogger(logger),
+		middleware.Recoverer(),
+		middleware.Cors(config),
+		middleware.NoCache(),
+		middleware.IP(),
+		middleware.UserAgent(),
+		middleware.BearerAuth(authService),
+	}
+
 	options := httpserver.ChiServerOptions{
-		Middlewares: []httpserver.MiddlewareFunc{
-			middleware.NoCache(),
-			middleware.Recoverer(),
-			middleware.IP(),
-			middleware.UserAgent(),
-			middleware.Cors(config),
-			middleware.RequestLogger(logger),
-			middleware.BearerAuth(authService),
-		},
-		ErrorHandlerFunc: errorHandlerFunc,
+		Middlewares:      middlewares,
+		ErrorHandlerFunc: requestErrorHandlerFunc,
 	}
 
 	server := &strictServer{
@@ -55,5 +57,11 @@ func NewHandler(
 		HealthHandler: NewHealthHandler(healthService),
 	}
 
-	return httpserver.HandlerWithOptions(httpserver.NewStrictHandler(server, nil), options)
+	return httpserver.HandlerWithOptions(
+		httpserver.NewStrictHandlerWithOptions(server, nil, httpserver.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  requestErrorHandlerFunc,
+			ResponseErrorHandlerFunc: responseErrorHandlerFunc,
+		}),
+		options,
+	)
 }
