@@ -29,10 +29,10 @@ func NewPool(config *config.Config) (*pgxpool.Pool, error) {
 	}
 
 	conf.MaxConns = config.Postgres.MaxOpenConns
-	conf.MinConns = config.Postgres.MaxIdleConns
+	conf.MinConns = config.Postgres.MinOpenConns
 	conf.MaxConnLifetime = config.Postgres.ConnMaxLifetime
 	conf.MaxConnIdleTime = config.Postgres.ConnMaxIdleTime
-	conf.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	conf.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeCacheStatement
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), conf)
 	if err != nil {

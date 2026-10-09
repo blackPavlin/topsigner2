@@ -137,6 +137,10 @@ func (h *ImageHandler) UploadImage(
 			return httpserver.UploadImage400JSONResponse{
 				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
+		case errors.Is(err, model.ErrUserNotFound):
+			return httpserver.UploadImage401JSONResponse{
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
 		case errors.Is(err, model.ErrImageAlreadyExists):
 			return httpserver.UploadImage409JSONResponse{
 				ConflictJSONResponse: NewConflictError(err),
