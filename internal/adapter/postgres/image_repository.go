@@ -142,22 +142,31 @@ func (r *ImageRepository) Create(ctx context.Context, image *model.Image) (*mode
 	return image, nil
 }
 
-func (r *ImageRepository) Delete(ctx context.Context, imageID, userID int64) error {
+func (r *ImageRepository) Delete(ctx context.Context, imageID, userID int64) (*model.Image, error) {
 	sql, args, err := psql.Delete(imageTableName).
 		Where(squirrel.Eq{"id": imageID, "user_id": userID}).
+		Suffix("RETURNING id, user_id, name, created_at, updated_at").
 		ToSql()
 	if err != nil {
-		return fmt.Errorf("build sql query: %w", err)
+		return nil, fmt.Errorf("build sql query: %w", err)
 	}
 
-	tag, err := r.pool.Exec(ctx, sql, args...)
+	image := &model.Image{}
+
+	err = r.pool.QueryRow(ctx, sql, args...).Scan(
+		&image.ID,
+		&image.UserID,
+		&image.Name,
+		&image.CreatedAt,
+		&image.UpdatedAt,
+	)
 	if err != nil {
-		return fmt.Errorf("delete image: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrImageNotFound
+		}
+
+		return nil, fmt.Errorf("delete image: %w", err)
 	}
 
-	if tag.RowsAffected() == 0 {
-		return model.ErrImageNotFound
-	}
-
-	return nil
+	return image, nil
 }

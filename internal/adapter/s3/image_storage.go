@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"net/url"
 	"path/filepath"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 
@@ -39,6 +41,20 @@ func (s *ImageStorage) Upload(ctx context.Context, name string, reader io.Reader
 	}
 
 	return nil
+}
+
+func (s *ImageStorage) GetPresignedURL(ctx context.Context, name string, expires time.Duration) (*url.URL, error) {
+	presignedURL, err := s.client.PresignedGetObject(ctx,
+		s.config.S3.ImageBucket,
+		name,
+		expires,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get presigned url: %w", err)
+	}
+
+	return presignedURL, nil
 }
 
 func (s *ImageStorage) Delete(ctx context.Context, name string) error {

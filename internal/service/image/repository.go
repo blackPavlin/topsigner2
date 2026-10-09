@@ -5,6 +5,8 @@ package image
 import (
 	"context"
 	"io"
+	"net/url"
+	"time"
 
 	"github.com/bboykiv/topsigner/internal/model"
 )
@@ -13,10 +15,11 @@ type Repository interface {
 	Get(ctx context.Context, filter *model.ImageFilter) (*model.Image, error)
 	List(ctx context.Context, query *model.ImageQuery) ([]*model.Image, error)
 	Create(ctx context.Context, image *model.Image) (*model.Image, error)
-	Delete(ctx context.Context, imageID, userID int64) error
+	Delete(ctx context.Context, imageID, userID int64) (*model.Image, error)
 }
 
 type Storage interface {
 	Upload(ctx context.Context, name string, reader io.Reader, size int64) error
 	Delete(ctx context.Context, name string) error
+	GetPresignedURL(ctx context.Context, name string, expires time.Duration) (*url.URL, error)
 }

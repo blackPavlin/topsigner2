@@ -3,12 +3,15 @@ package httptransport
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	"github.com/bboykiv/topsigner/gen/httpserver"
 	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/image"
 	"github.com/bboykiv/topsigner/internal/transport/httptransport/middleware"
 )
+
+// todo: возвращать presigned url для изображений
 
 type ImageHandler struct {
 	imageService *image.Service
@@ -93,11 +96,16 @@ func (h *ImageHandler) UploadImage(
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
-
-	// todo: добавить проверку максимального размера файла (files[0].Size)
-
-	form, err := r.Body.ReadForm(32 << 20)
+	
+	// todo: вынести максимальный размер файла в конфиг
+	form, err := r.Body.ReadForm(10 << 20)
 	if err != nil {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			return httpserver.UploadImage413JSONResponse{
+				PayloadTooLargeJSONResponse: NewPayloadTooLargeError(10 << 20),
+			}, nil
+		}
+
 		return httpserver.UploadImage400JSONResponse{
 			BadRequestJSONResponse: NewBadRequestError(ErrInvalidMultipartForm),
 		}, nil
@@ -120,9 +128,8 @@ func (h *ImageHandler) UploadImage(
 	defer file.Close()
 
 	image, err := h.imageService.Create(ctx, user.ID, &image.Upload{
-		Filename: files[0].Filename,
-		Size:     files[0].Size,
-		File:     file,
+		Size: files[0].Size,
+		File: file,
 	})
 	if err != nil {
 		switch {

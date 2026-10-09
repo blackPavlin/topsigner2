@@ -47,6 +47,12 @@ func NewConflictError(err error) httpserver.ConflictJSONResponse {
 	return httpserver.ConflictJSONResponse{Message: err.Error()}
 }
 
+func NewPayloadTooLargeError(limit int64) httpserver.PayloadTooLargeJSONResponse {
+	return httpserver.PayloadTooLargeJSONResponse{
+		Message: fmt.Sprintf("size exceeds maximum allowed size of %d MB", limit/(1<<20)),
+	}
+}
+
 func requestErrorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
 	render.Status(r, http.StatusBadRequest)
 	render.Respond(w, r, NewBadRequestError(err))

@@ -12,7 +12,9 @@ package mock
 import (
 	context "context"
 	io "io"
+	url "net/url"
 	reflect "reflect"
+	time "time"
 
 	model "github.com/bboykiv/topsigner/internal/model"
 	gomock "go.uber.org/mock/gomock"
@@ -82,11 +84,12 @@ func (c *MockRepositoryCreateCall) DoAndReturn(f func(context.Context, *model.Im
 }
 
 // Delete mocks base method.
-func (m *MockRepository) Delete(ctx context.Context, imageID, userID int64) error {
+func (m *MockRepository) Delete(ctx context.Context, imageID, userID int64) (*model.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", ctx, imageID, userID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*model.Image)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Delete indicates an expected call of Delete.
@@ -102,19 +105,58 @@ type MockRepositoryDeleteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockRepositoryDeleteCall) Return(arg0 error) *MockRepositoryDeleteCall {
-	c.Call = c.Call.Return(arg0)
+func (c *MockRepositoryDeleteCall) Return(arg0 *model.Image, arg1 error) *MockRepositoryDeleteCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRepositoryDeleteCall) Do(f func(context.Context, int64, int64) error) *MockRepositoryDeleteCall {
+func (c *MockRepositoryDeleteCall) Do(f func(context.Context, int64, int64) (*model.Image, error)) *MockRepositoryDeleteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRepositoryDeleteCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockRepositoryDeleteCall {
+func (c *MockRepositoryDeleteCall) DoAndReturn(f func(context.Context, int64, int64) (*model.Image, error)) *MockRepositoryDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Get mocks base method.
+func (m *MockRepository) Get(ctx context.Context, filter *model.ImageFilter) (*model.Image, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, filter)
+	ret0, _ := ret[0].(*model.Image)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockRepositoryMockRecorder) Get(ctx, filter any) *MockRepositoryGetCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, filter)
+	return &MockRepositoryGetCall{Call: call}
+}
+
+// MockRepositoryGetCall wrap *gomock.Call
+type MockRepositoryGetCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRepositoryGetCall) Return(arg0 *model.Image, arg1 error) *MockRepositoryGetCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRepositoryGetCall) Do(f func(context.Context, *model.ImageFilter) (*model.Image, error)) *MockRepositoryGetCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRepositoryGetCall) DoAndReturn(f func(context.Context, *model.ImageFilter) (*model.Image, error)) *MockRepositoryGetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -216,6 +258,45 @@ func (c *MockStorageDeleteCall) Do(f func(context.Context, string) error) *MockS
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockStorageDeleteCall) DoAndReturn(f func(context.Context, string) error) *MockStorageDeleteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetPresignedURL mocks base method.
+func (m *MockStorage) GetPresignedURL(ctx context.Context, name string, expires time.Duration) (*url.URL, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPresignedURL", ctx, name, expires)
+	ret0, _ := ret[0].(*url.URL)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPresignedURL indicates an expected call of GetPresignedURL.
+func (mr *MockStorageMockRecorder) GetPresignedURL(ctx, name, expires any) *MockStorageGetPresignedURLCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPresignedURL", reflect.TypeOf((*MockStorage)(nil).GetPresignedURL), ctx, name, expires)
+	return &MockStorageGetPresignedURLCall{Call: call}
+}
+
+// MockStorageGetPresignedURLCall wrap *gomock.Call
+type MockStorageGetPresignedURLCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStorageGetPresignedURLCall) Return(arg0 *url.URL, arg1 error) *MockStorageGetPresignedURLCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStorageGetPresignedURLCall) Do(f func(context.Context, string, time.Duration) (*url.URL, error)) *MockStorageGetPresignedURLCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStorageGetPresignedURLCall) DoAndReturn(f func(context.Context, string, time.Duration) (*url.URL, error)) *MockStorageGetPresignedURLCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

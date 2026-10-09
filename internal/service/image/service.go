@@ -8,7 +8,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
-	"path/filepath"
 	"uuid"
 
 	"go.uber.org/zap"
@@ -65,7 +64,8 @@ func (s *Service) List(
 }
 
 func (s *Service) Create(ctx context.Context, userID int64, upload *Upload) (*model.Image, error) {
-	if _, _, err := image.DecodeConfig(upload.File); err != nil {
+	_, format, err := image.DecodeConfig(upload.File)
+	if err != nil {
 		if errors.Is(err, image.ErrFormat) {
 			return nil, model.ErrUnsupportedImageFormat
 		}
@@ -81,7 +81,7 @@ func (s *Service) Create(ctx context.Context, userID int64, upload *Upload) (*mo
 		return nil, fmt.Errorf("seek image file: %w", err)
 	}
 
-	filename := fmt.Sprintf("%s%s", uuid.New().String(), filepath.Ext(upload.Filename))
+	filename := fmt.Sprintf("%s.%s", uuid.New().String(), format)
 
 	if err := s.storage.Upload(ctx, filename, upload.File, upload.Size); err != nil {
 		s.logger.Error("upload image to storage error", zap.Error(err))
@@ -94,8 +94,7 @@ func (s *Service) Create(ctx context.Context, userID int64, upload *Upload) (*mo
 		UserID: userID,
 	}
 
-	image, err := s.repository.Create(ctx, image)
-	if err != nil {
+	if image, err = s.repository.Create(ctx, image); err != nil {
 		s.logger.Error("create image error", zap.Error(err))
 
 		return nil, fmt.Errorf("create image: %w", err)
@@ -105,21 +104,8 @@ func (s *Service) Create(ctx context.Context, userID int64, upload *Upload) (*mo
 }
 
 func (s *Service) Delete(ctx context.Context, imageID, userID int64) error {
-	image, err := s.repository.Get(ctx, &model.ImageFilter{
-		ID:     model.IDFilter{Eq: new(imageID)},
-		UserID: model.IDFilter{Eq: new(userID)},
-	})
-	if err != nil {
-		if errors.Is(err, model.ErrImageNotFound) {
-			return model.ErrImageNotFound
-		}
-
-		s.logger.Error("get user image", zap.Error(err))
-
-		return fmt.Errorf("get user image: %w", err)
-	}
-
-	if err = s.repository.Delete(ctx, imageID, userID); err != nil {
+	image, err := s.repository.Delete(ctx, imageID, userID)
+	if  err != nil {
 		if errors.Is(err, model.ErrImageNotFound) {
 			return model.ErrImageNotFound
 		}
