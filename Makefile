@@ -8,9 +8,16 @@ target      := target
 bin         := $(target)/bin
 reports     := $(target)/reports
 
+# Directory targets
+$(bin):
+	@mkdir -p $@
+
+$(reports):
+	@mkdir -p $@
+
 ## build: Build the application.
 .PHONY: build
-build: $(bin)
+build: | $(bin)
 	go build -o $(bin)/$(application_name) ./cmd/$(application_name)
 
 ## generate: Generate Go code from OpenAPI specifications.
@@ -18,7 +25,7 @@ build: $(bin)
 generate:
 	@go tool oapi-codegen --config api/openapi/oapi-codegen.yaml api/openapi/openapi.yaml
 	@go tool oapi-codegen --config api/external/vk/openapi/oapi-codegen.yaml api/external/vk/openapi/openapi.yaml
-	@go tool oapi-codegen --config api/external/vkid/openapi/oapi-codegen.yaml api/external/vkid/openapi/openapi.yaml	
+	@go tool oapi-codegen --config api/external/vkid/openapi/oapi-codegen.yaml api/external/vkid/openapi/openapi.yaml
 
 ## run: Run the application.
 .PHONY: run
@@ -36,10 +43,20 @@ deps:
 fmt:
 	@go fmt ./...
 
+## vet: Run go vet.
+.PHONY: vet
+vet:
+	@go vet ./...
+
 ## test: Run tests.
 .PHONY: test
 test:
-	@go test -v ./...	
+	@go test -v ./...
+
+## race: Run tests with race detector.
+.PHONY: race
+race:
+	@go test -race ./...
 
 ## test-coverage: Run tests with coverage report.
 .PHONY: test-coverage
