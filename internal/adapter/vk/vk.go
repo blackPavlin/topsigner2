@@ -2,19 +2,14 @@ package vk
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/bboykiv/topsigner/gen/external/vk/httpclient"
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/group"
-)
-
-var (
-	ErrInvalidAuthCode = errors.New("invalid authorization code")
-	ErrUpstream        = errors.New("upstream provider error")
 )
 
 type Client struct {
@@ -86,9 +81,9 @@ func (c *Client) ExchangeGroupCode(ctx context.Context, code string) (int64, str
 	case resp.JSON200 != nil && len(resp.JSON200.Groups) != 0:
 		return resp.JSON200.Groups[0].GroupID, resp.JSON200.Groups[0].AccessToken, nil
 	case resp.JSON200 != nil && resp.JSON200.Error != nil:
-		return 0, "", fmt.Errorf("%w: %s", ErrInvalidAuthCode, resp.JSON200.Error.ErrorMsg)
+		return 0, "", fmt.Errorf("%s: %w", resp.JSON200.Error, model.ErrInvalidAuthCode)
 	default:
-		return 0, "", ErrUpstream
+		return 0, "", model.ErrUpstreamUnavailable
 	}
 }
 
@@ -121,7 +116,7 @@ func (c *Client) GetGroups(ctx context.Context, token string) ([]*group.Group, e
 	case resp.JSON200 != nil && resp.JSON200.Error != nil:
 		return nil, fmt.Errorf("get groups: %s", resp.JSON200.Error.ErrorMsg)
 	default:
-		return nil, ErrUpstream
+		return nil, model.ErrUpstreamUnavailable
 	}
 }
 

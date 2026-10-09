@@ -130,6 +130,14 @@ func (h *AuthHandler) RefreshTokens(
 			return httpserver.RefreshTokens401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
+		case errors.Is(err, model.ErrInvalidAuthCode):
+			return httpserver.RefreshTokens401JSONResponse{
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
+		case errors.Is(err, model.ErrUpstreamUnavailable):
+			return httpserver.RefreshTokens502JSONResponse{
+				BadGatewayJSONResponse: NewBadGatewayError(),
+			}, nil
 		default:
 			return httpserver.RefreshTokens500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),
@@ -172,9 +180,9 @@ func (h *AuthHandler) HandleVKIDCallback(
 	// todo: валидация входных параметров
 
 	token, err := h.authService.ExchangeVKIDOAuthToken(ctx, &auth.OAuthExchangeTokenParams{
-		Code:      *r.Params.Code,
-		DeviceID:  *r.Params.DeviceID,
-		State:     *r.Params.State,
+		Code:      r.Params.Code,
+		DeviceID:  r.Params.DeviceID,
+		State:     r.Params.State,
 		IP:        middleware.GetClientIPFromContext(ctx),
 		UserAgent: middleware.GetUserAgentFromContext(ctx),
 	})
@@ -184,9 +192,17 @@ func (h *AuthHandler) HandleVKIDCallback(
 			return httpserver.HandleVKIDCallback400JSONResponse{
 				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
-		default:
+		case errors.Is(err, model.ErrInvalidAuthCode):
 			return httpserver.HandleVKIDCallback401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
+		case errors.Is(err, model.ErrUpstreamUnavailable):
+			return httpserver.HandleVKIDCallback502JSONResponse{
+				BadGatewayJSONResponse: NewBadGatewayError(),
+			}, nil
+		default:
+			return httpserver.HandleVKIDCallback500JSONResponse{
+				InternalErrorJSONResponse: NewInternalError(),
 			}, nil
 		}
 	}

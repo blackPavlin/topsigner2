@@ -2,18 +2,13 @@ package vkid
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/bboykiv/topsigner/gen/external/vkid/httpclient"
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/model"
 	"github.com/bboykiv/topsigner/internal/service/auth"
-)
-
-var (
-	ErrInvalidAuthCode = errors.New("invalid authorization code")
-	ErrUpstream        = errors.New("upstream provider error")
 )
 
 type Client struct {
@@ -77,9 +72,9 @@ func (c *Client) Exchange(
 	case resp.StatusCode() == http.StatusOK && resp.JSON200 != nil:
 		return tokenResponseToOAuthToken(resp.JSON200), nil
 	case resp.StatusCode() == http.StatusBadRequest && resp.JSON400 != nil:
-		return nil, fmt.Errorf("%w: %s", ErrInvalidAuthCode, resp.JSON400.Error)
+		return nil, fmt.Errorf("%s: %w", resp.JSON400.Error, model.ErrInvalidAuthCode)
 	default:
-		return nil, ErrUpstream
+		return nil, model.ErrUpstreamUnavailable
 	}
 }
 
@@ -104,9 +99,9 @@ func (c *Client) Refresh(
 	case resp.StatusCode() == http.StatusOK && resp.JSON200 != nil:
 		return tokenResponseToOAuthToken(resp.JSON200), nil
 	case resp.StatusCode() == http.StatusBadRequest && resp.JSON400 != nil:
-		return nil, fmt.Errorf("%w: %s", ErrInvalidAuthCode, resp.JSON400.Error)
+		return nil, fmt.Errorf("%s: %w", resp.JSON400.Error, model.ErrInvalidAuthCode)
 	default:
-		return nil, ErrUpstream
+		return nil, model.ErrUpstreamUnavailable
 	}
 }
 
@@ -125,7 +120,7 @@ func (c *Client) Logout(ctx context.Context, token string) error {
 	case resp.StatusCode() == http.StatusOK && resp.JSON200 != nil:
 		return nil
 	default:
-		return ErrUpstream
+		return model.ErrUpstreamUnavailable
 	}
 }
 

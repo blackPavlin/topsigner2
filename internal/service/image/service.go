@@ -105,7 +105,7 @@ func (s *Service) Create(ctx context.Context, userID int64, upload *Upload) (*mo
 
 func (s *Service) Delete(ctx context.Context, imageID, userID int64) error {
 	image, err := s.repository.Delete(ctx, imageID, userID)
-	if  err != nil {
+	if err != nil {
 		if errors.Is(err, model.ErrImageNotFound) {
 			return model.ErrImageNotFound
 		}

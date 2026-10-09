@@ -96,7 +96,7 @@ func (h *ImageHandler) UploadImage(
 			UnauthorizedJSONResponse: NewUnauthorizedError(),
 		}, nil
 	}
-	
+
 	// todo: вынести максимальный размер файла в конфиг
 	form, err := r.Body.ReadForm(10 << 20)
 	if err != nil {

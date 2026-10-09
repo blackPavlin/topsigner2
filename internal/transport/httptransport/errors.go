@@ -53,6 +53,10 @@ func NewPayloadTooLargeError(limit int64) httpserver.PayloadTooLargeJSONResponse
 	}
 }
 
+func NewBadGatewayError() httpserver.BadGatewayJSONResponse {
+	return httpserver.BadGatewayJSONResponse{Message: "bad gateway"}
+}
+
 func requestErrorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
 	render.Status(r, http.StatusBadRequest)
 	render.Respond(w, r, NewBadRequestError(err))

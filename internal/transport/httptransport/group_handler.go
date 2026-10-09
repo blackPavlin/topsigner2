@@ -53,6 +53,10 @@ func (h *GroupHandler) ListGroups(
 			return httpserver.ListGroups401JSONResponse{
 				UnauthorizedJSONResponse: NewUnauthorizedError(),
 			}, nil
+		case errors.Is(err, model.ErrUpstreamUnavailable):
+			return httpserver.ListGroups502JSONResponse{
+				BadGatewayJSONResponse: NewBadGatewayError(),
+			}, nil
 		default:
 			return httpserver.ListGroups500JSONResponse{
 				InternalErrorJSONResponse: NewInternalError(),
@@ -109,15 +113,23 @@ func (h *GroupHandler) HandleGroupCallback(
 ) (httpserver.HandleGroupCallbackResponseObject, error) {
 	// todo: валидация входных параметров
 
-	if _, err := h.groupService.Connect(ctx, *r.Params.Code, *r.Params.State); err != nil {
+	if _, err := h.groupService.Connect(ctx, r.Params.Code, r.Params.State); err != nil {
 		switch {
 		case errors.Is(err, model.ErrGroupStateNotFound):
 			return httpserver.HandleGroupCallback400JSONResponse{
 				BadRequestJSONResponse: NewBadRequestError(err),
 			}, nil
+		case errors.Is(err, model.ErrInvalidAuthCode):
+			return httpserver.HandleGroupCallback401JSONResponse{
+				UnauthorizedJSONResponse: NewUnauthorizedError(),
+			}, nil
 		case errors.Is(err, model.ErrGroupAlreadyExists):
 			return httpserver.HandleGroupCallback409JSONResponse{
 				ConflictJSONResponse: NewConflictError(err),
+			}, nil
+		case errors.Is(err, model.ErrUpstreamUnavailable):
+			return httpserver.HandleGroupCallback502JSONResponse{
+				BadGatewayJSONResponse: NewBadGatewayError(),
 			}, nil
 		default:
 			return httpserver.HandleGroupCallback500JSONResponse{

@@ -4,6 +4,8 @@ import (
 	"errors"
 )
 
+// todo: вынести ошибки в model
+
 var (
 	ErrInvalidAuthToken          = errors.New("invalid auth token")
 	ErrTokenIsExpired            = errors.New("token is expired")

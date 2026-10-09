@@ -172,6 +172,9 @@ type Cursor = string
 // Limit defines model for Limit.
 type Limit = int
 
+// BadGateway defines model for BadGateway.
+type BadGateway = Error
+
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
 
@@ -202,19 +205,13 @@ type bearerAuthContextKey string
 // HandleVKIDCallbackParams defines parameters for HandleVKIDCallback.
 type HandleVKIDCallbackParams struct {
 	// Code Authorization code issued by the provider
-	Code *string `form:"code,omitempty" json:"code,omitempty"`
+	Code string `form:"code" json:"code"`
 
 	// State Opaque value used to prevent CSRF attacks
-	State *string `form:"state,omitempty" json:"state,omitempty"`
+	State string `form:"state" json:"state"`
 
 	// DeviceID Unique device identifier
-	DeviceID *string `form:"device_id,omitempty" json:"device_id,omitempty"`
-
-	// Error Error code
-	Error *string `form:"error,omitempty" json:"error,omitempty"`
-
-	// ErrorDescription Error description
-	ErrorDescription *string `form:"error_description,omitempty" json:"error_description,omitempty"`
+	DeviceID string `form:"device_id" json:"device_id"`
 }
 
 // ListFontsParams defines parameters for ListFonts.
@@ -237,14 +234,8 @@ type ListGroupsParams struct {
 
 // HandleGroupCallbackParams defines parameters for HandleGroupCallback.
 type HandleGroupCallbackParams struct {
-	Code  *string `form:"code,omitempty" json:"code,omitempty"`
-	State *string `form:"state,omitempty" json:"state,omitempty"`
-
-	// Error Error code
-	Error *string `form:"error,omitempty" json:"error,omitempty"`
-
-	// ErrorDescription Error description
-	ErrorDescription *string `form:"error_description,omitempty" json:"error_description,omitempty"`
+	Code  string `form:"code" json:"code"`
+	State string `form:"state" json:"state"`
 }
 
 // GetGroupConnectionURLParams defines parameters for GetGroupConnectionURL.
@@ -935,64 +926,28 @@ func NewHandleVKIDCallbackRequest(server string, params *HandleVKIDCallbackParam
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.Code != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", *params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
 			}
-
 		}
 
-		if params.State != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
 			}
-
 		}
 
-		if params.DeviceID != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "device_id", *params.DeviceID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "device_id", params.DeviceID, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
 			}
-
-		}
-
-		if params.Error != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "error", *params.Error, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.ErrorDescription != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "error_description", *params.ErrorDescription, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
 		}
 
 		if encoded := queryValues.Encode(); encoded != "" {
@@ -1169,52 +1124,20 @@ func NewHandleGroupCallbackRequest(server string, params *HandleGroupCallbackPar
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if params.Code != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", *params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "code", params.Code, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
 			}
-
 		}
 
-		if params.State != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", *params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "state", params.State, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
 			}
-
-		}
-
-		if params.Error != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "error", *params.Error, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if params.ErrorDescription != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "error_description", *params.ErrorDescription, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
 		}
 
 		if encoded := queryValues.Encode(); encoded != "" {
@@ -1789,6 +1712,8 @@ type RefreshTokensResponse struct {
 	JSON429 *TooManyRequests
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *BadGateway
 	// Headers429 the parsed response headers for an HTTP 429 response
 	Headers429 *RefreshTokensResponse429Headers
 }
@@ -1816,6 +1741,11 @@ func (r RefreshTokensResponse) GetJSON429() *TooManyRequests {
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r RefreshTokensResponse) GetJSON500() *InternalError {
 	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r RefreshTokensResponse) GetJSON502() *BadGateway {
+	return r.JSON502
 }
 
 // GetBody returns the raw response body bytes
@@ -1934,6 +1864,8 @@ type HandleVKIDCallbackResponse struct {
 	JSON429 *TooManyRequests
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *BadGateway
 	// Headers429 the parsed response headers for an HTTP 429 response
 	Headers429 *HandleVKIDCallbackResponse429Headers
 }
@@ -1961,6 +1893,11 @@ func (r HandleVKIDCallbackResponse) GetJSON429() *TooManyRequests {
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r HandleVKIDCallbackResponse) GetJSON500() *InternalError {
 	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r HandleVKIDCallbackResponse) GetJSON502() *BadGateway {
+	return r.JSON502
 }
 
 // GetBody returns the raw response body bytes
@@ -2086,6 +2023,8 @@ type ListGroupsResponse struct {
 	JSON429 *TooManyRequests
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *BadGateway
 	// Headers429 the parsed response headers for an HTTP 429 response
 	Headers429 *ListGroupsResponse429Headers
 }
@@ -2113,6 +2052,11 @@ func (r ListGroupsResponse) GetJSON429() *TooManyRequests {
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r ListGroupsResponse) GetJSON500() *InternalError {
 	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r ListGroupsResponse) GetJSON502() *BadGateway {
+	return r.JSON502
 }
 
 // GetBody returns the raw response body bytes
@@ -2164,6 +2108,8 @@ type HandleGroupCallbackResponse struct {
 	JSON429 *TooManyRequests
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *InternalError
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *BadGateway
 	// Headers429 the parsed response headers for an HTTP 429 response
 	Headers429 *HandleGroupCallbackResponse429Headers
 }
@@ -2196,6 +2142,11 @@ func (r HandleGroupCallbackResponse) GetJSON429() *TooManyRequests {
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r HandleGroupCallbackResponse) GetJSON500() *InternalError {
 	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r HandleGroupCallbackResponse) GetJSON502() *BadGateway {
+	return r.JSON502
 }
 
 // GetBody returns the raw response body bytes
@@ -3019,6 +2970,13 @@ func ParseRefreshTokensResponse(rsp *http.Response) (*RefreshTokensResponse, err
 		}
 		response.JSON500 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest BadGateway
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
 	}
 
 	switch {
@@ -3145,6 +3103,13 @@ func ParseHandleVKIDCallbackResponse(rsp *http.Response) (*HandleVKIDCallbackRes
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest BadGateway
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
 
 	}
 
@@ -3280,6 +3245,13 @@ func ParseListGroupsResponse(rsp *http.Response) (*ListGroupsResponse, error) {
 		}
 		response.JSON500 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest BadGateway
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
 	}
 
 	switch {
@@ -3353,6 +3325,13 @@ func ParseHandleGroupCallbackResponse(rsp *http.Response) (*HandleGroupCallbackR
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest BadGateway
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
 
 	}
 
@@ -3902,9 +3881,9 @@ func (siw *ServerInterfaceWrapper) HandleVKIDCallback(w http.ResponseWriter, r *
 	// Parameter object where we will unmarshal all parameters from the context
 	var params HandleVKIDCallbackParams
 
-	// ------------- Optional query parameter "code" -------------
+	// ------------- Required query parameter "code" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
@@ -3915,9 +3894,9 @@ func (siw *ServerInterfaceWrapper) HandleVKIDCallback(w http.ResponseWriter, r *
 		return
 	}
 
-	// ------------- Optional query parameter "state" -------------
+	// ------------- Required query parameter "state" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
@@ -3928,41 +3907,15 @@ func (siw *ServerInterfaceWrapper) HandleVKIDCallback(w http.ResponseWriter, r *
 		return
 	}
 
-	// ------------- Optional query parameter "device_id" -------------
+	// ------------- Required query parameter "device_id" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "device_id", r.URL.Query(), &params.DeviceID, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "device_id", r.URL.Query(), &params.DeviceID, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "device_id"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "device_id", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "error" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", r.URL.Query(), &params.Error, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "error_description" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "error_description", r.URL.Query(), &params.ErrorDescription, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error_description"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error_description", Err: err})
 		}
 		return
 	}
@@ -4091,9 +4044,9 @@ func (siw *ServerInterfaceWrapper) HandleGroupCallback(w http.ResponseWriter, r 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params HandleGroupCallbackParams
 
-	// ------------- Optional query parameter "code" -------------
+	// ------------- Required query parameter "code" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
@@ -4104,41 +4057,15 @@ func (siw *ServerInterfaceWrapper) HandleGroupCallback(w http.ResponseWriter, r 
 		return
 	}
 
-	// ------------- Optional query parameter "state" -------------
+	// ------------- Required query parameter "state" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "error" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", r.URL.Query(), &params.Error, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "error_description" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "error_description", r.URL.Query(), &params.ErrorDescription, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error_description"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error_description", Err: err})
 		}
 		return
 	}
@@ -4467,6 +4394,8 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	return r
 }
 
+type BadGatewayJSONResponse Error
+
 type BadRequestJSONResponse Error
 
 type ConflictJSONResponse Error
@@ -4721,6 +4650,20 @@ func (response RefreshTokens500JSONResponse) VisitRefreshTokensResponse(w http.R
 	return err
 }
 
+type RefreshTokens502JSONResponse struct{ BadGatewayJSONResponse }
+
+func (response RefreshTokens502JSONResponse) VisitRefreshTokensResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetVKIDAuthorizationURLRequestObject struct {
 }
 
@@ -4860,6 +4803,20 @@ func (response HandleVKIDCallback500JSONResponse) VisitHandleVKIDCallbackRespons
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HandleVKIDCallback502JSONResponse struct{ BadGatewayJSONResponse }
+
+func (response HandleVKIDCallback502JSONResponse) VisitHandleVKIDCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5022,6 +4979,20 @@ func (response ListGroups500JSONResponse) VisitListGroupsResponse(w http.Respons
 	return err
 }
 
+type ListGroups502JSONResponse struct{ BadGatewayJSONResponse }
+
+func (response ListGroups502JSONResponse) VisitListGroupsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type HandleGroupCallbackRequestObject struct {
 	Params HandleGroupCallbackParams
 }
@@ -5111,6 +5082,20 @@ func (response HandleGroupCallback500JSONResponse) VisitHandleGroupCallbackRespo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HandleGroupCallback502JSONResponse struct{ BadGatewayJSONResponse }
+
+func (response HandleGroupCallback502JSONResponse) VisitHandleGroupCallbackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
 	_, err := buf.WriteTo(w)
 	return err
 }

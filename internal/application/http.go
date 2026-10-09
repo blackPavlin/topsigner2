@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 
 	"go.uber.org/fx"
@@ -33,8 +34,13 @@ func NewHTTPServer(
 		OnStart: func(_ context.Context) error {
 			logger.Info("starting http server", zap.String("addr", addr))
 
+			listener, err := net.Listen("tcp", addr)
+			if err != nil {
+				return fmt.Errorf("listen network address:%w", err)
+			}
+
 			go func() {
-				if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 					logger.Error("start http server error", zap.Error(err))
 				}
 			}()
