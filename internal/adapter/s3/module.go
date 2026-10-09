@@ -8,9 +8,23 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/service/health"
+	"github.com/bboykiv/topsigner/internal/service/image"
 )
 
-var Module = fx.Module("s3", fx.Provide(New))
+var Module = fx.Module("s3",
+	fx.Provide(New),
+	fx.Provide(
+		fx.Annotate(
+			NewImageStorage,
+			fx.As(new(image.Storage)),
+		),
+		fx.Annotate(
+			NewHealth,
+			fx.As(new(health.StorageChecker)),
+		),
+	),
+)
 
 type Params struct {
 	fx.In

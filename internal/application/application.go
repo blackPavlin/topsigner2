@@ -49,56 +49,6 @@ func New() fx.Option {
 			image.New,
 			group.New,
 			health.New,
-			fx.Annotate(
-				postgres.NewGroupRepository,
-				fx.As(new(group.Repository)),
-			),
-			fx.Annotate(
-				postgres.NewFontRepository,
-				fx.As(new(font.Repository)),
-			),
-			fx.Annotate(
-				postgres.NewImageRepository,
-				fx.As(new(image.Repository)),
-			),
-			fx.Annotate(
-				postgres.NewUserRepository,
-				fx.As(new(user.Repository)),
-				fx.As(new(auth.UserRepository)),
-			),
-			fx.Annotate(
-				postgres.NewSessionRepository,
-				fx.As(new(auth.SessionRepository)),
-				fx.As(new(group.SessionRepository)),
-			),
-			fx.Annotate(
-				postgres.NewHealth,
-				fx.As(new(health.DatabaseChecker)),
-			),
-			fx.Annotate(
-				s3.NewImageStorage,
-				fx.As(new(image.Storage)),
-			),
-			fx.Annotate(
-				s3.NewHealth,
-				fx.As(new(health.StorageChecker)),
-			),
-			fx.Annotate(
-				redis.NewUserCache,
-				fx.As(new(auth.UserCache)),
-			),
-			fx.Annotate(
-				redis.NewCodeVerifierStore,
-				fx.As(new(auth.CodeVerifierStorage)),
-			),
-			fx.Annotate(
-				redis.NewGroupStateStore,
-				fx.As(new(group.StateRepository)),
-			),
-			fx.Annotate(
-				redis.NewHealth,
-				fx.As(new(health.CacheChecker)),
-			),
 			NewHTTPServer,
 			httptransport.NewHandler,
 		),

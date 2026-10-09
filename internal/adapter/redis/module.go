@@ -8,9 +8,32 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/bboykiv/topsigner/internal/config"
+	"github.com/bboykiv/topsigner/internal/service/auth"
+	"github.com/bboykiv/topsigner/internal/service/group"
+	"github.com/bboykiv/topsigner/internal/service/health"
 )
 
-var Module = fx.Module("redis", fx.Provide(New))
+var Module = fx.Module("redis",
+	fx.Provide(New),
+	fx.Provide(
+		fx.Annotate(
+			NewUserCache,
+			fx.As(new(auth.UserCache)),
+		),
+		fx.Annotate(
+			NewCodeVerifierStore,
+			fx.As(new(auth.CodeVerifierStorage)),
+		),
+		fx.Annotate(
+			NewGroupStateStore,
+			fx.As(new(group.StateRepository)),
+		),
+		fx.Annotate(
+			NewHealth,
+			fx.As(new(health.CacheChecker)),
+		),
+	),
+)
 
 type Params struct {
 	fx.In
