@@ -35,6 +35,7 @@ func NewHandler(
 	healthService *health.Service,
 ) http.Handler {
 	middlewares := []httpserver.MiddlewareFunc{
+		middleware.RequestID(),
 		middleware.RequestLogger(logger),
 		middleware.Recoverer(),
 		middleware.Cors(config),

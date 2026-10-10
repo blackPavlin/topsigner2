@@ -1,11 +1,13 @@
 BEGIN;
-DROP TABLE groups;
-DROP TABLE fonts;
-DROP INDEX images_user_id_idx;
-DROP TABLE images;
-DROP INDEX sessions_user_id_idx;
-DROP TABLE sessions;
-DROP TYPE session_auth_type;
-DROP TABLE users;
-DROP TYPE user_role;
+ 
+DROP TABLE IF EXISTS groups;
+DROP TABLE IF EXISTS images;
+DROP TABLE IF EXISTS fonts;
+DROP TABLE IF EXISTS vk_sessions;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS users;
+ 
+DROP TYPE IF EXISTS session_auth_type;
+DROP TYPE IF EXISTS user_role;
+ 
 COMMIT;

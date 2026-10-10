@@ -2,42 +2,37 @@ package model
 
 import (
 	"errors"
+	"net/netip"
 	"time"
+	"uuid"
 )
 
-type AuthType string
+type SessionAuthType string
 
 const (
-	AuthTypePassword AuthType = "PASSWORD"
-	AuthTypeVKOAuth  AuthType = "VK_OAUTH"
+	SessionAuthTypePassword SessionAuthType = "PASSWORD"
+	SessionAuthTypeVKOAuth  SessionAuthType = "VK_OAUTH"
 )
 
-var (
-	ErrSessionNotFound      = errors.New("session not found")
-	ErrCodeVerifierNotFound = errors.New("code verifier not found")
-)
+var ErrSessionNotFound = errors.New("session not found")
 
 type Session struct {
-	ID                   string
-	UserID               int64
-	AuthType             AuthType
-	IP                   string
-	UserAgent            string
-	RefreshTokenHash     string
-	OAuthDeviceID        *string
-	OAuthAccessTokenEnc  *string
-	OAuthRefreshTokenEnc *string
-	ExpiresAt            time.Time
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	ID               uuid.UUID
+	UserID           int64
+	AuthType         SessionAuthType
+	DeviceID         string
+	IP               netip.Addr
+	UserAgent        string
+	RefreshTokenHash string
+	ExpiresAt        time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type SessionFilter struct {
-	ID               TextFilter
+	ID               UUIDFileter
 	UserID           IDFilter
 	AuthType         TextFilter
-	IP               TextFilter
-	UserAgent        TextFilter
 	RefreshTokenHash TextFilter
 }
 

@@ -34,9 +34,6 @@ func (r *SessionRepository) Get(
 			"ip",
 			"user_agent",
 			"refresh_token_hash",
-			"oauth_device_id",
-			"oauth_access_token_enc",
-			"oauth_refresh_token_enc",
 			"expires_at",
 			"created_at",
 			"updated_at",
@@ -47,8 +44,6 @@ func (r *SessionRepository) Get(
 	builder = applyFilter(builder, "id", filter.ID)
 	builder = applyFilter(builder, "user_id", filter.UserID)
 	builder = applyFilter(builder, "auth_type", filter.AuthType)
-	builder = applyFilter(builder, "ip", filter.IP)
-	builder = applyFilter(builder, "user_agent", filter.UserAgent)
 	builder = applyFilter(builder, "refresh_token_hash", filter.RefreshTokenHash)
 
 	sql, args, err := builder.ToSql()
@@ -65,9 +60,6 @@ func (r *SessionRepository) Get(
 		&session.IP,
 		&session.UserAgent,
 		&session.RefreshTokenHash,
-		&session.OAuthDeviceID,
-		&session.OAuthAccessTokenEnc,
-		&session.OAuthRefreshTokenEnc,
 		&session.ExpiresAt,
 		&session.CreatedAt,
 		&session.UpdatedAt,
@@ -106,8 +98,6 @@ func (r *SessionRepository) List(
 	builder = applyFilter(builder, "id", query.Filter.ID)
 	builder = applyFilter(builder, "user_id", query.Filter.UserID)
 	builder = applyFilter(builder, "auth_type", query.Filter.AuthType)
-	builder = applyFilter(builder, "ip", query.Filter.IP)
-	builder = applyFilter(builder, "user_agent", query.Filter.UserAgent)
 	builder = applyFilter(builder, "refresh_token_hash", query.Filter.RefreshTokenHash)
 
 	sql, args, err := builder.ToSql()
@@ -133,9 +123,6 @@ func (r *SessionRepository) List(
 			&session.IP,
 			&session.UserAgent,
 			&session.RefreshTokenHash,
-			&session.OAuthDeviceID,
-			&session.OAuthAccessTokenEnc,
-			&session.OAuthRefreshTokenEnc,
 			&session.ExpiresAt,
 			&session.CreatedAt,
 			&session.UpdatedAt,
@@ -165,9 +152,6 @@ func (r *SessionRepository) Create(
 			"ip",
 			"user_agent",
 			"refresh_token_hash",
-			"oauth_device_id",
-			"oauth_access_token_enc",
-			"oauth_refresh_token_enc",
 			"expires_at",
 		).
 		Values(
@@ -176,18 +160,12 @@ func (r *SessionRepository) Create(
 			session.IP,
 			session.UserAgent,
 			session.RefreshTokenHash,
-			session.OAuthDeviceID,
-			session.OAuthAccessTokenEnc,
-			session.OAuthRefreshTokenEnc,
 			session.ExpiresAt,
 		).
 		Suffix(`
 			ON CONFLICT ON CONSTRAINT sessions_user_id_auth_type_ip_user_agent_unique
 			DO UPDATE SET
 				refresh_token_hash = EXCLUDED.refresh_token_hash,
-				oauth_device_id = EXCLUDED.oauth_device_id,
-				oauth_access_token_enc = EXCLUDED.oauth_access_token_enc,
-				oauth_refresh_token_enc = EXCLUDED.oauth_refresh_token_enc,
 				expires_at = EXCLUDED.expires_at,
 				updated_at = now()
 			RETURNING id::text, created_at, updated_at
@@ -222,9 +200,6 @@ func (r *SessionRepository) Update(
 ) (*model.Session, error) {
 	sql, args, err := psql.Update(sessionTableName).
 		Set("refresh_token_hash", session.RefreshTokenHash).
-		Set("oauth_device_id", session.OAuthDeviceID).
-		Set("oauth_access_token_enc", session.OAuthAccessTokenEnc).
-		Set("oauth_refresh_token_enc", session.OAuthRefreshTokenEnc).
 		Set("expires_at", session.ExpiresAt).
 		Set("updated_at", squirrel.Expr("now()")).
 		Where(squirrel.Eq{"id": session.ID}).

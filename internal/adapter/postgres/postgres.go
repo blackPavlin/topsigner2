@@ -18,6 +18,7 @@ const (
 	imageTableName   = "images"
 	groupTableName   = "groups"
 	sessionTableName = "sessions"
+	vkSessionTable   = "vk_sessions"
 )
 
 var psql = squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)

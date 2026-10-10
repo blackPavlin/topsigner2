@@ -81,7 +81,7 @@ func (c *Client) ExchangeGroupCode(ctx context.Context, code string) (int64, str
 	case resp.JSON200 != nil && len(resp.JSON200.Groups) != 0:
 		return resp.JSON200.Groups[0].GroupID, resp.JSON200.Groups[0].AccessToken, nil
 	case resp.JSON200 != nil && resp.JSON200.Error != nil:
-		return 0, "", fmt.Errorf("%s: %w", resp.JSON200.Error, model.ErrInvalidAuthCode)
+		return 0, "", fmt.Errorf("%s: %w", resp.JSON200.Error.ErrorMsg, model.ErrInvalidAuthCode)
 	default:
 		return 0, "", model.ErrUpstreamUnavailable
 	}

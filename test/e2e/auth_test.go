@@ -6,8 +6,7 @@ import (
 	"github.com/bboykiv/topsigner/gen/httpserver"
 )
 
-func (s *E2ESuite) LoginUser_EmptyBody() {
-
+func (s *E2ESuite) TestLoginUser_EmptyBody() {
 	message := &httpserver.BadRequest{
 		Message: "field validation for 'email' failed on the 'required' tag",
 	}
@@ -18,8 +17,7 @@ func (s *E2ESuite) LoginUser_EmptyBody() {
 	s.Require().Equal(message, resp.JSON400)
 }
 
-func (s *E2ESuite) LoginUser_EmptyEmail() {
-
+func (s *E2ESuite) TestLoginUser_EmptyEmail() {
 	message := &httpserver.BadRequest{
 		Message: "field validation for 'email' failed on the 'required' tag",
 	}
@@ -32,8 +30,7 @@ func (s *E2ESuite) LoginUser_EmptyEmail() {
 	s.Require().Equal(message, resp.JSON400)
 }
 
-func (s *E2ESuite) LoginUser_InvalidEmail() {
-
+func (s *E2ESuite) TestLoginUser_InvalidEmail() {
 	message := &httpserver.BadRequest{
 		Message: "field validation for 'email' failed on the 'email' tag",
 	}
@@ -47,7 +44,7 @@ func (s *E2ESuite) LoginUser_InvalidEmail() {
 	s.Require().Equal(message, resp.JSON400)
 }
 
-func (s *E2ESuite) LoginUser_EmptyPassword() {
+func (s *E2ESuite) TestLoginUser_EmptyPassword() {
 	message := &httpserver.BadRequest{
 		Message: "field validation for 'password' failed on the 'required' tag",
 	}

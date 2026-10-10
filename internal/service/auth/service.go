@@ -148,6 +148,7 @@ func (s *Service) Logout(
 	}
 
 	for _, session := range sessions {
+		// todo: Распараллелить Logout в VK
 		if session.AuthType == model.AuthTypeVKOAuth {
 			oauthAccessToken, err := s.encryptor.Decrypt(*session.OAuthAccessTokenEnc)
 			if err != nil {

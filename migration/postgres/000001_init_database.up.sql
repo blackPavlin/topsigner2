@@ -19,26 +19,38 @@ CREATE TABLE users (
 CREATE TYPE session_auth_type AS ENUM ('PASSWORD', 'VK_OAUTH');
 
 CREATE TABLE sessions (
-    id                      UUID                 NOT NULL DEFAULT uuidv7(),
-    user_id                 BIGINT               NOT NULL,
-    auth_type               session_auth_type    NOT NULL,
-    ip                      TEXT                 NOT NULL,
-    user_agent              TEXT                 NOT NULL,
-    refresh_token_hash      TEXT                 NOT NULL,
-    oauth_device_id         TEXT                 DEFAULT NULL,
-    oauth_access_token_enc  TEXT                 DEFAULT NULL,
-    oauth_refresh_token_enc TEXT                 DEFAULT NULL,
-    expires_at              TIMESTAMPTZ          NOT NULL,
-    created_at              TIMESTAMPTZ          NOT NULL DEFAULT now(),
-    updated_at              TIMESTAMPTZ          NOT NULL DEFAULT now(),
-
+    id                 UUID              NOT NULL DEFAULT uuidv7(),
+    user_id            BIGINT            NOT NULL,
+    auth_type          session_auth_type NOT NULL,
+    device_id          TEXT              NOT NULL,
+    ip                 INET              NOT NULL,
+    user_agent         TEXT              NOT NULL,
+    refresh_token_hash TEXT              NOT NULL,
+    expires_at         TIMESTAMPTZ       NOT NULL,
+    created_at         TIMESTAMPTZ       NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ       NOT NULL DEFAULT now(),
+ 
     PRIMARY KEY (id),
     CONSTRAINT sessions_refresh_token_hash_unique UNIQUE (refresh_token_hash),
-    CONSTRAINT sessions_user_id_auth_type_ip_user_agent_unique UNIQUE (user_id, auth_type, ip, user_agent),
+    CONSTRAINT sessions_user_id_auth_type_device_id_unique UNIQUE (user_id, auth_type, device_id),
     CONSTRAINT sessions_user_id_fk FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
 CREATE INDEX sessions_user_id_idx ON sessions (user_id);
+CREATE INDEX sessions_expires_at_idx ON sessions (expires_at);
+
+CREATE TABLE vk_sessions (
+    id                UUID        NOT NULL DEFAULT uuidv7(),
+    session_id        UUID        NOT NULL,
+    device_id         TEXT        NOT NULL,
+    access_token_enc  TEXT        NOT NULL,
+    refresh_token_enc TEXT        NOT NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+ 
+    PRIMARY KEY (id),
+    CONSTRAINT vk_sessions_session_id_fk FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+);
 
 CREATE TABLE fonts (
     id 		   BIGINT 	   GENERATED ALWAYS AS IDENTITY,

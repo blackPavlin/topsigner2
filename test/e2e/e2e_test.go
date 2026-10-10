@@ -116,7 +116,7 @@ func (s *E2ESuite) newConfig() *config.Config {
 			Schema:          "public",
 			SSLMode:         "disable",
 			MaxOpenConns:    25,
-			MaxIdleConns:    5,
+			MinOpenConns:    5,
 			ConnTimeout:     5 * time.Second,
 			ConnMaxLifetime: time.Hour,
 			ConnMaxIdleTime: 15 * time.Minute,
@@ -154,7 +154,7 @@ func (s *E2ESuite) startPostgres(ctx context.Context, config *config.Config) {
 	s.Require().NoError(err)
 
 	config.Postgres.Host = host
-	config.Postgres.Port = int(port.Num())
+	config.Postgres.Port = uint16(port.Num())
 }
 
 func (s *E2ESuite) startMinio(ctx context.Context, config *config.Config) {

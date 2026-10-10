@@ -1,5 +1,7 @@
 package model
 
+import "uuid"
+
 type Filter[T comparable] struct {
 	Eq    *T
 	Neq   *T
@@ -8,5 +10,7 @@ type Filter[T comparable] struct {
 }
 
 type IDFilter = Filter[int64]
+
+type UUIDFileter = Filter[uuid.UUID]
 
 type TextFilter = Filter[string]
